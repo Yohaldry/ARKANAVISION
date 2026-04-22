@@ -8,6 +8,7 @@ import FloatingBot from '../components/FloatingBot';
 import ProgressWidget from '../components/ProgressWidget';
 import { Reveal } from '../components/Reveal';
 import Consulting from '../components/Consulting'
+import ScanTest from '../components/ArkanaScannerTeaser'
 
 const Home = () => {
   return (
@@ -23,6 +24,9 @@ const Home = () => {
           <Hero /> 
         </Reveal>
 
+   <Reveal width="100%" delay={0.2}>
+          <ScanTest /> 
+        </Reveal>
         {/* --- RESTO DE LAS SECCIONES --- */}
         <div className="max-w-7xl mx-auto px-6">
             <Reveal width="100%" delay={0.4}>
