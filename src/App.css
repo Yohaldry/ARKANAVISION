@@ -1,0 +1,37 @@
+html {
+  scroll-behavior: smooth;
+}
+
+/* index.css o App.css */
+.ArkaBlur {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* Personalización de scroll para el modal tecnológico */
+div::-webkit-scrollbar {
+  width: 6px;
+}
+
+div::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+div::-webkit-scrollbar-thumb {
+  background: #00f7ff;
+  border-radius: 10px;
+}
+
+div::-webkit-scrollbar-thumb:hover {
+  background: #fff;
+}
