@@ -42,9 +42,9 @@ const Home = () => {
               <Portfolio />
             </Reveal>
 
-            <Reveal width="100%" delay={0.4}>
+         {/*   <Reveal width="100%" delay={0.4}>
               <Consulting />
-            </Reveal>
+            </Reveal> */}
 
             <Footer />
         </div>

@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Code2, Menu, X, Zap } from 'lucide-react';
+import ArkanaProjectModal from './ArkanaProjectModal';
 
-const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject }) => {
+const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const isotipoUrl = 'https://res.cloudinary.com/dtkirmtfq/image/upload/v1772576128/ARKA/hl570ndgdnizwe7tkezb.png';
-  const esloganUrl = 'https://res.cloudinary.com/dtkirmtfq/image/upload/v1772576194/ARKA/uqj59q9gu6fcxm4uhlsl.png';
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,137 +16,130 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToSection = (sectionId) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-    setMobileMenuOpen(false);
-  };
-
   const navLinks = [
-    { name: 'Inicio', href: 'inicio' },
-    { name: 'Servicios', href: 'services' },
-    { name: 'Desarrollo', href: 'desarrollo' },
-    { name: 'Proyectos', href: 'proyectos' },
-    { name: 'Novedades', href: 'novedades' },
-    { name: 'Contacto', href: 'consulting' },
+    { name: 'Inicio', href: '#inicio' },
+    { name: 'Servicios', href: '#services' },
+    { name: 'Proyectos', href: '#proyectos' },
+    { name: 'Desarrollo', href: '#desarrollo' },
+    { name: 'Novedades', href: '#novedades' },
   ];
 
-  const handleAction = (e) => {
-    e.preventDefault();
-    if (onStartProject) {
-      onStartProject();
-    } else {
-      scrollToSection('consulting');
-    }
-    setMobileMenuOpen(false);
-  };
-
   return (
-    <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled 
-          ? 'py-3 px-4 lg:px-10 bg-[#050914]/90 backdrop-blur-xl border-b border-white/5 shadow-2xl' 
-          : 'py-5 px-4 lg:px-10 bg-transparent'
-      }`}
-    >
-      <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-        
-        <div className="flex items-center gap-3 md:gap-4 group cursor-pointer">
-          <a href="/" className="flex items-center gap-3 md:gap-4" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>
-            <img 
-              src={isotipoUrl} 
-              alt="Logo Icon" 
-              className={`transition-all duration-500 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] ${
-                isScrolled ? 'h-8 lg:h-12' : 'h-10 lg:h-14'
-              }`}
-            />
-            
-            <div className="flex flex-col justify-center">
-              <img 
-                src={esloganUrl} 
-                alt="Brand Text" 
-                className={`transition-all duration-500 object-contain brightness-200 ${
-                  isScrolled 
-                    ? 'h-10 lg:h-20 w-auto' 
-                    : 'h-12 lg:h-28 w-auto' 
-                }`}
-              />
-            </div>
-          </a>
-        </div>
-
-        <div className="hidden md:flex items-center gap-10">
-          {navLinks.map((link) => (
-            <a 
-              key={link.name} 
-              href={`#${link.href}`}
-              onClick={(e) => { e.preventDefault(); scrollToSection(link.href); }}
-              className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-all hover:translate-y-[-1px]"
-            >
-              {link.name}
-            </a>
-          ))}
+    <>
+      <nav 
+        className={`fixed w-full z-[100] transition-all duration-500 ${
+          isScrolled 
+            ? 'py-4 bg-black/80 backdrop-blur-lg border-b border-white/5' 
+            : 'py-6 bg-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           
-          <a 
-            href="#consulting"
-            onClick={handleAction}
-            className="px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2"
-            style={{ 
-              backgroundColor: accentColor,
-              boxShadow: `0 10px 20px -10px ${accentColor}66`
-            }}
+        {/* Contenedor del Logo y Nombre */}
+<motion.div 
+  className="flex items-center gap-3 group cursor-pointer"
+  whileHover={{ scale: 1.02 }}
+>
+  {/* 1. El Isotipo / Logo (Sustituye al cuadro azul con el icono) */}
+  <div className="w-10 h-10 md:w-12 md:h-12 overflow-hidden group-hover:rotate-12 transition-transform duration-300">
+    <img 
+      src={'https://res.cloudinary.com/dtkirmtfq/image/upload/v1776979708/ARKA/vjg0qu0zutvr7mdbjnit.png'} // Ruta de tu isotipo
+      alt="Arka Vision Logo"
+      className="w-full h-full object-contain"
+    />
+  </div>
+
+  {/* 2. El Nombre / Tipografía (Sustituye al span de texto) */}
+  <div className="h-6 md:h-8">
+    <img 
+      src={'https://res.cloudinary.com/dtkirmtfq/image/upload/v1776979716/ARKA/t8gnvxfyucr0aiz7rqni.png'} // Ruta de la imagen del nombre
+      alt="ARKA VISION"
+      className="h-full w-auto object-contain brightness-100" 
+    />
+  </div>
+</motion.div>
+
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center gap-8">
+            <div className="flex gap-8 bg-white/5 border border-white/10 px-8 py-2.5 rounded-full backdrop-blur-md">
+              {navLinks.map((link) => (
+                <a 
+                  key={link.name}
+                  href={link.href}
+                  className="text-[11px] font-bold text-white/50 hover:text-white uppercase tracking-[0.2em] transition-colors"
+                >
+                  {link.name}
+                </a>
+              ))}
+            </div>
+            
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsProjectModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-full text-xs font-black uppercase italic flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all"
+            >
+              <Zap size={14} className="fill-current" />
+              Iniciar Proyecto
+            </motion.button>
+          </div>
+
+          {/* Mobile Toggle */}
+          <button 
+            className="md:hidden text-white"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            Iniciar Proyecto <ArrowRight size={12} />
-          </a>
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
         </div>
 
-        <button 
-          className="md:hidden p-2 text-white bg-white/5 rounded-lg border border-white/10 active:scale-90 transition-transform"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 bg-[#050914] backdrop-blur-2xl border-b border-white/10 p-6 flex flex-col gap-5 md:hidden shadow-2xl"
+       
+       {/* Mobile Menu - Tipografía elegante y pequeña como en PC */}
+<AnimatePresence>
+  {isMobileMenuOpen && (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="md:hidden absolute top-full left-0 w-full bg-black/570 backdrop-blur-xl border-b border-white/10 overflow-hidden"
+    >
+      <div className="p-9 flex flex-col gap-1"> {/* Gap reducido para mayor limpieza */}
+        {navLinks.map((link) => (
+          <motion.a 
+            key={link.name}
+            href={link.href}
+            onClick={() => setIsMobileMenuOpen(false)}
+            // Ajustado: text-xs (12px), font-black, italic, uppercase y tracking amplio
+            className="py-3 px-2 text-xs font-black italic text-white/70 hover:text-blue-500 uppercase tracking-[0.2em] transition-all border-b border-white/[0.03]"
+            whileTap={{ x: 5, color: "#3b82f6" }}
           >
-            {navLinks.map((link, i) => (
-              <motion.a 
-                key={link.name} 
-                href={`#${link.href}`}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={(e) => { e.preventDefault(); scrollToSection(link.href); }}
-                className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-300 border-b border-white/5 pb-4 hover:text-blue-500 transition-colors"
-              >
-                {link.name}
-              </motion.a>
-            ))}
-            <motion.a 
-              href="#consulting"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              onClick={handleAction}
-              className="w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-white shadow-lg text-center"
-              style={{ backgroundColor: accentColor }}
-            >
-              Iniciar Proyecto
-            </motion.a>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
+            {link.name}
+          </motion.a>
+        ))}
+        
+        <div className="pt-4">
+          <button 
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              setIsProjectModalOpen(true);
+            }}
+            className="w-full bg-green-600 text-white py-3.5 rounded-xl font-black uppercase italic text-[11px] tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+          >
+            <Zap size={12} className="fill-current" />
+            Iniciar Proyecto
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
+      </nav>
+
+      <ArkanaProjectModal 
+        isOpen={isProjectModalOpen} 
+        onClose={() => setIsProjectModalOpen(false)} 
+      />
+    </>
   );
 };
 
