@@ -1,9 +1,7 @@
 import React from 'react';
 import { 
   Instagram, 
-  Youtube, 
   Facebook, 
-  Code2, 
   ArrowUpRight, 
   Globe, 
   Zap 
@@ -12,7 +10,6 @@ import {
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
-  // Configuración de redes sociales con el SVG de TikTok inyectado manualmente
   const socialLinks = [
     { 
       Icon: Instagram, 
@@ -61,19 +58,35 @@ const Footer = () => {
         {/* Layout Principal */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           
-          {/* 1. Branding y Redes */}
+          {/* 1. Branding y Redes (Logo y Nombre alineados horizontalmente) */}
           <div className="col-span-2 md:col-span-1 border-b md:border-none border-white/5 pb-8 md:pb-0">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-1.5 bg-blue-600 rounded-lg">
-                <Code2 className="text-white w-5 h-5" />
+            
+            {/* Contenedor de Logos - Alineación Horizontal */}
+            <div className="flex flex-row items-center gap-3 mb-6">
+              {/* Isotipo con Glow */}
+              <div className="relative group w-fit flex-shrink-0">
+                <div className="absolute inset-0 bg-blue-600/20 blur-xl rounded-full group-hover:bg-blue-600/40 transition-all duration-500" />
+                <img 
+                  src={'https://res.cloudinary.com/dtkirmtfq/image/upload/v1776979708/ARKA/vjg0qu0zutvr7mdbjnit.png'} 
+                  alt="Logo" 
+                  className="relative z-10 w-10 h-10 object-contain"
+                />
               </div>
-              <span className="text-white font-bold text-xl tracking-tighter italic">
-                ARKA<span className="text-blue-500 not-italic">VISION</span>
-              </span>
+              
+              {/* Logotipo (Nombre) */}
+              <div className="h-4 md:h-5">
+                <img 
+                  src={'https://res.cloudinary.com/dtkirmtfq/image/upload/v1776979716/ARKA/t8gnvxfyucr0aiz7rqni.png'}
+                  alt="ARKA VISION" 
+                  className="h-full w-auto object-contain brightness-110"
+                />
+              </div>
             </div>
+
             <p className="text-gray-500 text-xs md:text-sm leading-relaxed mb-6 max-w-xs">
               Ingeniería de software con estética minimalista y rendimiento extremo.
             </p>
+
             <div className="flex gap-3">
               {socialLinks.map(({ Icon, href, label, color }, i) => (
                 <a 
