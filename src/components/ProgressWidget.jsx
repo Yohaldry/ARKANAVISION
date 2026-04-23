@@ -6,9 +6,9 @@ const ProgressWidget = () => {
   const [expanded, setExpanded] = useState(false);
 
   const projectsInProgress = [
-    { name: "E-commerce Lux", progress: 75 },
-    { name: "SaaS Dashboard", progress: 40 },
-    { name: "App Fitness", progress: 90 }
+    { name: "YIANNA", progress: 50 },
+    { name: "Arkana Scanner", progress: 70 },
+    { name: "Andres Miranda", progress: 30 }
   ];
 
   return (

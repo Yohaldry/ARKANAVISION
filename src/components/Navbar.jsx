@@ -6,7 +6,6 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Imágenes proporcionadas
   const isotipoUrl = 'https://res.cloudinary.com/dtkirmtfq/image/upload/v1772576128/ARKA/hl570ndgdnizwe7tkezb.png';
   const esloganUrl = 'https://res.cloudinary.com/dtkirmtfq/image/upload/v1772576194/ARKA/uqj59q9gu6fcxm4uhlsl.png';
 
@@ -18,17 +17,29 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileMenuOpen(false);
+  };
+
   const navLinks = [
-    { name: 'Inicio', href: '#' },
-    { name: 'Servicios', href: '#' },
-    { name: 'Proyectos', href: '#' },
-    { name: 'Contacto', href: '#' },
+    { name: 'Inicio', href: 'inicio' },
+    { name: 'Servicios', href: 'services' },
+    { name: 'Desarrollo', href: 'desarrollo' },
+    { name: 'Proyectos', href: 'proyectos' },
+    { name: 'Novedades', href: 'novedades' },
+    { name: 'Contacto', href: 'consulting' },
   ];
 
   const handleAction = (e) => {
+    e.preventDefault();
     if (onStartProject) {
-      e.preventDefault();
       onStartProject();
+    } else {
+      scrollToSection('consulting');
     }
     setMobileMenuOpen(false);
   };
@@ -36,7 +47,6 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
   return (
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        /* Padding reducido en móvil (px-4) y mayor en escritorio (lg:px-10) */
         isScrolled 
           ? 'py-3 px-4 lg:px-10 bg-[#050914]/90 backdrop-blur-xl border-b border-white/5 shadow-2xl' 
           : 'py-5 px-4 lg:px-10 bg-transparent'
@@ -44,10 +54,8 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
     >
       <div className="max-w-[1400px] mx-auto flex items-center justify-between">
         
-        {/* --- CONTENEDOR DE MARCA --- */}
         <div className="flex items-center gap-3 md:gap-4 group cursor-pointer">
-          <a href="/" className="flex items-center gap-3 md:gap-4">
-            {/* Isotipo: Ajustado para no chocar con el eslogan grande */}
+          <a href="/" className="flex items-center gap-3 md:gap-4" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>
             <img 
               src={isotipoUrl} 
               alt="Logo Icon" 
@@ -56,27 +64,26 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
               }`}
             />
             
-            {/* Eslogan: TAMAÑO AUMENTADO EN MÓVIL */}
             <div className="flex flex-col justify-center">
               <img 
                 src={esloganUrl} 
                 alt="Brand Text" 
                 className={`transition-all duration-500 object-contain brightness-200 ${
                   isScrolled 
-                    ? 'h-10 lg:h-20 w-auto' // Antes h-6
-                    : 'h-12 lg:h-28 w-auto' // Antes h-8
+                    ? 'h-10 lg:h-20 w-auto' 
+                    : 'h-12 lg:h-28 w-auto' 
                 }`}
               />
             </div>
           </a>
         </div>
 
-        {/* --- LINKS DE ESCRITORIO --- */}
         <div className="hidden md:flex items-center gap-10">
           {navLinks.map((link) => (
             <a 
               key={link.name} 
-              href={link.href}
+              href={`#${link.href}`}
+              onClick={(e) => { e.preventDefault(); scrollToSection(link.href); }}
               className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-all hover:translate-y-[-1px]"
             >
               {link.name}
@@ -84,7 +91,7 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
           ))}
           
           <a 
-            href="/iniciar-proyecto"
+            href="#consulting"
             onClick={handleAction}
             className="px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2"
             style={{ 
@@ -96,7 +103,6 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
           </a>
         </div>
 
-        {/* --- BOTÓN MENÚ MÓVIL --- */}
         <button 
           className="md:hidden p-2 text-white bg-white/5 rounded-lg border border-white/10 active:scale-90 transition-transform"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -105,7 +111,6 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
         </button>
       </div>
 
-      {/* --- MENÚ MÓVIL CON TRANSICIÓN SUAVE --- */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
@@ -113,23 +118,23 @@ const Navbar = ({ businessName = "ARKA", accentColor = "#3b82f6", onStartProject
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 bg-[#050914]/fb backdrop-blur-2xl border-b border-white/10 p-6 flex flex-col gap-5 md:hidden shadow-2xl"
+            className="absolute top-full left-0 right-0 bg-[#050914] backdrop-blur-2xl border-b border-white/10 p-6 flex flex-col gap-5 md:hidden shadow-2xl"
           >
             {navLinks.map((link, i) => (
               <motion.a 
                 key={link.name} 
-                href={link.href}
+                href={`#${link.href}`}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => { e.preventDefault(); scrollToSection(link.href); }}
                 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-300 border-b border-white/5 pb-4 hover:text-blue-500 transition-colors"
               >
                 {link.name}
               </motion.a>
             ))}
             <motion.a 
-              href="/iniciar-proyecto"
+              href="#consulting"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}

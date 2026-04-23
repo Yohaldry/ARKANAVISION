@@ -6,7 +6,7 @@ const Footer = () => {
 
   return (
     <footer className="bg-[#050505] border-t border-white/5 pt-16 pb-8 px-6">
-      <div className="max-w-7xl mx-auto">
+      <div id="contacto" className="max-w-7xl mx-auto">
         
         {/* Layout Principal */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">

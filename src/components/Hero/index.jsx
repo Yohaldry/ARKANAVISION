@@ -6,12 +6,12 @@ const Hero = () => {
   return (
     <>
       {/* Se muestra solo en pantallas grandes (lg) */}
-      <div className="hidden lg:block">
+      <div id="inicio" className="hidden lg:block">
         <HeroDesktop />
       </div>
       
       {/* Se muestra solo en pantallas pequeñas y medianas */}
-      <div className="block lg:hidden">
+      <div id="inicio" className="block lg:hidden">
         <HeroMobile />
       </div>
     </>

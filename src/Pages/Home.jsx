@@ -9,6 +9,7 @@ import ProgressWidget from '../components/ProgressWidget';
 import { Reveal } from '../components/Reveal';
 import Consulting from '../components/Consulting'
 import ScanTest from '../components/ArkanaScannerTeaser'
+import Desarrollo from '../components/Desarrollo'
 
 const Home = () => {
   return (
@@ -29,6 +30,10 @@ const Home = () => {
         </Reveal>
         {/* --- RESTO DE LAS SECCIONES --- */}
         <div className="max-w-7xl mx-auto px-6">
+            <Reveal width="100%" delay={0.4}>
+              <Desarrollo />
+            </Reveal>
+
             <Reveal width="100%" delay={0.4}>
               <Services />
             </Reveal>
