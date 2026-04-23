@@ -16,7 +16,7 @@ const Footer = () => {
   const socialLinks = [
     { 
       Icon: Instagram, 
-      href: "https://instagram.com/tu_perfil", 
+      href: "https://www.instagram.com/arkanavision?igsh=N3o4OTRuZ2RubW1j&utm_source=qr", 
       label: "Instagram",
       color: "hover:text-pink-500" 
     },
@@ -36,21 +36,15 @@ const Footer = () => {
           <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
         </svg>
       ), 
-      href: "https://tiktok.com/@tu_perfil", 
+      href: "https://www.tiktok.com/@arkanavision?_r=1&_t=ZS-95myabE3fgS", 
       label: "TikTok",
       color: "hover:text-cyan-400"
     },
     { 
       Icon: Facebook, 
-      href: "https://facebook.com/tu_pagina", 
+      href: "https://www.facebook.com/share/1CqwCd6GJm/?mibextid=wwXIfr", 
       label: "Facebook",
       color: "hover:text-blue-600" 
-    },
-    { 
-      Icon: Youtube, 
-      href: "https://youtube.com/@tu_canal", 
-      label: "YouTube",
-      color: "hover:text-red-600" 
     },
   ];
 
@@ -126,8 +120,8 @@ const Footer = () => {
                 <Zap size={14} className="text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]" />
                 <span className="text-white text-[10px] font-bold uppercase">¿Listo para empezar?</span>
               </div>
-              <a href="mailto:hola@arkanavision.com" className="text-gray-300 text-xs break-all hover:text-blue-400 transition-colors block mb-1">
-                hola@arkanavision.com
+              <a href="mailto:arkanavison26@gmail.com" className="text-gray-300 text-xs break-all hover:text-blue-400 transition-colors block mb-1">
+                arkanavison26@gmail.com
               </a>
               <p className="text-[9px] text-gray-600 font-mono mt-2 flex items-center gap-1">
                 <Globe size={10} /> DISPONIBLE NIVEL GLOBAL

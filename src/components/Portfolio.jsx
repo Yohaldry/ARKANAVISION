@@ -19,7 +19,6 @@ const Portfolio = () => {
 
   const WHATSAPP_NUMBER = "573123456789"; // Tu número real
 
-  // Servicios comerciales para el modal
   const comercialServices = [
     { title: "Pagina Web", desc: "Prototipos funcionales y desarrollo de sistemas a medida.", icon: Layout, detail: "DEV" },
     { title: "Creacion de Logos", desc: "Branding y renovación de identidad corporativa.", icon: Palette, detail: "BRAND" },
@@ -51,11 +50,12 @@ const Portfolio = () => {
         </div>
 
         {/* --- BENTO GRID PRINCIPAL --- */}
-        <div className="grid grid-cols-2 md:grid-cols-12 gap-3 md:gap-6 auto-rows-[minmax(120px,_auto)] md:auto-rows-[220px]">
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-3 md:gap-6 auto-rows-[minmax(120px,_auto)] md:auto-rows-min">
           
+          {/* OBJETIVO */}
           <motion.div 
             whileHover={{ y: -5 }}
-            className="col-span-2 md:col-span-8 md:row-span-2 bg-[#0a0a0a] border border-white/5 rounded-2xl md:rounded-[2.5rem] p-5 md:p-12 relative overflow-hidden group min-h-[180px] md:min-h-0"
+            className="col-span-2 md:col-span-8 md:row-span-2 bg-[#0a0a0a] border border-white/5 rounded-2xl md:rounded-[2.5rem] p-5 md:p-10 relative overflow-hidden group min-h-[180px] md:min-h-[320px]"
           >
             <div className="relative z-10 h-full flex flex-col justify-between">
               <Target className="text-blue-500 group-hover:rotate-12 transition-transform" size={28} />
@@ -66,31 +66,33 @@ const Portfolio = () => {
                 </p>
               </div>
             </div>
-            <div className="absolute top-[-5%] right-[-5%] text-[6rem] md:text-[18rem] font-black italic text-white/[0.01] select-none pointer-events-none">
+            <div className="absolute top-[-5%] right-[-5%] text-[6rem] md:text-[14rem] font-black italic text-white/[0.01] select-none pointer-events-none">
               GOAL
             </div>
           </motion.div>
 
+          {/* MISIÓN */}
           <motion.div 
             whileHover={{ y: -5 }}
-            className="col-span-1 md:col-span-4 md:row-span-1 bg-blue-600 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden flex flex-col justify-center"
+            className="col-span-1 md:col-span-4 bg-blue-600 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden flex flex-col justify-center md:h-[145px]"
           >
             <Rocket className="text-white mb-2 md:mb-4" size={24} />
-            <h3 className="text-xs md:text-3xl font-black italic uppercase mb-1 leading-none">Misión</h3>
-            <p className="text-[10px] md:text-base text-blue-100 leading-tight">Digitalizar marcas de lujo con estética impecable.</p>
+            <h3 className="text-xs md:text-2xl font-black italic uppercase mb-1 leading-none">Misión</h3>
+            <p className="text-[10px] md:text-sm text-blue-100 leading-tight">Digitalizar marcas de lujo con estética impecable.</p>
           </motion.div>
 
+          {/* VISIÓN */}
           <motion.div 
             whileHover={{ y: -5 }}
-            className="col-span-1 md:col-span-4 md:row-span-1 bg-[#111] border border-white/10 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden flex flex-col justify-center"
+            className="col-span-1 md:col-span-4 bg-[#111] border border-white/10 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden flex flex-col justify-center md:h-[145px]"
           >
             <Eye className="text-blue-500 mb-2 md:mb-4" size={24} />
-            <h3 className="text-xs md:text-3xl font-black italic uppercase mb-1 leading-none">Visión</h3>
-            <p className="text-[10px] md:text-base text-white/50 leading-tight">Referente #1 en soluciones híbridas FinTech.</p>
+            <h3 className="text-xs md:text-2xl font-black italic uppercase mb-1 leading-none">Visión</h3>
+            <p className="text-[10px] md:text-sm text-white/50 leading-tight">Referente #1 en soluciones híbridas FinTech.</p>
           </motion.div>
 
           {/* --- STACK TECNOLÓGICO --- */}
-          <div className="col-span-2 md:col-span-12 bg-[#0a0a0a] border border-white/5 rounded-xl md:rounded-[2rem] overflow-hidden flex items-center relative h-[50px] md:h-[80px]">
+          <div className="col-span-2 md:col-span-12 bg-[#0a0a0a] border border-white/5 rounded-xl md:rounded-[2rem] overflow-hidden flex items-center relative h-[50px] md:h-[80px] md:mt-4">
             <div className="flex whitespace-nowrap animate-infinite-scroll">
               {[...technologies, ...technologies].map((tech, i) => (
                 <div key={i} className="mx-5 md:mx-12 flex items-center gap-2 md:gap-4 text-xs md:text-3xl font-black italic uppercase text-white/20 hover:text-blue-500 transition-colors">
@@ -101,9 +103,9 @@ const Portfolio = () => {
             </div>
           </div>
 
-          {/* --- PROYECTO LORDS --- */}
+          {/* --- PROYECTO barberia --- */}
           <motion.div 
-            className="col-span-2 md:col-span-6 md:row-span-2 relative rounded-2xl md:rounded-[2.5rem] overflow-hidden group border border-white/5 min-h-[220px] md:min-h-0 cursor-pointer"
+            className="col-span-2 md:col-span-6 md:row-span-2 relative rounded-2xl md:rounded-[2.5rem] overflow-hidden group border border-white/5 min-h-[220px] md:min-h-[440px] cursor-pointer md:mt-4"
             onClick={() => setHoveredTech(hoveredTech === 1 ? null : 1)}
           >
             <img 
@@ -121,12 +123,12 @@ const Portfolio = () => {
               )}
             </AnimatePresence>
             <div className="absolute bottom-4 left-4 md:bottom-10 md:left-10 z-30 pointer-events-none">
-              <h4 className="text-2xl md:text-5xl font-black italic uppercase leading-[0.9]">Lords <br /> <span className="text-blue-500 text-lg md:text-4xl">Barber</span></h4>
+              <h4 className="text-2xl md:text-5xl font-black italic uppercase leading-[0.9]">Proyectos <br /> <span className="text-blue-500 text-lg md:text-4xl">Barberias</span></h4>
             </div>
           </motion.div>
 
           {/* --- ESTADÍSTICAS Y CTA --- */}
-          <div className="col-span-2 md:col-span-6 md:row-span-2 grid grid-cols-2 gap-3 md:gap-6">
+          <div className="col-span-2 md:col-span-6 md:row-span-2 grid grid-cols-2 gap-3 md:gap-6 md:mt-4">
             <div className="bg-[#111] rounded-2xl md:rounded-[2rem] p-5 md:p-8 flex flex-col justify-center border border-white/5">
               <span className="text-3xl md:text-7xl font-black text-blue-500 italic leading-none">21+</span>
               <p className="text-[9px] md:text-sm uppercase font-bold tracking-tighter text-white/40 mt-1">Proyectos en Bogotá</p>
@@ -154,7 +156,7 @@ const Portfolio = () => {
         </div>
       </div>
 
-      {/* --- MODAL DE SERVICIOS (IDÉNTICO AL DE DESARROLLO) --- */}
+      {/* --- MODAL DE SERVICIOS --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[500] flex items-center justify-center px-4">

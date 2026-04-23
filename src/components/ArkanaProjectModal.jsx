@@ -11,14 +11,14 @@ const ArkanaProjectModal = ({ isOpen, onClose }) => {
   const services = [
     { 
       id: 'web',
-      title: "Arquitectura Web", 
+      title: "Pagina Web", 
       icon: Layout, 
       color: "blue",
       details: "Sistemas de alto rendimiento con Next.js 15, animaciones de nivel 1 y optimización SEO extrema.",
       tag: "FRONTEND / BACKEND"
     },
     { 
-      id: 'brand',
+      id: 'Creacion de Logo',
       title: "Identidad Visual", 
       icon: Palette, 
       color: "purple",
@@ -27,7 +27,7 @@ const ArkanaProjectModal = ({ isOpen, onClose }) => {
     },
     { 
       id: 'photo',
-      title: "Visagismo Digital", 
+      title: "Fotografia Profesional", 
       icon: Camera, 
       color: "emerald",
       details: "Retoque de alta gama y producción audiovisual para marcas que buscan la perfección visual.",
@@ -35,7 +35,7 @@ const ArkanaProjectModal = ({ isOpen, onClose }) => {
     },
     { 
       id: 'app',
-      title: "Soluciones Híbridas", 
+      title: "Creacion de App", 
       icon: Smartphone, 
       color: "orange",
       details: "Desarrollo de aplicaciones móviles y bots de trading personalizados (MQL5/Python).",
