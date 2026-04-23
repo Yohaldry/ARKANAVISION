@@ -38,7 +38,7 @@ const ArkanaScannerTeaser = () => {
         </SubTitle>
         
         <TeaserGrid>
-          {/* Lado Izquierdo: Scanner */}
+          {/* Lado Izquierdo: Scanner (Ajustado para PC) */}
           <PhotoMockup>
             <MockupContent>
               <StaticFaceImage 
@@ -46,7 +46,7 @@ const ArkanaScannerTeaser = () => {
                 alt="Arkana 3D Face Mesh" 
               />
               <div className="scanning-line" />
-              <PhotoLabel>SIMULACIÓN</PhotoLabel>
+              <PhotoLabel>SCANNER ARKANA</PhotoLabel>
             </MockupContent>
             <MockupPulse /> 
           </PhotoMockup>
@@ -58,7 +58,7 @@ const ArkanaScannerTeaser = () => {
                 <IoLayersOutline className="feature-icon" />
                 <h4>Análisis de Malla Facial</h4>
               </FeatureHeader>
-              <p>Determinación precisa de proporciones faciales en 3D.</p>
+              <p>Cálculo automatizado de la Regla de los Tercios y la Quinta Real, permitiendo una armonización facial basada en proporciones áureas.</p>
             </FeatureItem>
             
             <FeatureItem>
@@ -66,18 +66,17 @@ const ArkanaScannerTeaser = () => {
                 <IoShieldCheckmarkOutline className="feature-icon" />
                 <h4>Asistencia Inteligente</h4>
               </FeatureHeader>
-              <p>Sugerencias técnicas basadas en geometría volumétrica.</p>
+              <p>Sugerencias técnicas generadas por IA que calculan la angulación ideal de arcos superciliares y ejes mandibulares según el biotipo del usuario.</p>
             </FeatureItem>
             
             <ComingSoonCard>
               <p className="card-hint">ARKANA VISION AI</p>
               <h3>Precisión Absoluta</h3>
-              <p className="card-body">Software revolucionario de IA.</p>
+              <p className="card-body">Integración de estándares estéticos de clase mundial para potenciar la personalización de cada diseño según la estructura craneal única.</p>
             </ComingSoonCard>
           </FeaturesList>
         </TeaserGrid>
         
-        {/* Botón Centrado Abajo */}
         <CTAButtonGroup>
           <PrimaryButton>
             Acceso Anticipado ›
@@ -157,23 +156,29 @@ const SubTitle = styled.p`
 
 const TeaserGrid = styled.div`
   display: grid;
-  /* Forzamos las 2 columnas incluso en móvil */
   grid-template-columns: 1.2fr 1fr; 
   gap: 15px;
-  align-items: start;
-  max-width: 900px;
+  align-items: center; /* Centrado vertical para PC */
+  max-width: 1000px; /* Ancho máximo del contenedor global */
   margin: 0 auto;
 
   @media (min-width: 768px) {
     gap: 40px;
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: 1fr 1fr;
   }
 `;
 
 const PhotoMockup = styled.div`
   position: relative;
   width: 100%;
-  aspect-ratio: 0.8; /* Ajuste vertical para que luzca como en tu foto */
+  aspect-ratio: 0.8;
+  
+  /* Reducción de tamaño solo en PC */
+  @media (min-width: 1024px) {
+    max-width: 320px; /* Ajusta este valor según prefieras el tamaño en PC */
+    margin-left: auto; /* Empuja el recuadro hacia el centro/derecha para equilibrar con el texto */
+    margin-right: 0;
+  }
 `;
 
 const MockupContent = styled.div`
