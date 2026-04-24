@@ -76,7 +76,7 @@ const ArkanaScannerTeaser = () => {
           <PhotoMockup>
             <MockupContent>
               <StaticFaceImage 
-                src={'https://res.cloudinary.com/dtkirmtfq/image/upload/v1776889916/ARKA/j0kt19btgvrpsipyx3pl.png'} 
+                src={'https://res.cloudinary.com/dtkirmtfq/image/upload/v1776989416/ARKA/ikqlqoeixaysb7i9a3rf.png'} 
                 alt="Arkana 3D Face Mesh" 
               />
               <div className="scanning-line" />
@@ -231,7 +231,7 @@ const MainTitle = styled.h2`
   font-weight: 900;
   margin: 0;
   text-transform: uppercase;
-  .highlight { color: #00f7ff; }
+  .highlight { color: #444368; }
 `;
 
 const SubTitle = styled.p`
