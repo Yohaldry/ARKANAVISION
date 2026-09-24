@@ -135,40 +135,16 @@ export const VideoContainer = styled.div`
   position: relative;
   width: 100%;
   height: 100%;
-  background: #000;
   overflow: hidden;
-  border: 1px solid ${props => props.detected ? theme.arkaAccent : '#222'};
-  transition: border-color 0.4s ease;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  /* Esquinas HUD con estilo ARKA y Animación de pulso */
-  .hud-line {
-    position: absolute;
-    width: 35px;
-    height: 35px;
-    border: 2px solid ${theme.arkaAccent};
-    z-index: 10;
-    box-shadow: 0 0 10px ${theme.arkaAccentDim};
-    /* Si detecta, pulsa intensamente. Si no, pulsa tenue. */
-    animation: ${hudPulse} ${props => props.detected ? '2s' : '4s'} infinite ease-in-out;
-    transition: opacity 0.3s;
-  }
-  .tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-  .tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-  .bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-  .br { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-  /* Línea láser de escaneo */
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
+  video {
     width: 100%;
-    height: 3px;
-    background: ${theme.arkaAccent};
-    box-shadow: 0 0 20px ${theme.arkaAccent}, 0 0 40px ${theme.arkaAccent};
-    z-index: 12;
-    animation: ${scanMove} 4s linear infinite;
+    height: 100%;
+    object-fit: cover; /* Si usas cover aquí, el canvas DEBE tenerlo también */
+    transform: scaleX(-1);
   }
 `;
 
@@ -242,11 +218,15 @@ export const DataSidebar = styled.div`
 `;
 
 export const CanvasOverlay = styled.canvas`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  z-index: 5;
-  filter: brightness(1.1) contrast(1.1);
+  object-fit: cover; /* Esto obliga a la malla a estirarse igual que el video */
+  pointer-events: none;
+  z-index: 10;
+  /* No uses transform: scaleX(-1) aquí si ya lo haces en el contexto 2D del JS */
 `;
 
 // Agrega o actualiza estos estilos en tu archivo de componentes estilizados

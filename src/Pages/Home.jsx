@@ -10,6 +10,7 @@ import { Reveal } from '../components/Reveal';
 import Consulting from '../components/Consulting'
 import ScanTest from '../components/ArkanaScannerTeaser'
 import Desarrollo from '../components/Desarrollo'
+// import WebShowcase from '../components/WebShow/WebShowcase'
 
 const Home = () => {
   return (
@@ -24,6 +25,8 @@ const Home = () => {
         <Reveal width="100%" delay={0.2}>
           <Hero /> 
         </Reveal>
+
+       
 
    <Reveal width="100%" delay={0.2}>
           <ScanTest /> 

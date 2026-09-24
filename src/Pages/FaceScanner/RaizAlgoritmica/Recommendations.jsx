@@ -1,21 +1,13 @@
 import React from 'react';
+import styled from 'styled-components';
+import { IoCheckmarkCircleOutline } from "react-icons/io5";
 
-const Recommendations = ({ list }) => {
+const Recommendations = () => {
   return (
-    <div style={{ marginBottom: '30px' }}>
-      <h2 style={{ color: '#00ff44', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>
-        <span style={{ width: '4px', height: '18px', background: '#00ff44', display: 'inline-block' }} />
-        Recomendaciones
-      </h2>
-      <div style={{ marginTop: '15px', padding: '20px', border: '1px solid #00ff44', background: 'rgba(0, 255, 68, 0.05)' }}>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {list.map((item, index) => (
-            <li key={index} style={{ color: '#ccc', fontSize: '13px', marginBottom: '10px', display: 'flex', gap: '10px' }}>
-              <span style={{ color: '#00ff44' }}>✓</span> {item}
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div style={{ margin: '20px 15px', padding: '15px', background: 'rgba(0,255,68,0.05)', borderRadius: '10px', border: '1px solid #00ff44' }}>
+      <p style={{ color: '#00ff44', fontSize: '11px', fontWeight: '900', textAlign: 'center', margin: 0 }}>
+        RECOMENDACIÓN FINAL GENERADA
+      </p>
     </div>
   );
 };

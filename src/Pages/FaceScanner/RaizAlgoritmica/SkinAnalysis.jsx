@@ -1,19 +1,13 @@
 import React from 'react';
+import styled from 'styled-components';
+import { IoSparklesOutline } from "react-icons/io5";
 
-const SkinAnalysis = ({ data }) => {
+const SkinAnalysis = () => {
   return (
-    <div style={{ marginBottom: '30px' }}>
-      <h2 style={{ color: '#ff8800', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>
-        <span style={{ width: '4px', height: '18px', background: '#ff8800', display: 'inline-block' }} />
-        Estado de Piel
-      </h2>
-      <div style={{ marginTop: '15px', padding: '20px', border: '1px solid #ff8800', background: 'rgba(255, 136, 0, 0.05)' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px', color: '#ccc' }}>
-          <p><strong style={{ color: '#fff' }}>TIPO:</strong> {data.type}</p>
-          <p><strong style={{ color: '#fff' }}>HIDRATACIÓN:</strong> {data.hydration}%</p>
-          <p><strong style={{ color: '#fff' }}>POROSIDAD:</strong> {data.porosity}</p>
-          <p><strong style={{ color: '#fff' }}>HALLAZGOS:</strong> {data.findings}</p>
-        </div>
+    <div style={{ margin: '20px 15px', padding: '15px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', border: '1px solid rgba(0,247,255,0.1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#00f7ff' }}>
+        <IoSparklesOutline />
+        <span style={{ fontSize: '10px', fontWeight: '900' }}>ANÁLISIS DE PIEL (PRÓXIMAMENTE)</span>
       </div>
     </div>
   );

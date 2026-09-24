@@ -1,29 +1,40 @@
-
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './Pages/Home'; // Mueve tu contenido actual aquí
-import Onboarding from './Pages/Onboarding'; // La nueva página
-import FaceScanner from './Pages/FaceScanner/FaceScanner'; // SCANNER PARA ASESORIA DE IAMGEN
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import AdminLogin from './Pages/Login/AdminLogin';
+import Home from './Pages/Home'
+import Facescanner from './Pages/FaceScanner/FaceScanner'
+import Test from './Pages/FaceScanner/IA_Voice/AnalisisVentas'
+import ResultsScanner from './Pages/FaceScanner/ResultsScanner'
+import PanelDeControl from './Pages/FaceScanner/PanelDeControl'
+import LoginScanner from './Pages/Login/LoginScanner'
 import Welcome from './Pages/FaceScanner/Welcome'
-import ProjectLab from './Pages/iniciarproyect/ProjectLab'
-import Arkalogin from './Pages/Login/ArkaLogin'
-import Biometricform from './Pages/FaceScanner/BiometricForm'
-import IntroduccionLAb from './Pages/iniciarproyect/IntroduccionLab'
+import BiometricForm from './Pages/FaceScanner/BiometricForm'
+import Admin from './Pages/AdminDashboard/Admin'
+
+// Protector para evitar acceso por URL directa
+const PrivateRoute = ({ children }) => {
+  const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
+  return isAuthenticated ? children : <Navigate to="/" />;
+};
 
 function App() {
   return (
-<Router>
+    <Router>
       <Routes>
-        {/* Ruta principal: Tu Landing Page completa */}
-        <Route path="/" element={<Home />} />
+        <Route path="/loginadmin" element={<AdminLogin />} />
+        <Route path="/test" element={<Test />} />
         
-        {/* Ruta de Onboarding: La nueva página de "Pre-Consultoría" */}
-        <Route path="/biometricform" element={<Biometricform />} />
-         <Route path="/FaceScanner" element={<FaceScanner />} />
-        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/biometricform" element={<BiometricForm />} />
         <Route path="/welcome" element={<Welcome />} />
-        <Route path="/iniciar-proyecto" element={<IntroduccionLAb/>} />
-        <Route path="/login" element={<Arkalogin />} />
-        <Route path="/formulario" element={<ProjectLab/>} />
+        <Route path="/facescanner" element={<Facescanner />} />
+        <Route path="/Resultscanner" element={<ResultsScanner />} />
+        <Route path="/paneldecontrol" element={<PanelDeControl />} />
+        <Route path="/loginscanner" element={<LoginScanner />} />
+        <Route path="/admin" element={<Admin />} />
+
+        {/* Si escriben cualquier otra cosa, redirige al Home */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );

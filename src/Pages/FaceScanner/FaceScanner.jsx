@@ -1,310 +1,533 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import { 
-  ScannerContainer, DataSidebar, CameraChassis, 
-  VideoContainer, CanvasOverlay, ActionButton 
-} from './FaceScanner.styles';
+import styled from 'styled-components';
 
-import FaceDetection from './RaizAlgoritmica/FaceDetection';
-import SkinAnalysis from './RaizAlgoritmica/SkinAnalysis';
-import Recommendations from './RaizAlgoritmica/Recommendations';
-import { runProfessionalAnalysis } from './RaizAlgoritmica/dossierAlgorithm';
+import ResultsScanner from './ResultsScanner';
 
-import { 
-  IoShieldCheckmarkSharp, 
-  IoPersonOutline,
-  IoWalkOutline,
-  IoWarningOutline
+import FaceDetection, {
+  drawTechnicalGuides
+} from './RaizAlgoritmica/FaceDetection';
+
+import {
+  calculateFaceShape,
+  calculateSymmetry,
+  calculateProfileType,
+  detectSkinCondition,
+  generateHairType
+} from './utils/biometricEngine';
+
+import {
+  IoPersonCircleOutline,
+  IoCutOutline,
+  IoBodyOutline,
+  IoColorPaletteOutline,
+  IoSparklesOutline,
+  IoCheckmark
 } from "react-icons/io5";
 
+/* ==========================================================================
+   STYLED COMPONENTS: ESTRUCTURA INTERNA ULTRA-COMPACTA PARA MODALES
+   ========================================================================== */
+
+const ResponsiveScannerWrapper = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #02050a;
+  box-sizing: border-box;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+`;
+
+const ResponsiveCameraChassis = styled.div`
+  position: relative;
+  width: 100%;
+  flex: 1;
+  aspect-ratio: 3 / 4;
+  max-height: 68%;
+  margin: 0 auto;
+  border-radius: 24px;
+  border: 1px solid ${props => props.detected ? '#00f7ff' : 'rgba(255, 255, 255, 0.05)'};
+  background: #000000;
+  box-shadow: ${props => props.detected ? '0 0 25px rgba(0, 247, 255, 0.15)' : 'none'};
+  overflow: hidden;
+  transition: all 0.3s ease;
+`;
+
+const VideoWrapperRelative = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+`;
+
+const ScanningLine = styled.div`
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+  box-shadow: 0 0 15px #00f7ff;
+  z-index: 15;
+  top: 0;
+  animation: scanMove 2.5s ease-in-out infinite;
+  @keyframes scanMove { 
+    0% { top: 0%; } 
+    50% { top: 100%; } 
+    100% { top: 0%; } 
+  }
+`;
+
+const PositionGuideHUD = styled.div`
+  width: 100%;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: ${props => props.invalid ? 'rgba(255, 59, 59, 0.08)' : 'rgba(0, 255, 136, 0.08)'};
+  border: 1px solid ${props => props.invalid ? 'rgba(255, 59, 59, 0.3)' : 'rgba(0, 255, 136, 0.3)'};
+  color: ${props => props.invalid ? '#ff3b3b' : '#00ff88'};
+  font-family: 'Space Grotesk', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  opacity: ${props => props.complete ? 0 : 1};
+  transition: opacity 0.3s ease, all 0.2s ease;
+  box-sizing: border-box;
+`;
+
+const ProgressBarHUD = styled.div`
+  width: 100%;
+  background: rgba(6, 11, 20, 0.85);
+  border: 1px solid rgba(0, 247, 255, 0.15);
+  border-radius: 16px;
+  padding: 12px;
+  backdrop-filter: blur(8px);
+  opacity: ${props => props.complete ? 0 : 1};
+  transition: opacity 0.3s ease;
+  box-sizing: border-box;
+`;
+
+const HUDIconSmall = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: ${props => props.active ? '#00ff88' : 'rgba(0, 247, 255, 0.2)'};
+  flex: 1;
+  transition: color 0.3s;
+
+  .icon-circle-mini {
+    width: 26px; 
+    height: 26px; 
+    border-radius: 50%;
+    border: 1px solid ${props => props.active ? '#00ff88' : 'rgba(0, 247, 255, 0.15)'};
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5); 
+    font-size: 13px;
+    box-shadow: ${props => props.active ? '0 0 8px rgba(0, 255, 136, 0.3)' : 'none'};
+  }
+  span { 
+    font-family: 'Space Grotesk', monospace;
+    font-size: 8px; 
+    font-weight: 700; 
+    letter-spacing: 0.5px; 
+    text-transform: uppercase; 
+  }
+`;
+
+const FloatingFooterActionButton = styled.button`
+  width: 100%;
+  height: 48px;
+  background: ${props => props.isComplete ? 'linear-gradient(90deg, #00E5FF 0%, #8A2BE2 100%)' : 'rgba(0, 0, 0, 0.4)'};
+  border: 1px solid ${props => props.isComplete ? '#00E5FF' : 'rgba(0, 247, 255, 0.25)'};
+  color: #ffffff;
+  border-radius: 14px;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: ${props => props.isComplete ? 'pointer' : 'default'};
+  transition: all 0.2s;
+  box-shadow: ${props => props.isComplete ? '0 0 15px rgba(0, 229, 255, 0.4)' : 'none'};
+  box-sizing: border-box;
+
+  &:active {
+    transform: ${props => props.isComplete ? 'scale(0.98)' : 'none'};
+  }
+`;
+
+const PrintingOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background: #02050a;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-radius: 16px;
+  
+  .printing-text {
+    font-family: 'Sora', sans-serif;
+    color: #00f7ff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    animation: pulseText 1.5s infinite ease-in-out;
+  }
+  
+  .sub-text {
+    font-family: 'Space Grotesk', monospace;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  @keyframes pulseText {
+    0%, 100% { opacity: 0.6; text-shadow: 0 0 5px rgba(0,247,255,0.2); }
+    50% { opacity: 1; text-shadow: 0 0 15px rgba(0,247,255,0.6); }
+  }
+`;
+
+const SpinnerRing = styled.div`
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(0, 247, 255, 0.05);
+  border-top: 2px solid #00f7ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+`;
+
+/* ==========================================================================
+   MAIN COMPONENT
+   ========================================================================== */
 const FaceScanner = () => {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
-  const isProcessing = useRef(false);
+  const cameraRef = useRef(null);
   const currentStep = useRef(1);
-  const cameraRef = useRef(null); 
+  const lastLandmarks = useRef(null);
+  const progressRef = useRef(0);
 
-  const [stepState, setStepState] = useState(1);
-  const [countdown, setCountdown] = useState(null);
-  const [photos, setPhotos] = useState({ front: null, profile: null });
+  const [currentView, setCurrentView] = useState('scanner'); 
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isInvalidPos, setIsInvalidPos] = useState(true);
   const [flash, setFlash] = useState(false);
-  const [msg, setMsg] = useState("BUSCANDO ROSTRO...");
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [currentLandmarks, setCurrentLandmarks] = useState(null);
-  const [isInvalidPos, setIsInvalidPos] = useState(false);
+  const [stepState, setStepState] = useState(1); 
+  const [progress, setProgressState] = useState(0);
+  const [photos, setPhotos] = useState({ front: null, profile: null });
+  const [analysisData, setAnalysisData] = useState(null);
 
-  const analysisResult = runProfessionalAnalysis(photos);
-  const isComplete = msg === "ANÁLISIS COMPLETO";
-  const isMobile = window.innerWidth <= 768;
+  const isComplete = stepState === 3;
 
-  // Inyectamos los Keyframes para el parpadeo intermitente
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      @keyframes blink-glow {
-        0% { opacity: 1; box-shadow: 0 0 5px rgba(0, 247, 255, 0.2); }
-        50% { opacity: 0.7; box-shadow: 0 0 20px rgba(0, 247, 255, 0.6); }
-        100% { opacity: 1; box-shadow: 0 0 5px rgba(0, 247, 255, 0.2); }
-      }
-      .lords-status-bar {
-        animation: blink-glow 2s infinite ease-in-out;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
+  const setProgress = (value) => {
+    progressRef.current = value;
+    setProgressState(value);
+  };
+
+  const validateFrontFace = (landmarks) => {
+    const nose = landmarks[1];
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    const eyeLevel = Math.abs(leftEye.y - rightEye.y);
+    return nose.x > 0.35 && nose.x < 0.65 && eyeLevel < 0.04;
+  };
+
+  const validateRightProfile = (landmarks) => {
+    const nose = landmarks[1];
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    const eyeDistance = Math.abs(leftEye.x - rightEye.x);
+    return nose.x < 0.38 && eyeDistance < 0.12;
+  };
 
   const resetScanner = () => {
     currentStep.current = 1;
-    isProcessing.current = false;
-    setStepState(1);
-    setCountdown(null);
+    lastLandmarks.current = null;
     setPhotos({ front: null, profile: null });
-    setMsg("BUSCANDO ROSTRO...");
-    setIsPanelOpen(false);
-    if (cameraRef.current) cameraRef.current.start();
-    speak("Reiniciando sistema biométrico");
+    setAnalysisData(null);
+    setProgress(0);
+    setIsInvalidPos(true);
+    setIsScanning(false);
+    setStepState(1);
+    setCurrentView('scanner');
   };
 
-  const speak = (text) => {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'es-MX';
-    u.rate = 1.1;
-    window.speechSynthesis.speak(u);
+  const triggerPrintingLayout = async () => {
+    setIsPrinting(true);
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/arkana-scanner-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageFront: photos.front,     
+          imageProfile: photos.profile  
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Error en la respuesta del servidor biométrico");
+      }
+
+      const comprehensiveReport = await response.json();
+
+      setAnalysisData(comprehensiveReport);
+      
+      setIsPrinting(false);
+      setCurrentView('results');
+
+    } catch (error) {
+      console.error("Error al conectar con Arkana Core IA en Localhost:", error);
+      setIsPrinting(false);
+      
+      alert("Error de conexión con Arkana AI o API corrupta. Verificando consola de Node.");
+      setCurrentView('results');
+    }
   };
 
-  const captureHighQualityCrop = () => {
-    if (!webcamRef.current?.video || !canvasRef.current) return null;
+  const capturePhoto = () => { 
+    if (!webcamRef.current) return;
+    
     const video = webcamRef.current.video;
-    const canvasOverlay = canvasRef.current;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 1024;
-    canvas.height = 1024;
-    const sourceSize = video.videoHeight;
-    const sourceX = (video.videoWidth - sourceSize) / 2;
-
-    ctx.save();
-    ctx.translate(canvas.width, 0);
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = video.videoWidth;
+    outCanvas.height = video.videoHeight;
+    const ctx = outCanvas.getContext('2d');
+    
+    ctx.translate(outCanvas.width, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, sourceX, 0, sourceSize, sourceSize, 0, 0, canvas.width, canvas.height);
-    ctx.drawImage(canvasOverlay, sourceX, 0, sourceSize, sourceSize, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-    return canvas.toDataURL('image/webp', 0.95);
-  };
+    ctx.drawImage(video, 0, 0);
+    
+    const snapshotDataURL = outCanvas.toDataURL('image/jpeg', 0.85);
+    
+    const fullBase64String = snapshotDataURL;
 
-  const takePhoto = () => {
-    const croppedImage = captureHighQualityCrop();
     setFlash(true);
-    speak("Capturado");
-    setTimeout(() => setFlash(false), 300);
+    setTimeout(() => setFlash(false), 200);
 
     if (currentStep.current === 1) {
-      setPhotos(prev => ({ ...prev, front: croppedImage }));
-      setMsg("FRONTAL REGISTRADA");
+      setPhotos(prev => ({ ...prev, front: fullBase64String }));
       currentStep.current = 2;
-      setTimeout(() => {
-        setStepState(2);
-        isProcessing.current = false;
-        setCountdown(null);
-        setMsg("AHORA: DE PERFIL");
-        speak("Gire de perfil a la derecha");
-      }, 2000);
-    } else {
-      setPhotos(prev => ({ ...prev, profile: croppedImage }));
-      currentStep.current = 3;
+      setStepState(2);
+      setProgress(80); 
+      setIsScanning(false); 
+    } else if (currentStep.current === 2) {
+      currentStep.current = 3; 
+      setPhotos(prev => ({ ...prev, profile: fullBase64String }));
+      
+      if (video && lastLandmarks.current) {
+        const landmarks = lastLandmarks.current;
+        const skin = detectSkinCondition(video) || { skinType: 'Normal' };
+        const faceShape = calculateFaceShape(landmarks) || 'Ovalado';
+        const symmetry = calculateSymmetry(landmarks) || '95%';
+        const profileType = calculateProfileType(landmarks) || 'Recto';
+        const hairType = generateHairType(landmarks) || 'Intermedio'; 
+        
+        setAnalysisData(prev => ({
+          ...prev,
+          faceShape, 
+          symmetry, 
+          profileType, 
+          hairType,
+          skinType: skin.skinType
+        }));
+      }
+
       setStepState(3);
-      setMsg("ANÁLISIS COMPLETO");
-      speak("Proceso finalizado");
-      if (cameraRef.current) cameraRef.current.stop();
+      setProgress(100);
+      setIsScanning(false);
+      if (cameraRef.current) {
+        cameraRef.current.stop();
+      }
+    }
+  };
+
+  const onResults = (results, canvasElement) => {
+    if (!canvasElement || currentView === 'results' || stepState === 3) return;
+    const video = webcamRef.current?.video;
+    if (!video) return;
+
+    const landmarks = results?.multiFaceLandmarks?.[0];
+    const canvasCtx = canvasElement.getContext('2d');
+
+    if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
+      canvasElement.width = video.videoWidth;
+      canvasElement.height = video.videoHeight;
+    }
+
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    if (landmarks) {
+      lastLandmarks.current = landmarks;
+      
+      const isValid = currentStep.current === 1 
+        ? validateFrontFace(landmarks) 
+        : validateRightProfile(landmarks);
+
+      setIsInvalidPos(!isValid);
+      setIsScanning(isValid);
+
+      canvasCtx.save();
+      canvasCtx.translate(canvasElement.width, 0);
+      canvasCtx.scale(-1, 1);
+
+      if (window.drawConnectors) {
+        const color = isValid ? '#00f7ff' : '#ff3b3b';
+        const dpr = window.devicePixelRatio || 1;
+        const lineWidthMesh = dpr > 1.5 ? 0.45 : 0.8;
+        const lineWidthOval = dpr > 1.5 ? 1.10 : 1.4;
+
+        window.drawConnectors(canvasCtx, landmarks, window.FACEMESH_TESSELATION, { 
+          color: `${color}25`, 
+          lineWidth: lineWidthMesh 
+        });
+        
+        window.drawConnectors(canvasCtx, landmarks, window.FACEMESH_FACE_OVAL, { 
+          color: color, 
+          lineWidth: lineWidthOval 
+        });
+        
+        drawTechnicalGuides(canvasCtx, landmarks, currentStep.current, color);
+      }
+      canvasCtx.restore();
+    } else {
+      setIsInvalidPos(true);
+      setIsScanning(false);
     }
   };
 
   useEffect(() => {
-    if (countdown === null) return;
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(prev => prev - 1);
-        speak(countdown.toString());
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      takePhoto();
-      setCountdown(null);
+    if (stepState === 3 || currentView === 'results') return;
+    if (webcamRef.current?.video) {
+      const { camera } = FaceDetection.init(webcamRef.current.video, canvasRef, onResults);
+      cameraRef.current = camera;
     }
-  }, [countdown]);
-
-  const onResults = (results) => {
-    if (!results.image || !canvasRef.current || isComplete) return;
-    const ctx = canvasRef.current.getContext('2d');
-    canvasRef.current.width = results.image.width;
-    canvasRef.current.height = results.image.height;
-    
-    ctx.save();
-    ctx.translate(canvasRef.current.width, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
-    
-    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-      const landmarks = results.multiFaceLandmarks[0];
-      setCurrentLandmarks(landmarks);
-
-      const nose = landmarks[1];
-      const leftEye = landmarks[33];
-      const rightEye = landmarks[263];
-      
-      let isValidPosition = false;
-
-      if (currentStep.current === 1) {
-        const isCentered = nose.x > 0.35 && nose.x < 0.65;
-        const isTilted = Math.abs(leftEye.y - rightEye.y) > 0.05;
-        const ratio = Math.abs(nose.x - leftEye.x) / Math.abs(nose.x - rightEye.x);
-        isValidPosition = isCentered && !isTilted && (ratio > 0.7 && ratio < 1.4);
-      } else if (currentStep.current === 2) {
-        const ratio = Math.abs(nose.x - leftEye.x) / Math.abs(nose.x - rightEye.x);
-        const isProfileRight = ratio < 0.22; 
-        const isLevel = Math.abs(leftEye.y - rightEye.y) < 0.12; 
-        isValidPosition = isProfileRight && isLevel;
-      }
-
-      setIsInvalidPos(!isValidPosition);
-
-      const meshColor = isValidPosition ? '#00f7ff' : '#ff0000';
-      const meshOpacity = isValidPosition ? 'rgba(0, 247, 255, 0.2)' : 'rgba(255, 0, 0, 0.4)';
-
-      if (window.drawConnectors) {
-        window.drawConnectors(ctx, landmarks, window.FACEMESH_TESSELATION, { color: meshOpacity, lineWidth: 0.5 });
-        window.drawConnectors(ctx, landmarks, window.FACEMESH_FACE_OVAL, { color: meshColor, lineWidth: 1.5 });
-        window.drawConnectors(ctx, landmarks, window.FACEMESH_LIPS, { color: meshColor, lineWidth: 2.5 });
-      }
-
-      if (isValidPosition && !isProcessing.current && currentStep.current < 3) {
-        isProcessing.current = true;
-        setCountdown(3); 
-      } 
-      
-      if (!isValidPosition) {
-        isProcessing.current = false;
-        setCountdown(null);
-      }
-    } else {
-      setIsInvalidPos(false);
-      setCountdown(null);
-      isProcessing.current = false;
-    }
-    ctx.restore();
-  }; 
+    return () => cameraRef.current?.stop();
+  }, [stepState, currentView]);
 
   useEffect(() => {
-    let camera = null;
-    const init = async () => {
-      if (window.FaceMesh && window.Camera && webcamRef.current) {
-        const faceMesh = new window.FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
-        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.6 });
-        faceMesh.onResults(onResults);
-        
-        camera = new window.Camera(webcamRef.current.video, {
-          onFrame: async () => { 
-            if (webcamRef.current?.video) {
-              await faceMesh.send({ image: webcamRef.current.video }); 
-            }
-          },
-          width: 1280, height: 720
-        });
-        cameraRef.current = camera; 
-        camera.start();
+    let interval;
+    if (isScanning && stepState !== 3) {
+      interval = setInterval(() => {
+        const nextProgress = progressRef.current + 1;
+
+        if (currentStep.current === 1 && nextProgress >= 80) {
+          clearInterval(interval);
+          setProgress(80);
+          capturePhoto();
+          return;
+        }
+
+        if (currentStep.current === 2 && nextProgress >= 100) {
+          clearInterval(interval);
+          setProgress(100);
+          capturePhoto();
+          return;
+        }
+
+        setProgress(nextProgress);
+      }, 40);
+    } else if (!isScanning && stepState !== 3) {
+      clearInterval(interval);
+      if (currentStep.current === 1) {
+        setProgress(0);
+      } else if (currentStep.current === 2) {
+        setProgress(80);
       }
-    };
-    init();
-    return () => {
-      if (camera) camera.stop();
-      cameraRef.current = null;
-    };
-  }, [stepState]);
+    }
+    return () => clearInterval(interval);
+  }, [isScanning, stepState]);
+
+  if (currentView === 'results') {
+    return (
+      <ResultsScanner 
+        analysisData={analysisData}
+        photos={photos}
+        onBack={() => setCurrentView('scanner')}
+        onReset={resetScanner}
+      />
+    );
+  }
 
   return (
-    <ScannerContainer>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 4000, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', inset: 0, background: '#00f7ff', opacity: flash ? 0.8 : 0, transition: 'opacity 0.2s' }} />
-
-        {isInvalidPos && !isComplete && (
-          <div style={{ 
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            background: 'rgba(220, 0, 0, 0.9)', color: '#fff', padding: '25px 60px', 
-            border: '2px solid #fff', borderRadius: '4px', textAlign: 'center',
-            boxShadow: '0 0 60px rgba(255,0,0,0.6)'
-          }}>
-            <IoWarningOutline fontSize="50px" style={{ marginBottom: '10px' }} />
-            <h2 style={{ margin: 0, fontSize: '24px', letterSpacing: '4px', fontWeight: 'bold' }}>MEJORAR POSTURA</h2>
-            <span style={{ fontSize: '10px', opacity: 0.8, marginTop: '5px', letterSpacing: '2px' }}>SISTEMA BIOMÉTRICO LORDS</span>
-          </div>
-        )}
-
-        {!isInvalidPos && countdown !== null && (
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-            <h1 style={{ color: '#00f7ff', fontSize: '180px', margin: 0, fontWeight: '900', textShadow: '0 0 50px rgba(0, 247, 255, 0.8)' }}>
-              {countdown}
-            </h1>
-          </div>
-        )}
-      </div>
-
-      {/* BARRA SUPERIOR CON CLASE DE ANIMACIÓN INTERMITENTE */}
-      <div style={{ position: 'absolute', top: '30px', width: '100%', textAlign: 'center', zIndex: 10, display: 'flex', justifyContent: 'center' }}>
-        <div className="lords-status-bar" style={{ 
-          background: 'rgba(0,0,0,0.85)', 
-          border: `1px solid ${isComplete ? '#00ff44' : '#00f7ff'}`, 
-          padding: '12px 35px', 
-          borderRadius: '2px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px' 
-        }}>
-          <IoShieldCheckmarkSharp style={{ color: isComplete ? '#00ff44' : '#00f7ff' }} />
-          <p style={{ color: '#fff', fontSize: '12px', margin: 0, letterSpacing: '2px', textTransform: 'uppercase' }}>{msg}</p>
-        </div>
-      </div>
-
-      <ActionButton isComplete={stepState === 3} onClick={() => stepState === 3 && setIsPanelOpen(true)}>
-        {stepState === 3 ? "ABRIR DOSSIER ARKA" : "SISTEMA BIOMÉTRICO"}
-      </ActionButton>
-
-      <DataSidebar isOpen={isPanelOpen}>
-        <FaceDetection photos={photos} onReset={resetScanner} landmarks={currentLandmarks} />
-      </DataSidebar>
-
-      <CameraChassis detected={true}>
-        <VideoContainer detected={true}>
-          {isComplete && (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 100, background: 'rgba(0, 20, 10, 0.95)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-                <IoShieldCheckmarkSharp style={{ color: '#00ff44', fontSize: '60px', marginBottom: '20px' }} />
-                <button onClick={resetScanner} style={{ background: 'transparent', border: '1px solid #00ff44', color: '#00ff44', padding: '15px 30px', cursor: 'pointer', fontWeight: 'bold' }}>REINICIAR</button>
-            </div>
-          )}
-          <CanvasOverlay ref={canvasRef} style={{ zIndex: 2 }} />
-          <Webcam ref={webcamRef} mirrored={true} screenshotFormat="image/webp" style={{ opacity: isComplete ? 0 : 1, width: '100%', height: '100%', objectFit: 'cover' }} />
-        </VideoContainer>
-      </CameraChassis>
-
-      {!isComplete && (
-        <div style={{ position: 'absolute', zIndex: 1000, display: 'flex', bottom: isMobile ? '120px' : 'auto', right: '30px', top: isMobile ? 'auto' : '50%', transform: isMobile ? 'none' : 'translateY(-50%)', flexDirection: isMobile ? 'row' : 'column', gap: '25px' }}>
-          <div style={{ opacity: currentStep.current === 1 ? 1 : 0.7, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-             <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: `2px solid ${photos.front ? '#00ff44' : '#00f7ff'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 15, 25, 0.8)' }}>
-               <IoPersonOutline style={{ color: photos.front ? '#00ff44' : '#00f7ff', fontSize: '24px' }} />
-             </div>
-             <span style={{ color: '#fff', fontSize: '9px', marginTop: '5px' }}>FRONTAL</span>
-          </div>
-          <div style={{ opacity: currentStep.current === 2 ? 1 : 0.7, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-             <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: `2px solid ${photos.profile ? '#00ff44' : '#00f7ff'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 15, 25, 0.8)' }}>
-               <IoWalkOutline style={{ color: photos.profile ? '#00ff44' : '#00f7ff', fontSize: '24px' }} />
-             </div>
-             <span style={{ color: '#fff', fontSize: '9px', marginTop: '5px' }}>PERFIL</span>
-          </div>
-        </div>
+    <ResponsiveScannerWrapper>
+      {isPrinting && (
+        <PrintingOverlay>
+          <SpinnerRing />
+          <div className="printing-text">GENERANDO ANÁLISIS...</div>
+          <div className="sub-text">PROCESANDO DIAGNÓSTICO BIOMÉTRICO EN ARKANA AI</div>
+        </PrintingOverlay>
       )}
-    </ScannerContainer>
+
+      <PositionGuideHUD invalid={isInvalidPos} complete={isComplete}>
+        {currentStep.current === 1 
+          ? (isInvalidPos ? 'COLOCA TU ROSTRO DE FRENTE' : 'POSICIÓN FRONTAL CORRECTA') 
+          : (isInvalidPos ? 'GIRA HACIA LA DERECHA (PERFIL)' : 'PERFIL DERECHO CORRECTO')
+        }
+      </PositionGuideHUD>
+
+      <ResponsiveCameraChassis detected={!isInvalidPos}>
+        <VideoWrapperRelative>
+          <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flash ? 0.8 : 0, zIndex: 50, transition: 'opacity 0.2s', pointerEvents: 'none' }} />
+          {isScanning && <ScanningLine />}
+          <canvas 
+            ref={canvasRef} 
+            style={{ 
+              position: 'absolute', 
+              inset: 0, 
+              zIndex: 5, 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+              imageRendering: 'auto',
+              WebkitFontSmoothing: 'antialiased'
+            }} 
+          />
+          <Webcam ref={webcamRef} mirrored={true} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </VideoWrapperRelative>
+      </ResponsiveCameraChassis>
+
+      <ProgressBarHUD complete={isComplete}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <HUDIconSmall active={progress >= 20}><div className="icon-circle-mini">{progress >= 20 ? <IoCheckmark/> : <IoPersonCircleOutline/>}</div><span>Rostro</span></HUDIconSmall>
+          <HUDIconSmall active={progress >= 40}><div className="icon-circle-mini">{progress >= 40 ? <IoCheckmark/> : <IoCutOutline/>}</div><span>Cabello</span></HUDIconSmall>
+          <HUDIconSmall active={progress >= 60}><div className="icon-circle-mini">{progress >= 60 ? <IoCheckmark/> : <IoColorPaletteOutline/>}</div><span>Piel</span></HUDIconSmall>
+          <HUDIconSmall active={progress >= 80}><div className="icon-circle-mini">{progress >= 80 ? <IoCheckmark/> : <IoSparklesOutline/>}</div><span>IA</span></HUDIconSmall>
+          <HUDIconSmall active={progress >= 100}><div className="icon-circle-mini">{progress >= 100 ? <IoCheckmark/> : <IoBodyOutline/>}</div><span>Perfil</span></HUDIconSmall>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '3px', height: '5px' }}>
+          {[...Array(20)].map((_, i) => (
+            <div 
+              key={i} 
+              style={{ 
+                flex: 1, 
+                borderRadius: '1px', 
+                background: progress > (i * 5) ? '#00f7ff' : 'rgba(255,255,255,0.08)', 
+                boxShadow: progress > (i * 5) ? '0 0 6px #00f7ff' : 'none',
+                transition: 'all 0.1s ease'
+              }} 
+            />
+          ))}
+        </div>
+      </ProgressBarHUD>
+
+      <FloatingFooterActionButton isComplete={isComplete} onClick={() => isComplete && triggerPrintingLayout()}>
+        {isComplete ? 'VER INFORME GENERADO' : `ESCÁNER FASE ${currentStep.current}/2`}
+      </FloatingFooterActionButton>
+    </ResponsiveScannerWrapper>
   );
 };
 

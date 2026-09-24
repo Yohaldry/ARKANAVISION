@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   Settings, 
   Users, 
-  FolderCanvas, 
   MessageSquare, 
   Zap, 
   ShieldCheck, 
@@ -168,7 +167,7 @@ const ArkaDashboard = () => {
         <nav className="flex-1 px-4 space-y-2">
           {[
             { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
-            { id: 'projects', label: role === 'client' ? 'Mi Proyecto' : 'Proyectos', icon: FolderCanvas },
+            { id: 'projects', label: role === 'client' ? 'Mi Proyecto' : 'Proyectos', icon: Folder },
             { id: 'messages', label: 'Mensajes', icon: MessageSquare, badge: '2' },
             { id: 'documents', label: 'Archivos', icon: FileText },
             role === 'advisor' && { id: 'users', label: 'Clientes', icon: Users },
@@ -295,7 +294,7 @@ const ArkaDashboard = () => {
             <div className="lg:col-span-2 space-y-6">
               <div className="flex justify-between items-center">
                  <h2 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2">
-                   <FolderCanvas size={14} className="text-blue-500" /> {role === 'client' ? 'Hitos del Proyecto' : 'Proyectos en Curso'}
+                   <Folder size={14} className="text-blue-500" /> {role === 'client' ? 'Hitos del Proyecto' : 'Proyectos en Curso'}
                  </h2>
                  <button className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:underline">Ver todo</button>
               </div>
