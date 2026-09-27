@@ -12,6 +12,7 @@ import BiometricForm from './Pages/FaceScanner/BiometricForm'
 import Admin from './Pages/AdminDashboard/Admin'
 import BarberoLintero from './Pages/barberos/BarberoKintero'
 import PanelProfesionales from './Pages/profesionales/PanelProfesionales';
+
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
   return isAuthenticated ? children : <Navigate to="/" />;
