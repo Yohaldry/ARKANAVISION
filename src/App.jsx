@@ -10,8 +10,8 @@ import LoginScanner from './Pages/Login/LoginScanner'
 import Welcome from './Pages/FaceScanner/Welcome'
 import BiometricForm from './Pages/FaceScanner/BiometricForm'
 import Admin from './Pages/AdminDashboard/Admin'
-
-// Protector para evitar acceso por URL directa
+import BarberoLintero from './Pages/barberos/BarberoKintero'
+import PanelProfesionales from './Pages/profesionales/PanelProfesionales';
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
   return isAuthenticated ? children : <Navigate to="/" />;
@@ -32,6 +32,8 @@ function App() {
         <Route path="/paneldecontrol" element={<PanelDeControl />} />
         <Route path="/loginscanner" element={<LoginScanner />} />
         <Route path="/admin" element={<Admin />} />
+         <Route path="/kintero" element={<BarberoLintero />} />
+         <Route path="/panelprofesionales" element={<PanelProfesionales />} />
 
         {/* Si escriben cualquier otra cosa, redirige al Home */}
         <Route path="*" element={<Navigate to="/" />} />

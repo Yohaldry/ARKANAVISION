@@ -1,6 +1,7 @@
 // src/firebase.js
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -13,8 +14,10 @@ const firebaseConfig = {
   appId: "1:940551831496:web:a46fa19dd7c6125054cafd"
 };
 
-// Evita que Firebase se inicialice dos veces si ya existe una instancia previa
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-export const db = getFirestore(app);
+export const db = getFirestore(app);        // <--- Volvemos a exportar db para Proyectos.jsx
+export const rtdb = getDatabase(app);      // <--- Para AgendaPro.jsx
 export const auth = getAuth(app);
+
+console.log("🔗 Conectado correctamente a:", rtdb.app.options.databaseURL);

@@ -1,4 +1,4 @@
-import { db, auth } from './firebaseConfig'; // Asegúrate de exportar 'auth' y 'db' desde tu config
+import { db, auth } from '../src/components/firebase'; // Asegúrate de exportar 'auth' y 'db' desde tu config
 import { ref, set, get, update } from "firebase/database";
 import { 
   createUserWithEmailAndPassword, 
