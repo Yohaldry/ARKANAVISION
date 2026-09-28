@@ -288,7 +288,9 @@ export default function PanelProfesionales() {
   }
 
   const diasVisibles = getDiasVisibles();
-  const linkReserva = `${window.location.origin}/reserva?barbero=${authUser.uid}`;
+  
+  // Enlace corregido para que coincida con la ruta limpia /reservar/:barberoId definida en App.jsx
+  const linkReserva = `${window.location.origin}/reservar/${authUser.uid}`;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-mono flex flex-col justify-between pb-36 relative select-none">
@@ -477,57 +479,23 @@ export default function PanelProfesionales() {
                   </select>
                 </div>
               </div>
-              <button type="submit" disabled={modalLoading} className="w-full bg-rose-600 text-white font-bold py-2.5 rounded-xl uppercase flex items-center justify-center gap-1.5 cursor-pointer">
-                {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Bloquear Horario</>}
+              <button type="submit" disabled={modalLoading} className="w-full bg-rose-600 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
+                {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirmar Bloqueo'}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {showConfirmarBloqueoModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono">
-          <div className="w-full max-w-xs bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 space-y-3">
-            <h4 className="text-[11px] font-black uppercase text-slate-900">Confirmar Bloqueo</h4>
-            <p className="text-[10px] text-slate-600">¿Bloquear desde las <strong>{rangoBloqueoPendiente?.horaInicio}</strong> hasta las <strong>{rangoBloqueoPendiente?.horaFin}</strong>?</p>
-            <div className="flex gap-2">
-              <button onClick={() => setShowConfirmarBloqueoModal(false)} className="w-1/2 bg-slate-100 text-slate-700 font-bold py-2 rounded-xl text-[10px] cursor-pointer">Cancelar</button>
-              <button onClick={confirmarBloqueoArrastre} disabled={modalLoading} className="w-1/2 bg-rose-600 text-white font-bold py-2 rounded-xl text-[10px] flex items-center justify-center cursor-pointer">
-                {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirmar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showLogoutModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono">
-          <div className="w-full max-w-xs bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 space-y-3">
-            <h4 className="text-[11px] font-black uppercase text-slate-900">¿Cerrar Sesión?</h4>
-            <p className="text-[10px] text-slate-600">Volverás a la pantalla de acceso.</p>
-            <div className="flex gap-2">
-              <button onClick={() => setShowLogoutModal(false)} className="w-1/2 bg-slate-100 text-slate-700 font-bold py-2 rounded-xl text-[10px] cursor-pointer">Cancelar</button>
-              <button onClick={() => signOut(auth)} className="w-1/2 bg-red-600 text-white font-bold py-2 rounded-xl text-[10px] cursor-pointer">Salir</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {citaSeleccionada && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono">
           <div className="w-full max-w-sm bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="text-[11px] font-black uppercase text-slate-900">Detalle de Cita</h4>
-              <button onClick={() => setCitaSeleccionada(null)} className="p-1 rounded-lg bg-slate-100 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button>
+            <h4 className="text-[11px] font-black uppercase text-slate-900">Cerrar Sesión</h4>
+            <p className="text-[10px] text-slate-500">¿Estás seguro de que deseas salir del portal?</p>
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setShowLogoutModal(false)} className="w-1/2 bg-slate-100 text-slate-700 py-2 rounded-xl text-[10px] font-bold cursor-pointer">Cancelar</button>
+              <button onClick={() => { signOut(auth); setShowLogoutModal(false); }} className="w-1/2 bg-red-600 text-white py-2 rounded-xl text-[10px] font-bold cursor-pointer">Salir</button>
             </div>
-            <div className="space-y-2 text-[11px]">
-              <p><strong>Cliente:</strong> {citaSeleccionada.cliente}</p>
-              <p><strong>Servicio:</strong> {citaSeleccionada.servicio}</p>
-              <p><strong>Fecha:</strong> {citaSeleccionada.fechaStr}</p>
-              <p><strong>Hora:</strong> {citaSeleccionada.hora}</p>
-              {citaSeleccionada.clienteTelefono && <p><strong>Teléfono:</strong> {citaSeleccionada.clienteTelefono}</p>}
-            </div>
-            <button onClick={() => setCitaSeleccionada(null)} className="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase cursor-pointer">Cerrar</button>
           </div>
         </div>
       )}

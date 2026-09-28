@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom'; // 1. Importar useParams
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiStar, 
@@ -15,10 +16,16 @@ const BarberBookingView = ({ barber = defaultBarber, onBookingComplete }) => {
   const [selectedService, setSelectedService] = useState(barber.services[0]);
   const [selectedTime, setSelectedTime] = useState(barber.availableTimes[0]);
   const [isBooked, setIsBooked] = useState(false);
+  
+  // 2. Extraer el barberoId correctamente dentro del componente
+  const { barberoId } = useParams();
 
   const handleBooking = () => {
     setIsBooked(true);
-    if (onBookingComplete) onBookingComplete({ service: selectedService, time: selectedTime });
+    // Aquí puedes usar barberoId para enviar la reserva a tu base de datos si lo necesitas
+    console.log("Reservando con el barbero ID:", barberoId);
+    
+    if (onBookingComplete) onBookingComplete({ service: selectedService, time: selectedTime, barberoId });
   };
 
   return (
@@ -37,7 +44,7 @@ const BarberBookingView = ({ barber = defaultBarber, onBookingComplete }) => {
 
       {/* Top Header / Status Bar */}
       <div className="relative z-10 px-5 pt-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2 bg-neutral-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-neutral-800">
+        <div className="flex items-center space-x-2 bg-neutral-900/85 backdrop-blur-md px-3 py-1 rounded-full border border-neutral-800">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-[11px] font-medium tracking-wide uppercase text-neutral-300">Disponible Hoy</span>
         </div>
@@ -164,7 +171,7 @@ const defaultBarber = {
   location: "Barber Studio, Zona Rosa, Bogotá",
   rating: 4.9,
   reviewsCount: 142,
-  image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop", // Reemplazar con foto real en alta definición
+  image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
   services: [
     { id: 1, name: "Corte Fade + Visagismo", duration: "45 min", price: "$45.000 COP" },
     { id: 2, name: "Barba VIP + Toalla Caliente", duration: "30 min", price: "$30.000 COP" }
