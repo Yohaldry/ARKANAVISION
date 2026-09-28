@@ -12,6 +12,7 @@ import BiometricForm from './Pages/FaceScanner/BiometricForm'
 import Admin from './Pages/AdminDashboard/Admin'
 import BarberoLintero from './Pages/barberos/BarberoKintero'
 import PanelProfesionales from './Pages/profesionales/PanelProfesionales';
+import BarberBookingView from './Pages/profesionales/BarberBookingView'; // Asegúrate de importar tu nueva vista de reserva dinámica
 
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
@@ -33,8 +34,11 @@ function App() {
         <Route path="/paneldecontrol" element={<PanelDeControl />} />
         <Route path="/loginscanner" element={<LoginScanner />} />
         <Route path="/admin" element={<Admin />} />
-         <Route path="/kintero" element={<BarberoLintero />} />
-         <Route path="/panelprofesionales" element={<PanelProfesionales />} />
+        <Route path="/kintero" element={<BarberoLintero />} />
+        <Route path="/panelprofesionales" element={<PanelProfesionales />} />
+
+        {/* Ruta dinámica para que cada cliente reserve con su barbero respectivo */}
+        <Route path="/reservar/:barberoId" element={<BarberBookingView />} />
 
         {/* Si escriben cualquier otra cosa, redirige al Home */}
         <Route path="*" element={<Navigate to="/" />} />
