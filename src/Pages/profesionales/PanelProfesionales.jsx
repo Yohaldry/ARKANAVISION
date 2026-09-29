@@ -59,6 +59,8 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   // Estados para reprogramación dentro del modal
   const [nuevaFechaCita, setNuevaFechaCita] = useState('');
   const [nuevaHoraCita, setNuevaHoraCita] = useState('');
+// modal para editar info
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Estados para gestión de Servicios personalizados
   const [serviciosFirebase, setServiciosFirebase] = useState([]);
@@ -81,7 +83,27 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [especialidad, setEspecialidad] = useState('Fade & Visagismo');
   const [citasFirestore, setCitasFirestore] = useState([]);
 
+  
+  const [errorMessage, setErrorMessage] = useState('');
+
+
+
 const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+const renderFieldView = (label, value) => {
+    const isEmpty = !value || (Array.isArray(value) && value.length === 0) || String(value).trim() === '';
+    return (
+      <div className={`p-2.5 rounded-xl border transition-all ${isEmpty ? 'bg-red-50 border-red-300 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+        <div className="flex items-center justify-between mb-0.5">
+          <span className={`font-bold uppercase text-[9px] ${isEmpty ? 'text-red-600' : 'text-slate-500'}`}>{label}</span>
+          {isEmpty && <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />}
+        </div>
+        <div className="text-[12px] font-medium truncate">
+          {isEmpty ? <span className="text-red-500 italic text-[10px]">⚠️ Campo obligatorio sin llenar</span> : Array.isArray(value) ? value.join(', ') : value}
+        </div>
+      </div>
+    );
+  };
 
 const handleLogout = async () => {
   try {
@@ -543,6 +565,8 @@ useEffect(() => {
   const linkReserva = `${window.location.origin}/reservar/${authUser.uid}`;
 
   return (
+
+    
     <div className="min-h-screen bg-slate-50 text-slate-800 font-mono flex flex-col justify-between pb-36 relative select-none">
       <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2">
@@ -822,108 +846,175 @@ useEffect(() => {
           </div>
         )}
 
+<div className="space-y-3">
+      {/* Alertas de estilo Arkana */}
+      {successMsg && (
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 px-4 py-3 rounded-2xl text-[11px] font-bold flex items-center gap-2 shadow-xs animate-in fade-in duration-200">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+          {successMsg}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="bg-red-50 border border-red-300 text-red-900 px-4 py-3 rounded-2xl text-[11px] font-bold flex items-center gap-2 shadow-xs animate-in fade-in duration-200">
+          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+          {errorMessage}
+        </div>
+      )}
+      </div>
         {activeTab === 'perfil' && (
-          <div className="space-y-3">
-            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 shadow-xs">
-              <h3 className="text-[11px] font-black uppercase text-indigo-950 flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5 text-indigo-600" /> Link de Reserva para Clientes</h3>
-              <p className="text-[9px] text-indigo-800">Comparte este enlace para que tus clientes reserven directamente contigo:</p>
-              <div className="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl p-2">
-                <input type="text" readOnly value={linkReserva} className="w-full bg-transparent text-[10px] text-slate-700 outline-none truncate" />
-                <button onClick={() => { navigator.clipboard.writeText(linkReserva); setSuccessMsg('¡Enlace copiado al portapapeles!'); setTimeout(() => setSuccessMsg(''), 3000); }} className="bg-indigo-600 text-white p-2 rounded-lg cursor-pointer hover:bg-indigo-700 shrink-0"><Copy className="w-3.5 h-3.5" /></button>
-              </div>
-            </div>
+        <div className="space-y-3">
+      <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 shadow-xs">
+        <h3 className="text-[11px] font-black uppercase text-indigo-950 flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5 text-indigo-600" /> Link de Reserva para Clientes</h3>
+        <p className="text-[9px] text-indigo-800">Comparte este enlace para que tus clientes reserven directamente contigo:</p>
+        <div className="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl p-2">
+          <input type="text" readOnly value={linkReserva} className="w-full bg-transparent text-[10px] text-slate-700 outline-none truncate" />
+          <button onClick={() => { navigator.clipboard.writeText(linkReserva); setSuccessMsg('¡Enlace copiado al portapapeles!'); setTimeout(() => setSuccessMsg(''), 3000); }} className="bg-indigo-600 text-white p-2 rounded-lg cursor-pointer hover:bg-indigo-700 shrink-0"><Copy className="w-3.5 h-3.5" /></button>
+        </div>
+      </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-              <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5 border-b border-slate-100 pb-2.5">
-                <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Editar Perfil Profesional
-              </h3>
-              
-              <form onSubmit={async (e) => { 
-                e.preventDefault(); 
-                setLoading(true); 
-                await updateDoc(doc(db, 'profesionales', authUser.uid), { 
-                  nombre, descripcion, foto, telefono, correo: correoPerfil, zonasTrabajo, experiencia, ciudad, especialidad 
-                }); 
-                setSuccessMsg('¡Perfil actualizado con éxito!'); 
-                setLoading(false); 
-                setTimeout(() => setSuccessMsg(''), 3000); 
-              }} className="space-y-3 text-[10px]">
-                
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre Completo</label>
-                  <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" required />
-                </div>
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5">
+            <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Perfil Profesional
+          </h3>
+          <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition">
+            <Edit3 className="w-3 h-3" /> Editar
+          </button>
+        </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción / Biografía</label>
-                  <textarea rows="3" value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Cuéntale a tus clientes sobre tu experiencia y estilo..." className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600 resize-none" />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Foto de Perfil</label>
-                  <div className="flex items-center gap-2">
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                    <button type="button" onClick={() => fileInputRef.current.click()} className="flex-1 bg-slate-100 border border-slate-200 text-slate-700 py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-200 transition">
-                      <ImageIcon className="w-4 h-4 text-indigo-600" /> Seleccionar de Galería
-                    </button>
-                    {foto && <span className="text-[9px] text-emerald-600 font-bold truncate max-w-[120px]">Imagen cargada</span>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px]">Teléfono / WhatsApp</label>
-                    <input type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+57 300 0000000" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px]">Correo Electrónico</label>
-                    <input type="email" value={correoPerfil} onChange={e => setCorreoPerfil(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px]">Ciudad</label>
-                    <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-500 uppercase text-[9px]">Experiencia</label>
-                    <input type="text" value={experiencia} onChange={e => setExperiencia(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Especialidad</label>
-                  <input type="text" value={especialidad} onChange={e => setEspecialidad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
-                </div>
-
-                <div className="space-y-1.5 pt-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Zonas de Bogotá donde trabajas</label>
-                  <div className="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
-                    {zonasBogotaDisponibles.map((zona) => {
-                      const seleccionada = zonasTrabajo.includes(zona);
-                      return (
-                        <button
-                          key={zona}
-                          type="button"
-                          onClick={() => toggleZona(zona)}
-                          className={`px-2.5 py-1 rounded-lg text-[9px] font-bold cursor-pointer transition ${
-                            seleccionada ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          {zona}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-700 transition mt-3">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-3.5 h-3.5" /> Guardar Cambios</>}
-                </button>
-              </form>
-            </div>
+        <div className="space-y-2 text-[10px]">
+          {renderFieldView("Nombre Completo", nombre)}
+          {renderFieldView("Descripción / Biografía", descripcion)}
+          <div className="grid grid-cols-2 gap-2">
+            {renderFieldView("Teléfono / WhatsApp", telefono)}
+            {renderFieldView("Correo Electrónico", correoPerfil)}
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            {renderFieldView("Ciudad", ciudad)}
+            {renderFieldView("Experiencia", experiencia)}
+          </div>
+          {renderFieldView("Especialidad", especialidad)}
+
+          <div className={`p-2.5 rounded-xl border transition-all ${!zonasTrabajo || zonasTrabajo.length === 0 ? 'bg-red-50 border-red-300 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className={`font-bold uppercase text-[9px] ${!zonasTrabajo || zonasTrabajo.length === 0 ? 'text-red-600' : 'text-slate-500'}`}>Zonas de Bogotá donde trabajas</span>
+              {(!zonasTrabajo || zonasTrabajo.length === 0) && <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />}
+            </div>
+            {(!zonasTrabajo || zonasTrabajo.length === 0) ? (
+              <span className="text-red-500 italic text-[10px]">⚠️ Debes seleccionar al menos una zona</span>
+            ) : (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {zonasTrabajo.map(z => (
+                  <span key={z} className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md font-bold text-[9px]">{z}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+                <Edit3 className="w-4 h-4 text-indigo-600" /> Editar Perfil Profesional
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="bg-slate-200/80 hover:bg-slate-300 p-1.5 rounded-full text-slate-700 cursor-pointer transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={async (e) => { 
+              e.preventDefault(); 
+              setLoading(true); 
+              await updateDoc(doc(db, 'profesionales', authUser.uid), { 
+                nombre, descripcion, foto, telefono, correo: correoPerfil, zonasTrabajo, experiencia, ciudad, especialidad 
+              }); 
+              setSuccessMsg('¡Perfil actualizado con éxito!'); 
+              setLoading(false); 
+              setIsModalOpen(false);
+              setTimeout(() => setSuccessMsg(''), 3000); 
+            }} className="p-5 space-y-3 overflow-y-auto text-[10px]">
+              
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre Completo</label>
+                <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" required />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción / Biografía</label>
+                <textarea rows="3" value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Cuéntale a tus clientes sobre tu experiencia y estilo..." className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600 resize-none" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Foto de Perfil</label>
+                <div className="flex items-center gap-2">
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                  <button type="button" onClick={() => fileInputRef.current.click()} className="flex-1 bg-slate-100 border border-slate-200 text-slate-700 py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-200 transition">
+                    <ImageIcon className="w-4 h-4 text-indigo-600" /> Seleccionar de Galería
+                  </button>
+                  {foto && <span className="text-[9px] text-emerald-600 font-bold truncate max-w-[120px]">Imagen cargada</span>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Teléfono / WhatsApp</label>
+                  <input type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+57 300 0000000" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Correo Electrónico</label>
+                  <input type="email" value={correoPerfil} onChange={e => setCorreoPerfil(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Ciudad</label>
+                  <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Experiencia</label>
+                  <input type="text" value={experiencia} onChange={e => setExperiencia(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Especialidad</label>
+                <input type="text" value={especialidad} onChange={e => setEspecialidad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Zonas de Bogotá donde trabajas</label>
+                <div className="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-200 p-2.5 rounded-xl max-h-32 overflow-y-auto">
+                  {zonasBogotaDisponibles.map((zona) => {
+                    const seleccionada = zonasTrabajo?.includes(zona);
+                    return (
+                      <button
+                        key={zona}
+                        type="button"
+                        onClick={() => toggleZona(zona)}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-bold cursor-pointer transition ${
+                          seleccionada ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {zona}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+             <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-700 transition mt-3">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-3.5 h-3.5" /> Guardar Cambios</>}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
         )}
 
       </main>

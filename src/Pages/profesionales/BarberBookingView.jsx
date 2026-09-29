@@ -122,11 +122,11 @@ const BarberBookingView = ({ onBookingComplete }) => {
     }
   };
 
-  if (loading) return <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex items-center justify-center font-['Poppins'] text-xs">Cargando perfil...</div>;
-  if (error || !barber) return <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex items-center justify-center p-6 text-center font-['Poppins'] text-xs text-red-400">{error}</div>;
+  if (loading) return <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex items-center justify-center text-xs">Cargando perfil...</div>;
+  if (error || !barber) return <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex items-center justify-center p-6 text-center text-xs text-red-400">{error}</div>;
 
   return (
-    <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex flex-col justify-between overflow-hidden relative font-['Poppins'] shadow-2xl border border-neutral-900">
+    <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex flex-col justify-between overflow-hidden relative shadow-2xl border border-neutral-900">
       <div className="absolute inset-0 z-0">
         <img src={barber.image} alt={barber.name} className="w-full h-full object-cover object-top filter brightness-95 contrast-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/85 to-neutral-950/20" />
