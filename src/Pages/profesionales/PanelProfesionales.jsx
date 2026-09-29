@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, Sparkles, CheckCircle2, Edit3, Save, RefreshCw, AlertCircle, 
   Plus, LayoutGrid, Tag, Smile, ArrowRight, AlertTriangle, 
-  Loader2, ChevronLeft, ChevronRight, LogOut, X, BellRing, Ban, Share2, Copy
+  Loader2, ChevronLeft, ChevronRight, Eye, EyeOff, LogOut, X, BellRing, Ban, Share2, Copy, Image as ImageIcon, Trash2, Clock
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, updateDoc, collection, getDocs, setDoc, onSnapshot, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, setDoc, onSnapshot, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
+
+
 
 const horasCalendario = [
   { label: '9:00 a. m.', val24: '09:00' }, { label: '10:00 a. m.', val24: '10:00' },
@@ -15,6 +17,11 @@ const horasCalendario = [
   { label: '3:00 p. m.', val24: '15:00' }, { label: '4:00 p. m.', val24: '16:00' },
   { label: '5:00 p. m.', val24: '17:00' }, { label: '6:00 p. m.', val24: '18:00' },
   { label: '7:00 p. m.', val24: '19:00' }, { label: '8:00 p. m.', val24: '20:00' }
+];
+
+const zonasBogotaDisponibles = [
+  'Chapinero', 'Usaquén', 'Suba', 'Teusaquillo', 'Chicó', 
+  'Zona T', 'Rosales', 'Cedritos', 'Unicentro', 'Santa Bárbara'
 ];
 
 export default function PanelProfesionales() {
@@ -29,41 +36,65 @@ export default function PanelProfesionales() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nombreRegistro, setNombreRegistro] = useState('');
 
+  // Estados para mostrar u ocultar las contraseñas
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+
+
   const [activeTab, setActiveTab] = useState('agenda');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
 
-  const [nuevaCitaNotificacion, setNuevaCitaNotificacion] = useState(null);
-  const [showBloqueoModal, setShowBloqueoModal] = useState(false);
-  const [fechaBloqueo, setFechaBloqueo] = useState('');
-  const [horaInicioBloqueo, setHoraInicioBloqueo] = useState('09:00');
-  const [horaFinBloqueo, setHoraFinBloqueo] = useState('11:00');
   const primerCargaRef = useRef(true);
-
-  const [arrastrando, setArrastrando] = useState(false);
-  const [celdaInicio, setCeldaInicio] = useState(null);
-  const [fechaArrastre, setFechaArrastre] = useState('');
-  const [showConfirmarBloqueoModal, setShowConfirmarBloqueoModal] = useState(false);
-  const [rangoBloqueoPendiente, setRangoBloqueoPendiente] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
 
+  // Estados para reprogramación dentro del modal
+  const [nuevaFechaCita, setNuevaFechaCita] = useState('');
+  const [nuevaHoraCita, setNuevaHoraCita] = useState('');
+
+  // Estados para gestión de Servicios personalizados
+  const [serviciosFirebase, setServiciosFirebase] = useState([]);
+  const [showServicioModal, setShowServicioModal] = useState(false);
+  const [servicioEditando, setServicioEditando] = useState(null);
+  const [formServicio, setFormServicio] = useState({ nombre: '', descripcion: '', precio: '', duracion: '45 min' });
+
+  const [barberData, setBarberData] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  // Estados del perfil
   const [nombre, setNombre] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [foto, setFoto] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [correoPerfil, setCorreoPerfil] = useState('');
+  const [zonasTrabajo, setZonasTrabajo] = useState([]);
+  
   const [experiencia, setExperiencia] = useState('1 a 3 años');
   const [ciudad, setCiudad] = useState('Bogotá D.C.');
   const [especialidad, setEspecialidad] = useState('Fade & Visagismo');
   const [citasFirestore, setCitasFirestore] = useState([]);
-  const [serviciosFirebase, setServiciosFirebase] = useState([
-    { id: 1, nombre: 'Corte Mid Fade', precio: '$35.000 COP', duracion: '45 min' },
-    { id: 2, nombre: 'Visagismo y Estética Facial', precio: '$50.000 COP', duracion: '60 min' },
-    { id: 3, nombre: 'Perfilado de Barba', precio: '$25.000 COP', duracion: '30 min' },
-  ]);
+
+const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+const handleLogout = async () => {
+  try {
+    setLoginLoading(false); 
+    setEmail('');           
+    setPassword('');
+    await signOut(auth);    
+    setShowLogoutModal(false); 
+  } catch (error) {
+    console.error("Error al cerrar sesión:", error);
+    setShowLogoutModal(false);
+  }
+};
 
   const reproducirSonidoAlerta = () => {
     try {
@@ -95,13 +126,15 @@ export default function PanelProfesionales() {
     nueva.setDate(1); 
     setFechaSeleccionada(nueva); 
   };
-  
+   
   const getDiasVisibles = () => {
     const idx = Math.max(0, diasDelMes.findIndex(d => d.fechaObj.toDateString() === fechaSeleccionada.toDateString()));
     if (vistaCalendario === 'diario') return [diasDelMes[idx] || diasDelMes[0]];
     if (vistaCalendario === '3dias') return diasDelMes.slice(Math.max(0, idx - 1), Math.max(0, idx - 1) + 3);
     return diasDelMes.slice(Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)), Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)) + 7);
   };
+
+
 
   useEffect(() => {
     const calcTime = () => {
@@ -113,68 +146,127 @@ export default function PanelProfesionales() {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
+    const calcTime = () => {
+      const now = new Date();
+      setCurrentTimeMinutes(Math.max(0, Math.min(100, (((now.getHours() * 60 + now.getMinutes()) - 540) / 660) * 100)));
+    };
+    calcTime();
+    const t = setInterval(calcTime, 30000);
+
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      let unsubFirestoreStatus = () => {};
+      let unsubServicios = () => {};
+      let unsubCitas = () => {};
+
       if (user) {
         setAuthUser(user);
-        const snap = await getDoc(doc(db, 'profesionales', user.uid));
-        let nombreBarberoActual = 'José quintero';
-        if (snap.exists()) {
-          const d = snap.data();
-          setNombre(d.nombre || 'Profesional'); 
-          setCiudad(d.ciudad || 'Bogotá D.C.');
-          setExperiencia(d.experiencia || '1 a 3 años'); 
-          setEspecialidad(d.especialidad || 'Fade & Visagismo');
-          nombreBarberoActual = d.nombre || 'José quintero';
-        }
-        getDocs(collection(db, 'servicios')).then(servSnap => {
-          if (!servSnap.empty) setServiciosFirebase(servSnap.docs.map(i => ({ id: i.id, ...i.data() })));
-        }).catch(() => {});
 
-        const unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
+        // Escucha en tiempo real el documento del profesional para verificar si está activo o bloqueado
+        unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', user.uid), (docSnap) => {
+          if (docSnap.exists()) {
+            const d = docSnap.data();
+            setBarberData(d);
+            setNombre(d.nombre || 'Profesional'); 
+            setCiudad(d.ciudad || 'Bogotá D.C.');
+            setExperiencia(d.experiencia || '1 a 3 años'); 
+            setEspecialidad(d.especialidad || 'Fade & Visagismo');
+            setDescripcion(d.descripcion || '');
+            setFoto(d.foto || '');
+            setTelefono(d.telefono || '');
+            setCorreoPerfil(d.correo || user.email || '');
+            setZonasTrabajo(d.zonasTrabajo || []);
+          } else {
+            setCorreoPerfil(user.email || '');
+          }
+          setCheckingStatus(false);
+        }, (error) => {
+          console.error("Error al verificar estado del profesional:", error);
+          setCheckingStatus(false);
+        });
+
+        let nombreBarberoActual = nombre;
+        
+        // Sincronizar servicios propios del barbero en tiempo real
+        const qServicios = query(collection(db, 'servicios'), where('barberoId', '==', user.uid));
+        unsubServicios = onSnapshot(qServicios, (servSnap) => {
+          const listaServicios = [];
+          servSnap.forEach(docServ => {
+            listaServicios.push({ id: docServ.id, ...docServ.data() });
+          });
+          setServiciosFirebase(listaServicios);
+        });
+
+        // Sincronización en tiempo real de citas filtradas por barberoId o barberoName
+        unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
           const citasServer = [];
           let idsActuales = citasFirestore.map(c => c.id);
 
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            if (data.barberoId === user.uid || (data.barberoNombre && data.barberoNombre.toLowerCase().trim() === nombreBarberoActual.toLowerCase().trim()) || !data.barberoId) {
-              let horaBD = data.hora || '10:00';
-              if (horaBD.length === 5 && horaBD.includes(':')) {
-                const matchHora = horasCalendario.find(h => h.val24 === horaBD);
-                if (matchHora) horaBD = matchHora.label;
-              }
+            
+            const coincideId = data.barberoId === user.uid;
+            const coincideNombre = (nombreBarberoActual && data.barberoName && data.barberoName.toLowerCase().trim() === nombreBarberoActual.toLowerCase().trim()) ||
+                                   (nombreBarberoActual && data.barberoNombre && data.barberoNombre.toLowerCase().trim() === nombreBarberoActual.toLowerCase().trim());
+
+            if (coincideId || coincideNombre || !data.barberoId) {
+              let horaBD = (data.hora || '').trim();
+              
+              const matchHora = horasCalendario.find(h => 
+                h.val24 === horaBD || 
+                h.label.toLowerCase() === horaBD.toLowerCase() ||
+                horaBD.toLowerCase().includes(h.val24) ||
+                horaBD.toLowerCase().replace(/\s+/g, '').includes(h.label.toLowerCase().replace(/\s+/g, ''))
+              );
+
+              const horaNormalizada = matchHora ? matchHora.label : (horaBD || '10:00 a. m.');
               const estado = (data.estado || 'pendiente').toLowerCase();
               
-              if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'bloqueado') {
-                setNuevaCitaNotificacion({ cliente: data.clienteNombre || 'Cliente', servicio: data.servicio || 'Corte General', fecha: data.fecha || '', hora: horaBD });
+              if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado' && estado !== 'bloqueado') {
                 reproducirSonidoAlerta();
-                setTimeout(() => setNuevaCitaNotificacion(null), 6000);
               }
 
               let colorClase = 'bg-indigo-50 border-indigo-200 text-indigo-950 font-semibold shadow-xs';
-              if (estado === 'finalizada') colorClase = 'bg-slate-100 border-slate-200 text-slate-400 font-normal';
+              if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
+              if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-400 font-normal';
               if (estado === 'bloqueado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-bold';
 
               citasServer.push({
-                id: docSnap.id, cliente: data.clienteNombre || 'BLOQUEADO', clienteTelefono: data.clienteTelefono || '',
-                clienteEmail: data.clienteEmail || '', servicio: data.servicio || 'Horario no disponible',
-                hora: horaBD, fechaStr: data.fecha || '', estado, color: colorClase, esBloqueo: estado === 'bloqueado'
+                id: docSnap.id, 
+                cliente: data.clienteNombre || 'BLOQUEADO', 
+                clienteTelefono: data.telefono || data.clienteTelefono || '',
+                clienteEmail: data.clienteEmail || '', 
+                servicio: data.servicio || 'Servicio General',
+                hora: horaNormalizada, 
+                fechaStr: data.fecha || '', 
+                estado, 
+                color: colorClase, 
+                esBloqueo: estado === 'bloqueado'
               });
             }
           });
 
           primerCargaRef.current = false;
-          setCitasFirestore(citasServer.filter(c => c.estado !== 'cancelada'));
+          setCitasFirestore(citasServer.filter(c => c.estado !== 'cancelada' && c.estado !== 'cancelado'));
         });
-        return () => unsubCitas();
+
       } else { 
         setAuthUser(null); 
         setCitasFirestore([]); 
+        setServiciosFirebase([]);
+        setCheckingStatus(false);
       }
       setAuthLoading(false);
+
+      return () => {
+        unsubFirestoreStatus();
+        unsubServicios();
+        unsubCitas();
+      };
     });
+
     const safety = setTimeout(() => setAuthLoading(false), 2000);
-    return () => { unsubAuth(); clearTimeout(safety); };
+    return () => { unsubAuth(); clearTimeout(safety); clearInterval(t); };
   }, []);
 
   const handleAuth = async (e) => {
@@ -195,101 +287,259 @@ export default function PanelProfesionales() {
     }
   };
 
-  const abrirModalCita = (cita) => setCitaSeleccionada(cita);
+  const abrirModalCita = (cita) => {
+    setCitaSeleccionada(cita);
+    setNuevaFechaCita(cita.fechaStr || '');
+    setNuevaHoraCita(cita.hora || '');
+  };
 
-  const guardarBloqueoHorario = async (e) => {
+  const actualizarCitaFirestore = async (nuevoEstado) => {
+    if (!citaSeleccionada) return;
+    setModalLoading(true);
+    try {
+      const citaRef = doc(db, 'citas', citaSeleccionada.id);
+      await updateDoc(citaRef, {
+        estado: nuevoEstado,
+        fecha: nuevaFechaCita,
+        hora: nuevaHoraCita
+      });
+      setSuccessMsg('Cita actualizada correctamente');
+      setCitaSeleccionada(null);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      setErrorMsg('Error al actualizar la cita');
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+    setModalLoading(false);
+  };
+
+  const eliminarCitaFirestore = async () => {
+    if (!citaSeleccionada) return;
+    setModalLoading(true);
+    try {
+      await deleteDoc(doc(db, 'citas', citaSeleccionada.id));
+      setSuccessMsg('Cita eliminada de la agenda');
+      setCitaSeleccionada(null);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      setErrorMsg('Error al eliminar la cita');
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+    setModalLoading(false);
+  };
+
+  // Guardar o Actualizar Servicio Personalizado
+  const handleGuardarServicio = async (e) => {
     e.preventDefault();
-    const idxInicio = horasCalendario.findIndex(h => h.val24 === horaInicioBloqueo);
-    const idxFin = horasCalendario.findIndex(h => h.val24 === horaFinBloqueo);
-    if (idxInicio > idxFin) return alert('La hora de inicio no puede ser posterior a la hora final.');
+    if (!formServicio.nombre || !formServicio.precio) return alert('Nombre y precio son obligatorios');
 
-    setModalLoading(true);
     try {
-      for (let i = idxInicio; i <= idxFin; i++) {
-        await addDoc(collection(db, 'citas'), { 
-          barberoId: authUser.uid, barberoNombre: nombre, clienteNombre: 'BLOQUEADO', clienteTelefono: '', 
-          fecha: fechaBloqueo, hora: horasCalendario[i].val24, servicio: 'Horario No Disponible', estado: 'bloqueado' 
+      if (servicioEditando) {
+        await updateDoc(doc(db, 'servicios', servicioEditando.id), {
+          nombre: formServicio.nombre,
+          descripcion: formServicio.descripcion,
+          precio: formServicio.precio,
+          duracion: formServicio.duracion
         });
+        setSuccessMsg('Servicio actualizado con éxito');
+      } else {
+        await addDoc(collection(db, 'servicios'), {
+          barberoId: authUser.uid,
+          nombre: formServicio.nombre,
+          descripcion: formServicio.descripcion,
+          precio: formServicio.precio,
+          duracion: formServicio.duracion
+        });
+        setSuccessMsg('Servicio agregado con éxito');
       }
-      setSuccessMsg('Rango bloqueado exitosamente'); 
-      setShowBloqueoModal(false); 
-      setFechaBloqueo('');
+      setShowServicioModal(false);
+      setServicioEditando(null);
+      setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min' });
       setTimeout(() => setSuccessMsg(''), 3000);
-    } catch { 
-      setErrorMsg('Error al bloquear'); 
-      setTimeout(() => setErrorMsg(''), 3000); 
+    } catch (err) {
+      setErrorMsg('Error al guardar el servicio');
+      setTimeout(() => setErrorMsg(''), 3000);
     }
-    setModalLoading(false);
   };
 
-  const iniciarArrastre = (fechaStr, horaVal) => { setArrastrando(true); setCeldaInicio(horaVal); setFechaArrastre(fechaStr); };
-
-  const finalizarArrastre = (fechaStr, horaFinVal) => {
-    if (!arrastrando || fechaArrastre !== fechaStr) { setArrastrando(false); setCeldaInicio(null); return; }
-    const idxInicio = horasCalendario.findIndex(h => h.val24 === celdaInicio);
-    const idxFin = horasCalendario.findIndex(h => h.val24 === horaFinVal);
-    if (idxInicio === -1 || idxFin === -1) { setArrastrando(false); return; }
-    
-    setRangoBloqueoPendiente({ 
-      fecha: fechaStr, horaInicio: horasCalendario[Math.min(idxInicio, idxFin)].label, 
-      horaFin: horasCalendario[Math.max(idxInicio, idxFin)].label, idxMin: Math.min(idxInicio, idxFin), idxMax: Math.max(idxInicio, idxFin) 
-    });
-    setShowConfirmarBloqueoModal(true); setArrastrando(false); setCeldaInicio(null);
+  const eliminarServicioFirestore = async (id) => {
+    if (window.confirm('¿Estás seguro de eliminar este servicio?')) {
+      try {
+        await deleteDoc(doc(db, 'servicios', id));
+        setSuccessMsg('Servicio eliminado');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } catch (err) {
+        setErrorMsg('Error al eliminar');
+      }
+    }
   };
 
-  const confirmarBloqueoArrastre = async () => {
-    if (!rangoBloqueoPendiente) return;
-    setModalLoading(true);
-    try {
-      for (let i = rangoBloqueoPendiente.idxMin; i <= rangoBloqueoPendiente.idxMax; i++) {
-        await addDoc(collection(db, 'citas'), { 
-          barberoId: authUser.uid, barberoNombre: nombre, clienteNombre: 'BLOQUEADO', clienteTelefono: '', 
-          fecha: rangoBloqueoPendiente.fecha, hora: horasCalendario[i].val24, servicio: 'Horario No Disponible', estado: 'bloqueado' 
-        });
-      }
-      setSuccessMsg('Bloqueo confirmado'); setShowConfirmarBloqueoModal(false); setRangoBloqueoPendiente(null);
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch { 
-      setErrorMsg('Error al confirmar'); 
-      setTimeout(() => setErrorMsg(''), 3000); 
+  const toggleZona = (zona) => {
+    if (zonasTrabajo.includes(zona)) {
+      setZonasTrabajo(zonasTrabajo.filter(z => z !== zona));
+    } else {
+      setZonasTrabajo([...zonasTrabajo, zona]);
     }
-    setModalLoading(false);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setFoto(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
   if (authLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-mono"><RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" /></div>;
 
   if (!authUser) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-mono">
-        <div className="w-full max-w-sm bg-white border border-slate-200 shadow-xl rounded-2xl p-5 space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xs">AV</div>
-            <div>
-              <h3 className="text-xs font-black uppercase text-slate-900">{isRegistering ? 'Nuevo Registro' : 'Portal Profesionales'}</h3>
-              <p className="text-[10px] text-slate-400">Arkana Vision</p>
-            </div>
-          </div>
-          {errorMsgLogin && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[10px] flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" />{errorMsgLogin}</div>}
-          <form onSubmit={handleAuth} className="space-y-3">
-            {isRegistering && <input type="text" required placeholder="Nombre Completo" value={nombreRegistro} onChange={e => setNombreRegistro(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900 outline-none focus:border-indigo-600" />}
-            <input type="email" required placeholder="correo@dominio.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900 outline-none focus:border-indigo-600" />
-            <input type="password" required placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900 outline-none focus:border-indigo-600" />
-            {isRegistering && <input type="password" required placeholder="Confirmar Contraseña" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900 outline-none focus:border-indigo-600" />}
-            <button type="submit" disabled={loginLoading} className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer">
-              {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{isRegistering ? 'Registrarse' : 'Acceder'} <ArrowRight className="w-4 h-4" /></>}
-            </button>
-          </form>
-          <button type="button" onClick={() => { setIsRegistering(!isRegistering); setErrorMsgLogin(''); }} className="w-full text-center text-[11px] font-bold text-indigo-600 cursor-pointer">
-            {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
+  <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
+  <div className={`w-full max-w-sm border shadow-xl rounded-2xl p-5 space-y-4 transition-all duration-300 ease-in-out ${
+    isRegistering 
+      ? 'bg-slate-50 border-indigo-100 shadow-indigo-100/50' 
+      : 'bg-white border-slate-200 shadow-slate-200/50'
+  }`}>
+    
+    <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+      <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center font-black text-xs shadow-md transition-colors duration-300 ${
+        isRegistering ? 'bg-indigo-600 shadow-indigo-600/20' : 'bg-slate-900 shadow-slate-900/20'
+      }`}>AV</div>
+      <div>
+        <h3 className="text-xs font-black uppercase text-slate-900 tracking-wider">
+          {isRegistering ? 'Nuevo Registro' : 'Portal Profesionales'}
+        </h3>
+        <p className={`text-[10px] font-mono tracking-widest transition-colors duration-300 ${
+          isRegistering ? 'text-indigo-600' : 'text-slate-500'
+        }`}>Arkana Vision</p>
+      </div>
+    </div>
+
+    {/* Alerta de Error */}
+    {errorMsgLogin && (
+      <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-[10px] flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <span>{errorMsgLogin}</span>
+      </div>
+    )}
+
+    {/* Alerta de Éxito con Estilos de Arkana */}
+    {successMsg && (
+      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] flex items-center gap-2 animate-fadeIn">
+        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+        <span className="font-bold">{successMsg}</span>
+      </div>
+    )}
+
+   
+
+    <form onSubmit={handleAuth} className="space-y-3">
+      {isRegistering && (
+        <input 
+          type="text" 
+          required 
+          placeholder="Nombre Completo" 
+          value={nombreRegistro} 
+          onChange={e => setNombreRegistro(e.target.value)} 
+          className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm" 
+        />
+      )}
+
+      <input 
+        type="email" 
+        required 
+        placeholder="correo@dominio.com" 
+        value={email} 
+        onChange={e => setEmail(e.target.value)} 
+        className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm" 
+      />
+
+      {/* Campo Contraseña con Ojito y Validación de 8 caracteres */}
+      <div className="space-y-1">
+        <div className="relative">
+          <input 
+            type={showPassword ? "text" : "password"} 
+            required 
+            placeholder="Contraseña (mínimo 8 caracteres)" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-3 pr-9 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm" 
+          />
+          <button 
+            type="button" 
+            onClick={() => setShowPassword(!showPassword)} 
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 cursor-pointer"
+          >
+            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
+        {password && password.length < 8 && (
+          <p className="text-[9px] text-amber-600 font-mono pl-1">⚠️ Debe tener al menos 8 caracteres</p>
+        )}
       </div>
+
+      {/* Campo Confirmar Contraseña (Solo en Registro) */}
+      {isRegistering && (
+        <div className="space-y-1">
+          <div className="relative">
+            <input 
+              type={showConfirmPassword ? "text" : "password"} 
+              required 
+              placeholder="Confirmar Contraseña" 
+              value={confirmPassword} 
+              onChange={e => setConfirmPassword(e.target.value)} 
+              className={`w-full bg-white border rounded-xl py-2 pl-3 pr-9 text-xs text-slate-800 outline-none transition-all placeholder-slate-400 shadow-sm ${
+                confirmPassword 
+                  ? password === confirmPassword 
+                    ? 'border-emerald-500 focus:border-emerald-600' 
+                    : 'border-red-300 focus:border-red-500' 
+                  : 'border-slate-200 focus:border-indigo-600'
+              }`} 
+            />
+            <button 
+              type="button" 
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 cursor-pointer"
+            >
+              {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+          {confirmPassword && (
+            <p className={`text-[9px] font-mono pl-1 ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
+              {password === confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden'}
+            </p>
+          )}
+        </div>
+      )}
+
+      <button 
+        type="submit" 
+        disabled={loginLoading} 
+        className={`w-full font-black py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all ${
+          isRegistering 
+            ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20' 
+            : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20'
+        }`}
+      >
+        {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{isRegistering ? 'Registrarse' : 'Acceder'} <ArrowRight className="w-4 h-4" /></>}
+      </button>
+    </form>
+
+    <button 
+      type="button" 
+      onClick={() => { setIsRegistering(!isRegistering); setErrorMsgLogin(''); setSuccessMsg(''); }} 
+      className="w-full text-center text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer pt-1"
+    >
+      {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
+    </button>
+  </div>
+</div>
     );
   }
+  
 
   const diasVisibles = getDiasVisibles();
-  
-  // Enlace corregido para que coincida con la ruta limpia /reservar/:barberoId definida en App.jsx
   const linkReserva = `${window.location.origin}/reservar/${authUser.uid}`;
 
   return (
@@ -304,6 +554,8 @@ export default function PanelProfesionales() {
         </div>
         <button onClick={() => setActiveTab('estadisticas')} className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 cursor-pointer"><Sparkles className="w-3.5 h-3.5" /></button>
       </header>
+
+      
 
       {activeTab === 'agenda' && (
         <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-col gap-2">
@@ -353,11 +605,14 @@ export default function PanelProfesionales() {
                   <div className="bg-slate-50 border-r border-slate-200 p-0.5 text-slate-400 font-bold text-[7px] flex items-center justify-center text-center">{itemHora.label}</div>
                   {diasVisibles.map((dia, dIdx) => {
                     const fechaStr = dia.fechaObj.toISOString().split('T')[0];
-                    const cita = citasFirestore.find(c => (c.hora.toLowerCase() === itemHora.label.toLowerCase() || c.hora === itemHora.val24) && c.fechaStr === fechaStr);
+                    const cita = citasFirestore.find(c => 
+                      c.fechaStr === fechaStr && 
+                      (c.hora.toLowerCase() === itemHora.label.toLowerCase() || c.hora.toLowerCase() === itemHora.val24)
+                    );
                     return (
-                      <div key={dIdx} onMouseDown={() => !cita && iniciarArrastre(fechaStr, itemHora.val24)} onMouseUp={() => !cita && finalizarArrastre(fechaStr, itemHora.val24)} className="border-r border-slate-100 last:border-r-0 p-1 flex flex-col justify-center overflow-hidden cursor-pointer">
+                      <div key={dIdx} className="border-r border-slate-100 last:border-r-0 p-1 flex flex-col justify-center overflow-hidden cursor-pointer">
                         {cita ? (
-                          <div onClick={(e) => { e.stopPropagation(); abrirModalCita(cita); }} className={`p-1.5 rounded-xl border transition hover:scale-[1.02] ${cita.color}`}>
+                          <div onClick={(e) => { e.stopPropagation(); abrirModalCita(cita); }} className={`p-1.5 rounded-xl border transition hover:scale-[1.02] cursor-pointer ${cita.color}`}>
                             <span className="font-black truncate text-[8px] block">{cita.esBloqueo ? '🚫 BLOQUEADO' : cita.cliente}</span>
                             <span className="text-[7px] opacity-75 truncate font-bold block">{cita.servicio}</span>
                           </div>
@@ -370,21 +625,193 @@ export default function PanelProfesionales() {
             </div>
           </div>
         )}
+        {/* ... el resto de tu interfaz ... */}
 
-        {activeTab === 'servicios' && (
-          <div className="space-y-2">
-            {serviciosFirebase.map(serv => (
-              <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between shadow-xs">
+      {/* MODAL DE CIERRE DE SESIÓN (Debe estar dentro del return) */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn font-sans">
+          <div className="w-full max-w-xs bg-white border border-slate-200 shadow-2xl rounded-2xl p-5 space-y-4 text-center">
+            
+            <div className="w-10 h-10 mx-auto rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shadow-sm">
+              <LogOut className="w-5 h-5" />
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">Cerrar Sesión</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                ¿Estás seguro de que deseas salir del portal de profesionales de <span className="font-semibold text-slate-700">Arkana Vision</span>?
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button 
+                type="button" 
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                onClick={handleLogout}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-xl text-xs shadow-md shadow-red-600/20 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                Sí, Salir
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
+
+        {/* MODAL DE GESTIÓN DE CITA */}
+        {citaSeleccionada && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
-                  <p className="text-[9px] text-indigo-600 font-semibold mt-0.5">Duración: {serv.duracion}</p>
+                  <h3 className="text-xs font-black uppercase text-slate-900">Gestionar Cita / Servicio</h3>
+                  <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.servicio}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[11px] font-bold text-fuchsia-600">{serv.precio}</p>
-                  <span className="text-[8px] bg-slate-50 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Activo</span>
+                <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+
+              <div className="space-y-2 text-[10px]">
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
+                  <p><strong className="text-slate-500">Cliente:</strong> <span className="text-slate-900 font-bold">{citaSeleccionada.cliente}</span></p>
+                  {citaSeleccionada.clienteTelefono && <p><strong className="text-slate-500">Teléfono:</strong> <span className="text-slate-900">{citaSeleccionada.clienteTelefono}</span></p>}
+                  <p><strong className="text-slate-500">Fecha actual:</strong> <span className="text-slate-900">{citaSeleccionada.fechaStr}</span></p>
+                  <p><strong className="text-slate-500">Hora actual:</strong> <span className="text-slate-900">{citaSeleccionada.hora}</span></p>
+                  <p><strong className="text-slate-500">Estado:</strong> <span className="uppercase text-emerald-600 font-bold">{citaSeleccionada.estado}</span></p>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <p className="font-bold text-slate-700 uppercase text-[9px]">Reprogramar Fecha y Hora:</p>
+                  <input type="date" value={nuevaFechaCita} onChange={e => setNuevaFechaCita(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600" />
+                  <select value={nuevaHoraCita} onChange={e => setNuevaHoraCita(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600">
+                    {horasCalendario.map((h, i) => (
+                      <option key={i} value={h.label}>{h.label} ({h.val24})</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            ))}
+
+              <div className="flex flex-col gap-2 pt-2">
+                <button disabled={modalLoading} onClick={() => actualizarCitaFirestore('Confirmada')} className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-700 transition">
+                  {modalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-3.5 h-3.5" /> Guardar / Reprogramar</>}
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button disabled={modalLoading} onClick={() => actualizarCitaFirestore('Cancelada')} className="bg-amber-50 border border-amber-200 text-amber-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-amber-100">
+                    Cancelar Cita
+                  </button>
+                  <button disabled={modalLoading} onClick={() => eliminarCitaFirestore()} className="bg-red-50 border border-red-200 text-red-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-red-100">
+                    <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SECCIÓN DE GESTIÓN DE SERVICIOS */}
+        {activeTab === 'servicios' && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios Personalizados</h3>
+                <p className="text-[9px] text-slate-400">Configura los servicios que ofreces a tus clientes</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setServicioEditando(null);
+                  setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min' });
+                  setShowServicioModal(true);
+                }}
+                className="bg-indigo-600 text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer hover:bg-indigo-700 transition"
+              >
+                <Plus className="w-3.5 h-3.5" /> Nuevo Servicio
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {serviciosFirebase.length === 0 ? (
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl text-center text-slate-400 text-[10px]">
+                  No tienes servicios creados. Agrega tu primer servicio personalizado.
+                </div>
+              ) : (
+                serviciosFirebase.map(serv => (
+                  <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
+                        <span className="text-[8px] bg-indigo-50 border border-indigo-200 text-indigo-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                      </div>
+                      <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                      <p className="text-[11px] font-bold text-fuchsia-600">{serv.precio}</p>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => {
+                            setServicioEditando(serv);
+                            setFormServicio({ nombre: serv.nombre, descripcion: serv.descripcion || '', precio: serv.precio, duracion: serv.duracion || '45 min' });
+                            setShowServicioModal(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={() => eliminarServicioFirestore(serv.id)}
+                          className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CREAR / EDITAR SERVICIO */}
+        {showServicioModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-xs font-black uppercase text-slate-900">{servicioEditando ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+                <button onClick={() => setShowServicioModal(false)} className="p-1 rounded-lg bg-slate-100 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+
+              <form onSubmit={handleGuardarServicio} className="space-y-3 text-[10px]">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre del Servicio *</label>
+                  <input type="text" required placeholder="Ej: Corte Degradado + Barba" value={formServicio.nombre} onChange={e => setFormServicio({ ...formServicio, nombre: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción</label>
+                  <textarea rows="2" placeholder="Detalles de lo que incluye el servicio..." value={formServicio.descripcion} onChange={e => setFormServicio({ ...formServicio, descripcion: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">Precio *</label>
+                    <input type="text" required placeholder="$40.000 COP" value={formServicio.precio} onChange={e => setFormServicio({ ...formServicio, precio: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">Duración *</label>
+                    <input type="text" required placeholder="45 min" value={formServicio.duracion} onChange={e => setFormServicio({ ...formServicio, duracion: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600" />
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-700 transition mt-2">
+                  <Save className="w-3.5 h-3.5" /> Guardar Servicio
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
@@ -397,7 +824,6 @@ export default function PanelProfesionales() {
 
         {activeTab === 'perfil' && (
           <div className="space-y-3">
-            {/* ENLACE PARA COMPARTIR */}
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 shadow-xs">
               <h3 className="text-[11px] font-black uppercase text-indigo-950 flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5 text-indigo-600" /> Link de Reserva para Clientes</h3>
               <p className="text-[9px] text-indigo-800">Comparte este enlace para que tus clientes reserven directamente contigo:</p>
@@ -408,97 +834,127 @@ export default function PanelProfesionales() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-              <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5 border-b border-slate-100 pb-2.5"><Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Perfil Profesional</h3>
-              <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await updateDoc(doc(db, 'profesionales', authUser.uid), { nombre, experiencia, ciudad, especialidad }); setSuccessMsg('¡Perfil actualizado!'); setLoading(false); setTimeout(() => setSuccessMsg(''), 3000); }} className="space-y-2.5">
-                <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900 outline-none focus:border-indigo-600" required />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900" />
-                  <input type="text" value={experiencia} onChange={e => setExperiencia(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900" />
+              <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5 border-b border-slate-100 pb-2.5">
+                <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Editar Perfil Profesional
+              </h3>
+              
+              <form onSubmit={async (e) => { 
+                e.preventDefault(); 
+                setLoading(true); 
+                await updateDoc(doc(db, 'profesionales', authUser.uid), { 
+                  nombre, descripcion, foto, telefono, correo: correoPerfil, zonasTrabajo, experiencia, ciudad, especialidad 
+                }); 
+                setSuccessMsg('¡Perfil actualizado con éxito!'); 
+                setLoading(false); 
+                setTimeout(() => setSuccessMsg(''), 3000); 
+              }} className="space-y-3 text-[10px]">
+                
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre Completo</label>
+                  <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" required />
                 </div>
-                <input type="text" value={especialidad} onChange={e => setEspecialidad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[16px] text-slate-900" />
-                <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-xs">
-                  {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <><Save className="w-3.5 h-3.5" /> Guardar</>}
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción / Biografía</label>
+                  <textarea rows="3" value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Cuéntale a tus clientes sobre tu experiencia y estilo..." className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600 resize-none" />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Foto de Perfil</label>
+                  <div className="flex items-center gap-2">
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                    <button type="button" onClick={() => fileInputRef.current.click()} className="flex-1 bg-slate-100 border border-slate-200 text-slate-700 py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-200 transition">
+                      <ImageIcon className="w-4 h-4 text-indigo-600" /> Seleccionar de Galería
+                    </button>
+                    {foto && <span className="text-[9px] text-emerald-600 font-bold truncate max-w-[120px]">Imagen cargada</span>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">Teléfono / WhatsApp</label>
+                    <input type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+57 300 0000000" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">Correo Electrónico</label>
+                    <input type="email" value={correoPerfil} onChange={e => setCorreoPerfil(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">Ciudad</label>
+                    <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">Experiencia</label>
+                    <input type="text" value={experiencia} onChange={e => setExperiencia(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Especialidad</label>
+                  <input type="text" value={especialidad} onChange={e => setEspecialidad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Zonas de Bogotá donde trabajas</label>
+                  <div className="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                    {zonasBogotaDisponibles.map((zona) => {
+                      const seleccionada = zonasTrabajo.includes(zona);
+                      return (
+                        <button
+                          key={zona}
+                          type="button"
+                          onClick={() => toggleZona(zona)}
+                          className={`px-2.5 py-1 rounded-lg text-[9px] font-bold cursor-pointer transition ${
+                            seleccionada ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {zona}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-700 transition mt-3">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-3.5 h-3.5" /> Guardar Cambios</>}
                 </button>
               </form>
-              <button onClick={() => setShowLogoutModal(true)} className="w-full bg-red-50 border border-red-200 text-red-600 py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 cursor-pointer">
-                <LogOut className="w-3.5 h-3.5" /> Cerrar Sesión
-              </button>
             </div>
           </div>
         )}
+
       </main>
 
-      {nuevaCitaNotificacion && (
-        <div className="fixed bottom-20 left-3 right-3 max-w-lg mx-auto z-50 bg-gradient-to-r from-slate-900 to-indigo-950 text-white px-4 py-3 rounded-2xl shadow-xl border border-indigo-500/30 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0"><BellRing className="w-4 h-4 text-indigo-400 animate-bounce" /></div>
-            <div>
-              <p className="text-[11px] font-black uppercase text-indigo-300">¡Nueva Cita!</p>
-              <p className="text-[10px] text-slate-300"><strong className="text-white">{nuevaCitaNotificacion.cliente}</strong> • {nuevaCitaNotificacion.servicio}</p>
-            </div>
-          </div>
-          <button onClick={() => setNuevaCitaNotificacion(null)} className="p-1.5 bg-white/10 rounded-xl text-slate-300 cursor-pointer"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 px-6 flex justify-between z-50 shadow-lg">
-        {[
-          { tab: 'agenda', icon: Calendar, label: 'Agenda' }, { tab: 'servicios', icon: Tag, label: 'Servicios' },
-          { action: () => setShowBloqueoModal(true), icon: Plus, label: '', main: true }, { tab: 'estadisticas', icon: Smile, label: 'Estadísticas' },
-          { tab: 'perfil', icon: LayoutGrid, label: 'Perfil' }
-        ].map((item, idx) => {
-          const Icon = item.icon;
-          if (item.main) return <button key={idx} onClick={item.action} className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md -translate-y-4 border-2 border-white cursor-pointer hover:bg-indigo-700 transition"><Icon className="w-5 h-5 stroke-[3]" /></button>;
-          return <button key={idx} onClick={() => setActiveTab(item.tab)} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === item.tab ? 'text-indigo-600 font-black' : 'text-slate-400'}`}><Icon className="w-4 h-4" /><span className="text-[8px]">{item.label}</span></button>;
-        })}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2.5 flex justify-around items-center z-40 max-w-lg mx-auto shadow-lg">
+        <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
+          <Calendar className="w-4 h-4" />
+          <span className="text-[8px] uppercase">Agenda</span>
+        </button>
+        <button onClick={() => setActiveTab('servicios')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
+          <Tag className="w-4 h-4" />
+          <span className="text-[8px] uppercase">Servicios</span>
+        </button>
+        <button onClick={() => setActiveTab('estadisticas')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
+          <Sparkles className="w-4 h-4" />
+          <span className="text-[8px] uppercase">Panel</span>
+        </button>
+        <button onClick={() => setActiveTab('perfil')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
+          <Edit3 className="w-4 h-4" />
+          <span className="text-[8px] uppercase">Perfil</span>
+        </button>
+        
+   <button 
+  type="button"
+  onClick={() => setShowLogoutModal(true)} 
+  className="flex flex-col items-center gap-0.5 text-slate-400 font-bold cursor-pointer hover:text-red-600 transition-colors"
+>
+  <LogOut className="w-4 h-4 text-red-600" />
+  <span className="text-[8px] text-red-600 uppercase">Salir</span>
+</button>
       </nav>
-
-      {showBloqueoModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono">
-          <div className="w-full max-w-sm bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs"><Ban className="w-4 h-4" /></div><h4 className="text-[11px] font-black uppercase text-slate-900">Bloquear Horario</h4></div>
-              <button onClick={() => setShowBloqueoModal(false)} className="p-1 rounded-lg bg-slate-100 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={guardarBloqueoHorario} className="space-y-3 text-[10px]">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-500 uppercase text-[9px]">Fecha</label>
-                <input type="date" required value={fechaBloqueo} onChange={e => setFechaBloqueo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[10px] outline-none text-slate-900" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Inicio</label>
-                  <select value={horaInicioBloqueo} onChange={e => setHoraInicioBloqueo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-2 text-[10px] font-bold outline-none text-slate-900">
-                    {horasCalendario.map(h => <option key={h.val24} value={h.val24}>{h.label}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-500 uppercase text-[9px]">Fin</label>
-                  <select value={horaFinBloqueo} onChange={e => setHoraFinBloqueo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-2 text-[10px] font-bold outline-none text-slate-900">
-                    {horasCalendario.map(h => <option key={h.val24} value={h.val24}>{h.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              <button type="submit" disabled={modalLoading} className="w-full bg-rose-600 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
-                {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirmar Bloqueo'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showLogoutModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono">
-          <div className="w-full max-w-sm bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 space-y-3">
-            <h4 className="text-[11px] font-black uppercase text-slate-900">Cerrar Sesión</h4>
-            <p className="text-[10px] text-slate-500">¿Estás seguro de que deseas salir del portal?</p>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowLogoutModal(false)} className="w-1/2 bg-slate-100 text-slate-700 py-2 rounded-xl text-[10px] font-bold cursor-pointer">Cancelar</button>
-              <button onClick={() => { signOut(auth); setShowLogoutModal(false); }} className="w-1/2 bg-red-600 text-white py-2 rounded-xl text-[10px] font-bold cursor-pointer">Salir</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

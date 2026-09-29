@@ -38,7 +38,7 @@ function App() {
         <Route path="/panelprofesionales" element={<PanelProfesionales />} />
 
         {/* Ruta dinámica para que cada cliente reserve con su barbero respectivo */}
-        <Route path="/reserva" element={<BarberBookingView />} />
+    <Route path="/reservar/:barberoId" element={<BarberBookingView />} />
 
         {/* Si escriben cualquier otra cosa, redirige al Home */}
         <Route path="*" element={<Navigate to="/" />} />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Code2, Menu, X, Zap, Shield } from 'lucide-react'; // Cambiamos Scan por Shield para el panel de Admin
+import { Code2, Menu, X, Zap, Shield, UserCheck } from 'lucide-react'; // Añadimos UserCheck para profesionales
 import { useNavigate } from 'react-router-dom';
 import ArkanaProjectModal from './ArkanaProjectModal';
 
@@ -41,6 +41,7 @@ const Navbar = () => {
         <motion.div 
           className="flex items-center gap-3 group cursor-pointer"
           whileHover={{ scale: 1.02 }}
+          onClick={() => navigate('/')}
         >
           <div className="w-10 h-10 md:w-12 md:h-12 overflow-hidden group-hover:rotate-12 transition-transform duration-300">
             <img 
@@ -73,29 +74,31 @@ const Navbar = () => {
               ))}
             </div>
             
-            {/* BOTÓN ADMIN (DESKTOP) */}
+            {/* BOTÓN PANEL PROFESIONALES (DESKTOP) - Diseño único con tono ámbar/dorado */}
             <motion.button
               whileHover="hover"
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/admin')}
-              className="relative overflow-hidden bg-gradient-to-r from-[#00E5FF] to-[#1677FF] text-white px-5 py-2.5 rounded-full text-xs font-black uppercase italic flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all border border-[#00E5FF]/20 group"
+              onClick={() => navigate('/panelprofesionales')}
+              className="relative overflow-hidden bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-black px-4 py-2.5 rounded-full text-xs font-black uppercase italic flex items-center gap-2 shadow-lg shadow-orange-500/20 transition-all border border-amber-300/30 group"
             >
               <motion.div
                 variants={{
-                  hover: { x: 4, scale: 1.1 }
+                  hover: { rotate: [0, -10, 10, 0], scale: 1.1 }
                 }}
-                transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                transition={{ duration: 0.4 }}
               >
-                <Shield size={14} className="stroke-[2.5]" />
+                <UserCheck size={14} className="stroke-[2.5]" />
               </motion.div>
-              <span>Admin</span>
+              <span>Profesionales</span>
             </motion.button>
+
+        
 
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsProjectModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-full text-xs font-black uppercase italic flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full text-xs font-black uppercase italic flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all"
             >
               <Zap size={14} className="fill-current" />
               Iniciar Proyecto
@@ -118,9 +121,9 @@ const Navbar = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="md:hidden absolute top-full left-0 w-full bg-black/70 backdrop-blur-xl border-b border-white/10 overflow-hidden"
+              className="md:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-xl border-b border-white/10 overflow-hidden"
             >
-              <div className="p-9 flex flex-col gap-1">
+              <div className="p-6 flex flex-col gap-1">
                 {navLinks.map((link) => (
                   <motion.a 
                     key={link.name}
@@ -133,34 +136,29 @@ const Navbar = () => {
                   </motion.a>
                 ))}
                 
-                {/* BOTÓN ADMIN (MOBILE) */}
+                {/* BOTONES ACCIÓN (MOBILE) */}
                 <div className="pt-4 flex flex-col gap-3">
+                  
+                  {/* BOTÓN PANEL PROFESIONALES (MOBILE) */}
                   <motion.button 
                     whileHover="hover"
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      navigate('/admin');
+                      navigate('/panelprofesionales');
                     }}
-                    className="w-full bg-gradient-to-r from-[#00E5FF] to-[#1677FF] text-white py-3.5 rounded-xl font-black uppercase italic text-[11px] tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 border border-[#00E5FF]/20"
+                    className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-black py-3.5 rounded-xl font-black uppercase italic text-[11px] tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 border border-amber-300/30"
                   >
-                    <motion.div
-                      variants={{
-                        hover: { x: 5 }
-                      }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                      className="flex items-center justify-center"
-                    >
-                      <Shield size={14} className="stroke-[2.5]" />
-                    </motion.div>
-                    Admin
+                    <UserCheck size={14} className="stroke-[2.5]" />
+                    Portal Profesionales
                   </motion.button>
 
+                 
                   <button 
                     onClick={() => {
                       setIsMobileMenuOpen(false);
                       setIsProjectModalOpen(true);
                     }}
-                    className="w-full bg-green-600 text-white py-3.5 rounded-xl font-black uppercase italic text-[11px] tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                    className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase italic text-[11px] tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
                   >
                     <Zap size={12} className="fill-current" />
                     Iniciar Proyecto
