@@ -351,7 +351,7 @@ useEffect(() => {
   };
 
   // Guardar o Actualizar Servicio Personalizado
-  const handleGuardarServicio = async (e) => {
+ const handleGuardarServicio = async (e) => {
     e.preventDefault();
     if (!formServicio.nombre || !formServicio.precio) return alert('Nombre y precio son obligatorios');
 
@@ -361,25 +361,27 @@ useEffect(() => {
           nombre: formServicio.nombre,
           descripcion: formServicio.descripcion,
           precio: formServicio.precio,
-          duracion: formServicio.duracion
+          duracion: formServicio.duracion,
+          categoria: formServicio.categoria || 'servicio' // <-- Actualiza la categoría
         });
-        setSuccessMsg('Servicio actualizado con éxito');
+        setSuccessMsg('Elemento actualizado con éxito');
       } else {
         await addDoc(collection(db, 'servicios'), {
           barberoId: authUser.uid,
           nombre: formServicio.nombre,
           descripcion: formServicio.descripcion,
           precio: formServicio.precio,
-          duracion: formServicio.duracion
+          duracion: formServicio.duracion,
+          categoria: formServicio.categoria || 'servicio' // <-- Guarda la categoría seleccionada
         });
-        setSuccessMsg('Servicio agregado con éxito');
+        setSuccessMsg('Elemento agregado con éxito');
       }
       setShowServicioModal(false);
       setServicioEditando(null);
-      setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min' });
+      setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
-      setErrorMsg('Error al guardar el servicio');
+      setErrorMsg('Error al guardar el elemento');
       setTimeout(() => setErrorMsg(''), 3000);
     }
   };
@@ -741,65 +743,185 @@ useEffect(() => {
 
         {/* SECCIÓN DE GESTIÓN DE SERVICIOS */}
         {activeTab === 'servicios' && (
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios Personalizados</h3>
-                <p className="text-[9px] text-slate-400">Configura los servicios que ofreces a tus clientes</p>
-              </div>
-              <button 
-                onClick={() => {
-                  setServicioEditando(null);
-                  setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min' });
-                  setShowServicioModal(true);
-                }}
-                className="bg-indigo-600 text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer hover:bg-indigo-700 transition"
-              >
-                <Plus className="w-3.5 h-3.5" /> Nuevo Servicio
-              </button>
-            </div>
+         <div className="space-y-3">
+ <div className="flex justify-between items-center">
+  <div>
+    <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
+    <p className="text-[9px] text-slate-400">Configura los servicios y paquetes que ofreces a tus clientes</p>
+  </div>
+  <div className="flex items-center gap-1.5">
+    <button 
+      onClick={() => {
+        setServicioEditando(null);
+        setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
+        setShowServicioModal(true);
+      }}
+      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+    >
+      <Plus className="w-3 h-3" /> Servicio
+    </button>
+    <button 
+      onClick={() => {
+        setServicioEditando(null);
+        setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '60 min', categoria: 'paquete' });
+        setShowServicioModal(true);
+      }}
+      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+    >
+      <Plus className="w-3 h-3" /> Paquete
+    </button>
+  </div>
+</div>
 
-            <div className="space-y-2">
-              {serviciosFirebase.length === 0 ? (
-                <div className="bg-white border border-slate-200 p-6 rounded-2xl text-center text-slate-400 text-[10px]">
-                  No tienes servicios creados. Agrega tu primer servicio personalizado.
-                </div>
-              ) : (
-                serviciosFirebase.map(serv => (
-                  <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
-                        <span className="text-[8px] bg-indigo-50 border border-indigo-200 text-indigo-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
-                      </div>
-                      <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                      <p className="text-[11px] font-bold text-fuchsia-600">{serv.precio}</p>
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => {
-                            setServicioEditando(serv);
-                            setFormServicio({ nombre: serv.nombre, descripcion: serv.descripcion || '', precio: serv.precio, duracion: serv.duracion || '45 min' });
-                            setShowServicioModal(true);
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                        </button>
-                        <button 
-                          onClick={() => eliminarServicioFirestore(serv.id)}
-                          className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+  <div className="space-y-2">
+    {serviciosFirebase.length === 0 ? (
+      <div className="bg-white border border-slate-200 p-6 rounded-2xl text-center text-slate-400 text-[10px]">
+        No tienes servicios ni paquetes creados. Agrega tu primer elemento personalizado.
+      </div>
+    ) : (
+      serviciosFirebase.map(serv => {
+        const esPaquete = serv.categoria === 'paquete';
+        return (
+          <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
+                  {esPaquete ? 'Paquete' : 'Servicio'}
+                </span>
+                <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
+                <span className="text-[8px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+              </div>
+              <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
+            </div>
+            <div className="text-right flex flex-col items-end gap-1 shrink-0">
+              <p className={`text-[11px] font-bold ${esPaquete ? 'text-emerald-600' : 'text-fuchsia-600'}`}>{serv.precio}</p>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => {
+                    setServicioEditando(serv);
+                    setFormServicio({ 
+                      nombre: serv.nombre, 
+                      descripcion: serv.descripcion || '', 
+                      precio: serv.precio, 
+                      duracion: serv.duracion || '45 min',
+                      categoria: serv.categoria || 'servicio'
+                    });
+                    setShowServicioModal(true);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3" />
+                </button>
+                <button 
+                  onClick={() => eliminarServicioFirestore(serv.id)}
+                  className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </div>
+        );
+      })
+    )}
+  </div>
+
+  {/* Modal de Creación / Edición con el Selector de Categoría incluido */}
+  {showServicioModal && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h4 className={`text-xs font-black uppercase ${formServicio.categoria === 'paquete' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+          {servicioEditando 
+            ? 'Editar Elemento' 
+            : (formServicio.categoria === 'paquete' ? '📦 Nuevo Paquete / Combo' : '✂️ Nuevo Servicio Individual')}
+        </h4>
+        <button onClick={() => setShowServicioModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <form onSubmit={handleGuardarServicio} className="space-y-3">
+        <div className="space-y-1">
+          <label className="text-[9px] uppercase font-bold text-slate-500">
+            {formServicio.categoria === 'paquete' ? 'Nombre del Paquete *' : 'Nombre del Servicio *'}
+          </label>
+          <input 
+            type="text" 
+            name="nombre" 
+            required 
+            value={formServicio.nombre} 
+            onChange={(e) => setFormServicio(prev => ({ ...prev, nombre: e.target.value }))} 
+            placeholder={formServicio.categoria === 'paquete' ? "Ej: Combo VIP (Corte + Barba + Mascarilla)" : "Ej: Corte Mid Fade + Barba"} 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500" 
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[9px] uppercase font-bold text-slate-500">Descripción</label>
+          <textarea 
+            name="descripcion" 
+            rows="2" 
+            value={formServicio.descripcion} 
+            onChange={(e) => setFormServicio(prev => ({ ...prev, descripcion: e.target.value }))} 
+            placeholder="Detalles de lo que incluye..." 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 resize-none" 
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-[9px] uppercase font-bold text-slate-500">Precio *</label>
+            <input 
+              type="text" 
+              name="precio" 
+              required 
+              value={formServicio.precio} 
+              onChange={(e) => setFormServicio(prev => ({ ...prev, precio: e.target.value }))} 
+              placeholder="Ej: $45.000 COP" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500" 
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[9px] uppercase font-bold text-slate-500">Duración *</label>
+            <input 
+              type="text" 
+              name="duracion" 
+              required
+              value={formServicio.duracion} 
+              onChange={(e) => setFormServicio(prev => ({ ...prev, duracion: e.target.value }))} 
+              placeholder="Ej: 45 min" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500" 
+            />
+          </div>
+        </div>
+
+        <div className="pt-2 flex gap-2">
+          <button 
+            type="button" 
+            onClick={() => setShowServicioModal(false)}
+            className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            className={`w-1/2 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-md ${
+              formServicio.categoria === 'paquete' 
+                ? 'bg-emerald-600 hover:bg-emerald-700' 
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
+          >
+            {servicioEditando 
+              ? 'Actualizar' 
+              : (formServicio.categoria === 'paquete' ? 'Guardar Paquete' : 'Guardar Servicio')}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+</div>
         )}
 
         {/* MODAL CREAR / EDITAR SERVICIO */}
