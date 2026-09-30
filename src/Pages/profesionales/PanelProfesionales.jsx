@@ -101,12 +101,21 @@ export default function PanelProfesionales() {
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
-    const limpio = horaStr.replace(/\./g, '').trim().toUpperCase();
-    const partes = limpio.split(' ');
+    const limpio = horaStr.trim().toUpperCase();
+    
+    // Si viene en formato 24 horas (ej: "20:00" o "09:00")
+    if (limpio.includes(':') && !limpio.includes('M')) {
+      const [h, m] = limpio.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    }
+
+    // Formato de 12 horas (ej: "9:00 a. m.")
+    const sinPuntos = limpio.replace(/\./g, '');
+    const partes = sinPuntos.split(' ');
     const [h, m] = partes[0].split(':').map(Number);
     const periodo = partes[1]; 
     
-    let realH = h;
+    let realH = h || 0;
     if (periodo === 'PM' && realH < 12) realH += 12;
     if (periodo === 'AM' && realH === 12) realH = 0;
     return realH * 60 + (m || 0);
@@ -845,7 +854,7 @@ export default function PanelProfesionales() {
                       className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
                     >
                       {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.label}>{h.label}</option>
+                        <option key={i} value={h.val24}>{h.label}</option>
                       ))}
                     </select>
                   </div>
@@ -857,7 +866,7 @@ export default function PanelProfesionales() {
                       className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
                     >
                       {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.label}>{h.label}</option>
+                        <option key={i} value={h.val24}>{h.label}</option>
                       ))}
                     </select>
                   </div>
