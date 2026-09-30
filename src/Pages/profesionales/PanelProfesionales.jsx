@@ -8,13 +8,20 @@ import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
 
+// Horario completo de las 24 horas del día
 const horasCalendario = [
-  { label: '9:00 a. m.', val24: '09:00' }, { label: '10:00 a. m.', val24: '10:00' },
-  { label: '11:00 a. m.', val24: '11:00' }, { label: '12:00 p. m.', val24: '12:00' },
-  { label: '1:00 p. m.', val24: '13:00' }, { label: '2:00 p. m.', val24: '14:00' },
-  { label: '3:00 p. m.', val24: '15:00' }, { label: '4:00 p. m.', val24: '16:00' },
-  { label: '5:00 p. m.', val24: '17:00' }, { label: '6:00 p. m.', val24: '18:00' },
-  { label: '7:00 p. m.', val24: '19:00' }, { label: '8:00 p. m.', val24: '20:00' }
+  { label: '12:00 a. m.', val24: '00:00' }, { label: '1:00 a. m.', val24: '01:00' },
+  { label: '2:00 a. m.', val24: '02:00' }, { label: '3:00 a. m.', val24: '03:00' },
+  { label: '4:00 a. m.', val24: '04:00' }, { label: '5:00 a. m.', val24: '05:00' },
+  { label: '6:00 a. m.', val24: '06:00' }, { label: '7:00 a. m.', val24: '07:00' },
+  { label: '8:00 a. m.', val24: '08:00' }, { label: '9:00 a. m.', val24: '09:00' },
+  { label: '10:00 a. m.', val24: '10:00' }, { label: '11:00 a. m.', val24: '11:00' },
+  { label: '12:00 p. m.', val24: '12:00' }, { label: '1:00 p. m.', val24: '13:00' },
+  { label: '2:00 p. m.', val24: '14:00' }, { label: '3:00 p. m.', val24: '15:00' },
+  { label: '4:00 p. m.', val24: '16:00' }, { label: '5:00 p. m.', val24: '17:00' },
+  { label: '6:00 p. m.', val24: '18:00' }, { label: '7:00 p. m.', val24: '19:00' },
+  { label: '8:00 p. m.', val24: '20:00' }, { label: '9:00 p. m.', val24: '21:00' },
+  { label: '10:00 p. m.', val24: '22:00' }, { label: '11:00 p. m.', val24: '23:00' }
 ];
 
 const zonasBogotaDisponibles = [
@@ -42,8 +49,10 @@ export default function PanelProfesionales() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [vistaCalendario] = useState('semanal');
-  const [fechaSeleccionada] = useState(new Date());
+  
+  const [vistaCalendario, setVistaCalendario] = useState('semanal'); // 'diario', '3dias', 'semanal'
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
+  
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
 
   const primerCargaRef = useRef(true);
@@ -54,7 +63,7 @@ export default function PanelProfesionales() {
 
   const [nuevaFechaCita, setNuevaFechaCita] = useState('');
   const [nuevaHoraCita, setNuevaHoraCita] = useState('');
-  const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('');
+  const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('1:00 a. m.');
   const [nuevoMotivoBloqueo, setNuevoMotivoBloqueo] = useState('');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,8 +74,8 @@ export default function PanelProfesionales() {
   
   const [datosBloqueo, setDatosBloqueo] = useState({ 
     fechaStr: new Date().toISOString().split('T')[0], 
-    horaInicio: '9:00 a. m.', 
-    horaFin: '10:00 a. m.', 
+    horaInicio: '12:00 a. m.', 
+    horaFin: '1:00 a. m.', 
     motivo: 'No disponible' 
   });
 
@@ -75,7 +84,7 @@ export default function PanelProfesionales() {
     telefono: '',
     servicio: '',
     fechaStr: new Date().toISOString().split('T')[0],
-    hora: '10:00 a. m.'
+    hora: '12:00 a. m.'
   });
 
   const [serviciosFirebase, setServiciosFirebase] = useState([]);
@@ -103,13 +112,11 @@ export default function PanelProfesionales() {
     if (!horaStr) return 0;
     const limpio = horaStr.trim().toUpperCase();
     
-    // Si viene en formato 24 horas (ej: "20:00" o "09:00")
     if (limpio.includes(':') && !limpio.includes('M')) {
       const [h, m] = limpio.split(':').map(Number);
       return (h || 0) * 60 + (m || 0);
     }
 
-    // Formato de 12 horas (ej: "9:00 a. m.")
     const sinPuntos = limpio.replace(/\./g, '');
     const partes = sinPuntos.split(' ');
     const [h, m] = partes[0].split(':').map(Number);
@@ -164,7 +171,7 @@ export default function PanelProfesionales() {
       osc.start(); 
       osc.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
-      // Ignorar restricciones de audio automático del navegador
+      // Ignorar restricciones de audio automático
     }
   };
 
@@ -178,14 +185,15 @@ export default function PanelProfesionales() {
   const getDiasVisibles = () => {
     const idx = Math.max(0, diasDelMes.findIndex(d => d.fechaObj.toDateString() === fechaSeleccionada.toDateString()));
     if (vistaCalendario === 'diario') return [diasDelMes[idx] || diasDelMes[0]];
-    if (vistaCalendario === '3dias') return diasDelMes.slice(Math.max(0, idx - 1), Math.max(0, idx - 1) + 3);
+    if (vistaCalendario === '3dias') return diasDelMes.slice(Math.max(0, idx - 1), Math.min(diasDelMes.length, Math.max(0, idx - 1) + 3));
     return diasDelMes.slice(Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)), Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)) + 7);
   };
 
   useEffect(() => {
     const calcTime = () => {
       const now = new Date();
-      setCurrentTimeMinutes(Math.max(0, Math.min(100, (((now.getHours() * 60 + now.getMinutes()) - 540) / 660) * 100)));
+      // Cálculo basado en las 24 horas completas (1440 minutos totales del día)
+      setCurrentTimeMinutes(Math.max(0, Math.min(100, ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100)));
     };
     calcTime();
     const t = setInterval(calcTime, 30000);
@@ -248,7 +256,7 @@ export default function PanelProfesionales() {
                 horaBD.toLowerCase().replace(/\s+/g, '').includes(h.label.toLowerCase().replace(/\s+/g, ''))
               );
 
-              const horaNormalizada = matchHora ? matchHora.label : (horaBD || '10:00 a. m.');
+              const horaNormalizada = matchHora ? matchHora.label : (horaBD || '12:00 a. m.');
               const estado = (data.estado || 'pendiente').toLowerCase();
               
               if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado' && estado !== 'bloqueado') {
@@ -322,7 +330,7 @@ export default function PanelProfesionales() {
     setCitaSeleccionada(cita);
     setNuevaFechaCita(cita.fechaStr || '');
     setNuevaHoraCita(cita.hora || '');
-    setNuevaHoraFinCita(cita.horaFin || '10:00 a. m.');
+    setNuevaHoraFinCita(cita.horaFin || '1:00 a. m.');
     setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
   };
 
@@ -540,9 +548,6 @@ export default function PanelProfesionales() {
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              {password && password.length < 8 && (
-                <p className="text-[9px] text-amber-600 font-mono pl-1">⚠️ Debe tener al menos 8 caracteres</p>
-              )}
             </div>
 
             {isRegistering && (
@@ -554,13 +559,7 @@ export default function PanelProfesionales() {
                     placeholder="Confirmar Contraseña" 
                     value={confirmPassword} 
                     onChange={e => setConfirmPassword(e.target.value)} 
-                    className={`w-full bg-white border rounded-xl py-2 pl-3 pr-9 text-xs text-slate-800 outline-none transition-all placeholder-slate-400 shadow-sm ${
-                      confirmPassword 
-                        ? password === confirmPassword 
-                          ? 'border-emerald-500 focus:border-emerald-600' 
-                          : 'border-red-300 focus:border-red-500' 
-                        : 'border-slate-200 focus:border-indigo-600'
-                    }`} 
+                    className="w-full bg-white border rounded-xl py-2 pl-3 pr-9 text-xs text-slate-800 outline-none transition-all placeholder-slate-400 shadow-sm border-slate-200 focus:border-indigo-600" 
                   />
                   <button 
                     type="button" 
@@ -570,11 +569,6 @@ export default function PanelProfesionales() {
                     {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
-                {confirmPassword && (
-                  <p className={`text-[9px] font-mono pl-1 ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {password === confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden'}
-                  </p>
-                )}
               </div>
             )}
 
@@ -625,6 +619,48 @@ export default function PanelProfesionales() {
 
         {activeTab === 'agenda' && (
           <div className="space-y-2">
+            <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-black uppercase text-slate-500">📅 Mes / Día:</span>
+                  <input 
+                    type="date" 
+                    value={fechaSeleccionada.toISOString().split('T')[0]} 
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
+                      }
+                    }}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-[10px] font-bold text-slate-800 outline-none focus:border-indigo-600"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button 
+                    type="button"
+                    onClick={() => setVistaCalendario('diario')}
+                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${vistaCalendario === 'diario' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    1 Día
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setVistaCalendario('3dias')}
+                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${vistaCalendario === '3dias' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    3 Días
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setVistaCalendario('semanal')}
+                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    7 Días
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="relative flex justify-end">
               <button 
                 onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
@@ -729,7 +765,7 @@ export default function PanelProfesionales() {
                               const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
                               const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
 
-                              const nuevoH24 = Math.floor(totalMinutosNuevos / 60);
+                              const nuevoH24 = Math.floor(totalMinutosNuevos / 60) % 24;
                               const nuevoMin = totalMinutosNuevos % 60;
                               const ampm = nuevoH24 >= 12 ? 'PM' : 'AM';
                               const h12 = nuevoH24 % 12 || 12;
@@ -756,7 +792,7 @@ export default function PanelProfesionales() {
                               const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
                               const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
 
-                              const nuevoH24 = Math.floor(totalMinutosNuevos / 60);
+                              const nuevoH24 = Math.floor(totalMinutosNuevos / 60) % 24;
                               const nuevoMin = totalMinutosNuevos % 60;
                               const ampm = nuevoH24 >= 12 ? 'PM' : 'AM';
                               const h12 = nuevoH24 % 12 || 12;
@@ -854,7 +890,7 @@ export default function PanelProfesionales() {
                       className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
                     >
                       {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.val24}>{h.label}</option>
+                        <option key={i} value={h.label}>{h.label}</option>
                       ))}
                     </select>
                   </div>
@@ -866,7 +902,7 @@ export default function PanelProfesionales() {
                       className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
                     >
                       {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.val24}>{h.label}</option>
+                        <option key={i} value={h.label}>{h.label}</option>
                       ))}
                     </select>
                   </div>
@@ -878,7 +914,7 @@ export default function PanelProfesionales() {
                     type="text" 
                     value={datosBloqueo.motivo} 
                     onChange={(e) => setDatosBloqueo({...datosBloqueo, motivo: e.target.value})}
-                    placeholder="Ej: Almuerzo, Reunión personal..."
+                    placeholder="Ej: Madrugada, Descanso..."
                     className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
                   />
                 </div>
@@ -969,7 +1005,7 @@ export default function PanelProfesionales() {
                     type="text" 
                     value={datosNuevaCita.servicio} 
                     onChange={(e) => setDatosNuevaCita({...datosNuevaCita, servicio: e.target.value})}
-                    placeholder="Ej: Corte Fade + Barba"
+                    placeholder="Ej: Corte Nocturno / VIP"
                     className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
                   />
                 </div>
@@ -985,7 +1021,7 @@ export default function PanelProfesionales() {
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-600 mb-1">Hora:</label>
+                    <label className="block font-bold text-slate-600 mb-1">Hora (24h):</label>
                     <select 
                       value={datosNuevaCita.hora} 
                       onChange={(e) => setDatosNuevaCita({...datosNuevaCita, hora: e.target.value})}
@@ -1029,7 +1065,7 @@ export default function PanelProfesionales() {
                       await addDoc(collection(db, 'citas'), nuevaCitaDoc);
                       setSuccessMsg('Cita creada correctamente.');
                       setModalNuevaCitaAbierto(false);
-                      setDatosNuevaCita({ clienteNombre: '', telefono: '', servicio: '', fechaStr: new Date().toISOString().split('T')[0], hora: '10:00 a. m.' });
+                      setDatosNuevaCita({ clienteNombre: '', telefono: '', servicio: '', fechaStr: new Date().toISOString().split('T')[0], hora: '12:00 a. m.' });
                       setTimeout(() => setSuccessMsg(''), 3000);
                     } catch {
                       setErrorMsg('Error al registrar la cita.');
@@ -1533,7 +1569,7 @@ export default function PanelProfesionales() {
         </button>
         <button 
           type="button"
-          onClick={() => setShowLogoutModal(true)} 
+          onClick={() => setShowLogoutModal(value => !value)} // abre modal salir
           className="flex flex-col items-center gap-0.5 text-slate-400 font-bold cursor-pointer hover:text-red-600 transition-colors"
         >
           <LogOut className="w-4 h-4 text-red-600" />
