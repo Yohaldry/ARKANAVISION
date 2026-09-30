@@ -218,18 +218,35 @@ const BarberBookingView = ({ onBookingComplete }) => {
         </div>
 
         {/* Horarios Disponibles */}
+       {/* Horarios Ocupados y Selector Libre de Hora/Minutos */}
         <div className="space-y-1">
-          <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-400 flex items-center px-0.5"><FiClock className="mr-1 text-indigo-400" /> Horarios Disponibles</span>
-          <div className="flex space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {barber.availableTimes?.map((time, idx) => {
-              const isOcupado = horasOcupadas.includes(time.toUpperCase());
-              return (
-                <button key={idx} disabled={isOcupado} onClick={() => !isOcupado && setSelectedTime(time)} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 border transition-all flex flex-col items-center justify-center ${isOcupado ? 'bg-red-500/15 border-red-500/60 text-red-400 opacity-90' : selectedTime === time ? 'bg-indigo-600 border-indigo-500 text-white font-bold shadow-md' : 'bg-neutral-900/60 border-neutral-800 text-neutral-300'}`}>
-                  <span>{time}</span>
-                  <span className={`text-[7px] font-bold uppercase ${isOcupado ? 'text-red-400' : 'text-transparent'}`}>{isOcupado ? 'Ocupado' : '.'}</span>
-                </button>
-              );
-            })}
+          <div className="flex justify-between items-center px-0.5">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-400 flex items-center"><FiClock className="mr-1 text-indigo-400" /> Horarios Ocupados y Tu Hora Exacta</span>
+            {horasOcupadas.length > 0 && <span className="text-[9px] text-red-400 bg-red-950/50 px-1.5 py-0.5 rounded border border-red-900/60 truncate max-w-[150px]">Ocupados: {horasOcupadas.join(', ')}</span>}
+          </div>
+          <div className="flex items-center space-x-2">
+            <input 
+              type="time" 
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) return setSelectedTime(null);
+                const [h, m] = val.split(':');
+                const hNum = parseInt(h, 10);
+                const formatted = `${String(hNum % 12 || 12).padStart(2, '0')}:${m} ${hNum >= 12 ? 'PM' : 'AM'}`;
+                if (horasOcupadas.includes(formatted.toUpperCase())) {
+                  alert("⚠️ Este horario exacto ya está ocupado. Elige otro.");
+                  setSelectedTime(null);
+                } else {
+                  setSelectedTime(formatted);
+                }
+              }} 
+              className="w-full bg-neutral-900/80 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer" 
+            />
+            {selectedTime && (
+              <span className="text-[10px] font-bold text-indigo-300 bg-indigo-950/80 px-2.5 py-1.5 rounded-xl border border-indigo-800 shrink-0 shadow-sm">
+                {selectedTime}
+              </span>
+            )}
           </div>
         </div>
 
