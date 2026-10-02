@@ -45,7 +45,7 @@ export default function PanelProfesionales() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [dragOverInfo, setDragOverInfo] = useState({ diaStr: null, horaTexto: null, x: 0, y: 0 });
-
+  const [bloqueoEditandoId, setBloqueoEditandoId] = useState(null);
   const [activeTab, setActiveTab] = useState('agenda');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -71,7 +71,7 @@ export default function PanelProfesionales() {
   const [menuAgendaAbierto, setMenuAgendaAbierto] = useState(false);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
   const [modalNuevaCitaAbierto, setModalNuevaCitaAbierto] = useState(false);
-  
+  const [modalSalirAbierto, setModalSalirAbierto] = useState(false);
   const [datosBloqueo, setDatosBloqueo] = useState({ 
     fechaStr: new Date().toISOString().split('T')[0], 
     horaInicio: '12:00 a. m.', 
@@ -86,6 +86,28 @@ export default function PanelProfesionales() {
     fechaStr: new Date().toISOString().split('T')[0],
     hora: '12:00 a. m.'
   });
+
+ const handleCerrarSesion = async () => {
+  const confirmar = window.confirm("🚪 ¿Estás seguro de que deseas cerrar sesión?");
+  
+  if (confirmar) {
+    try {
+      // 1. Ejecuta el cierre de sesión real en tu backend (Ejemplo con Firebase Auth)
+      await signOut(auth);
+      
+      // 2. Si manejas localStorage o sessionStorage, limpia los datos de sesión
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 3. Redirige al usuario a la pantalla de inicio de sesión o recarga la vista
+      window.location.href = "/login"; // O usa tu router (ej. navigate('/login'))
+      
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      alert("Hubo un error al intentar cerrar sesión. Por favor, intenta de nuevo.");
+    }
+  }
+};
 
   const [serviciosFirebase, setServiciosFirebase] = useState([]);
   const [showServicioModal, setShowServicioModal] = useState(false);
@@ -618,244 +640,476 @@ export default function PanelProfesionales() {
         {errorMsg && <div className="mb-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-[10px] flex gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-red-600" />{errorMsg}</div>}
 
         {activeTab === 'agenda' && (
-          <div className="space-y-2">
-            <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase text-slate-500">📅 Mes / Día:</span>
-                  <input 
-                    type="date" 
-                    value={fechaSeleccionada.toISOString().split('T')[0]} 
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
-                      }
-                    }}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-[10px] font-bold text-slate-800 outline-none focus:border-indigo-600"
-                  />
-                </div>
+      <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-slate-100 pb-1">
+  
+  {/* 1. CONTROLES SUPERIORES (FIJOS Y COMPACTOS) */}
+  <div className="shrink-0 space-y-1.5">
+    {/* Controles superiores: Fecha y Botones de Vista */}
+    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-2 shadow-xl space-y-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-black uppercase text-slate-400">📅 Mes / Día:</span>
+          <input 
+            type="date" 
+            value={fechaSeleccionada.toISOString().split('T')[0]} 
+            onChange={(e) => {
+              if (e.target.value) {
+                setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
+              }
+            }}
+            className="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1 text-[10px] font-bold text-slate-200 outline-none focus:border-indigo-500 transition-all"
+          />
+        </div>
 
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <button 
-                    type="button"
-                    onClick={() => setVistaCalendario('diario')}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${vistaCalendario === 'diario' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-                  >
-                    1 Día
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setVistaCalendario('3dias')}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${vistaCalendario === '3dias' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-                  >
-                    3 Días
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setVistaCalendario('semanal')}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-                  >
-                    7 Días
-                  </button>
-                </div>
-              </div>
+        <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <button 
+            type="button"
+            onClick={() => setVistaCalendario('diario')}
+            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-indigo-600 text-white shadow-md scale-105' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            1 Día
+          </button>
+          <button 
+            type="button"
+            onClick={() => setVistaCalendario('3dias')}
+            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-indigo-600 text-white shadow-md scale-105' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            3 Días
+          </button>
+          <button 
+            type="button"
+            onClick={() => setVistaCalendario('semanal')}
+            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-indigo-600 text-white shadow-md scale-105' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            7 Días
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Controles de la derecha: Botón HOY, Opciones de Agenda y Botón SALIR */}
+    <div className="relative flex justify-end items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setFechaSeleccionada(new Date())}
+        className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
+      >
+        📍 Hoy
+      </button>
+
+      {/* Botón de Opciones de Agenda en Azul Oscuro */}
+      <button 
+        onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
+        className="bg-blue-900 hover:bg-blue-950 border border-blue-700/60 text-blue-100 font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
+      >
+        <Plus className="w-3.5 h-3.5 text-blue-300" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-300" />
+      </button>
+
+      {/* Botón Salir en Rojo */}
+      <button
+        type="button"
+        onClick={handleCerrarSesion} // Reemplaza esto con tu función real de salida si difiere
+        className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/40 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
+      >
+        🚪 Salir
+      </button>
+
+      {menuAgendaAbierto && (
+        <div className="absolute right-0 top-10 z-50 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 w-56 text-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <button 
+            onClick={() => {
+              setMenuAgendaAbierto(false);
+              setModalNuevaCitaAbierto(true);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-600/20 hover:text-indigo-400 transition-colors flex items-center gap-2"
+          >
+            ✨ Cita nueva
+          </button>
+          <button 
+            onClick={() => {
+              setMenuAgendaAbierto(false);
+              setModalBloqueoAbierto(true);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-600/20 hover:text-rose-400 transition-colors flex items-center gap-2 text-rose-400"
+          >
+            🚫 Horario no disponible
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* 2. CONTENEDOR DE LA AGENDA (OCUPA EL RESTO EXACTO Y MANTIENE BORDES REDONDEADOS VISIBLES) */}
+  <div 
+    className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-xl border border-slate-800 bg-slate-950 [perspective:1400px] mb-2"
+    onTouchStart={(e) => {
+      const touch = e.touches[0];
+      e.currentTarget.dataset.touchStartX = touch.clientX;
+    }}
+    onTouchMove={(e) => {
+      const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
+      const currentX = e.touches[0].clientX;
+      const diff = currentX - startX;
+      const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
+      const hojaFondo = e.currentTarget.querySelector('.libro-pagina-fondo');
+
+      if (hojaActual) {
+        const rotacion = (diff / window.innerWidth) * 20;
+        hojaActual.style.transform = `translateX(${diff * 0.5}px) rotateY(${rotacion}deg)`;
+        hojaActual.style.transition = 'none';
+      }
+
+      if (hojaFondo) {
+        hojaFondo.style.opacity = Math.min(1, Math.abs(diff) / 80);
+      }
+    }}
+    onTouchEnd={(e) => {
+      const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
+      const endX = e.changedTouches[0].clientX;
+      const diff = startX - endX;
+      const minSwipeDistance = 50;
+      const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
+
+      if (Math.abs(diff) > minSwipeDistance) {
+        if (hojaActual) {
+          hojaActual.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
+          hojaActual.style.transform = `translateX(${diff > 0 ? '-100%' : '100%'}) rotateY(${diff > 0 ? '-15deg' : '15deg'})`;
+          hojaActual.style.opacity = '0';
+        }
+
+        setTimeout(() => {
+          const nuevaFecha = new Date(fechaSeleccionada);
+          let diasASaltar = 7;
+          if (vistaCalendario === 'diario') diasASaltar = 1;
+          if (vistaCalendario === '3dias') diasASaltar = 3;
+
+          if (diff > 0) {
+            nuevaFecha.setDate(nuevaFecha.getDate() + diasASaltar);
+          } else {
+            nuevaFecha.setDate(nuevaFecha.getDate() - diasASaltar);
+          }
+          setFechaSeleccionada(nuevaFecha);
+        }, 300);
+      } else {
+        if (hojaActual) {
+          hojaActual.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+          hojaActual.style.transform = 'translateX(0px) rotateY(0deg)';
+          hojaActual.style.opacity = '1';
+        }
+      }
+    }}
+  >
+    {/* 1. PÁGINA DE FONDO */}
+    <div className="libro-pagina-fondo absolute inset-0 bg-slate-950 p-1 opacity-0 transition-opacity duration-150 pointer-events-none">
+      <div className="grid sticky top-0 z-20 bg-slate-900 border-b border-slate-800 text-center text-[9px] font-black uppercase text-slate-400" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+        <div className="text-left pl-2 py-2 text-slate-500 font-bold text-[8px] border-r border-slate-800">Hora</div>
+        {diasVisibles.map((d, i) => {
+          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+          return (
+            <div key={i} className={`py-2 px-0.5 border-r border-slate-800 last:border-r-0 truncate ${esHoy ? 'bg-emerald-600/30 text-emerald-300 font-black' : 'text-slate-400'}`}>
+              {d.nombre.toUpperCase()} {d.num}
             </div>
+          );
+        })}
+      </div>
+      <div className="p-2 space-y-1 opacity-40">
+        {horasCalendario.slice(0, 6).map((h, i) => (
+          <div key={i} className="h-[50px] border-b border-slate-800/80 flex items-center px-2 text-[8px] text-slate-600">
+            {h.label}
+          </div>
+        ))}
+      </div>
+    </div>
 
-            <div className="relative flex justify-end">
-              <button 
-                onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" /> Opciones de Agenda <ChevronDown className="w-3 h-3" />
-              </button>
+    {/* 2. PÁGINA ACTUAL (CONTENEDOR DE LA TABLA) */}
+    <div className="libro-pagina-actual bg-slate-950 relative w-full text-slate-100 [transform-style:preserve-3d] origin-left shadow-2xl rounded-2xl overflow-hidden">
+      
+      {/* CABECERA DE LOS DÍAS FIJA AL HACER SCROLL VERTICAL */}
+      <div className="grid sticky top-0 z-20 bg-slate-900 border-b border-slate-800 text-center text-[9px] font-black uppercase text-slate-400" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+        <div className="text-left pl-2 py-2 text-slate-500 font-bold text-[8px] border-r border-slate-800 bg-slate-900">Hora</div>
+        {diasVisibles.map((d, i) => {
+          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+          const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
-              {menuAgendaAbierto && (
-                <div className="absolute right-0 top-10 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 w-56 text-slate-700 animate-in fade-in zoom-in-95 duration-100">
-                  <button 
-                    onClick={() => {
-                      setMenuAgendaAbierto(false);
-                      setModalNuevaCitaAbierto(true);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-50 hover:text-indigo-600 transition flex items-center gap-2"
-                  >
-                    ✨ Cita nueva
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setMenuAgendaAbierto(false);
-                      setModalBloqueoAbierto(true);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition flex items-center gap-2 text-rose-700"
-                  >
-                    🚫 Horario no disponible
-                  </button>
-                </div>
-              )}
+          let estiloDia = 'text-slate-300';
+          if (esHoy) {
+            estiloDia = 'bg-emerald-600/30 text-emerald-300 font-black border-b-2 border-emerald-500';
+          } else if (esSeleccionado) {
+            estiloDia = 'bg-indigo-600/30 text-indigo-300 font-black';
+          }
+
+          return (
+            <div key={i} className={`py-2 px-0.5 border-r border-slate-800 last:border-r-0 truncate transition-colors ${estiloDia}`}>
+              {d.nombre.toUpperCase()} {d.num} {esHoy && '📍'}
             </div>
+          );
+        })}
+      </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-1 relative overflow-hidden w-full select-none">
-              <div className="grid bg-slate-100 border-b border-slate-200 text-center text-[9px] font-black uppercase text-slate-500" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                <div className="text-left pl-2 py-2 text-slate-400 font-bold text-[8px] border-r border-slate-200">Hora</div>
-                {diasVisibles.map((d, i) => (
-                  <div key={i} className={`py-2 px-0.5 border-r border-slate-200 last:border-r-0 truncate ${d.fechaObj.toDateString() === fechaSeleccionada.toDateString() ? 'bg-indigo-50 text-indigo-900 font-black' : 'text-slate-600'}`}>
-                    {d.nombre.toUpperCase()} {d.num}
-                  </div>
-                ))}
+      <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+        {dragOverInfo.horaTexto && (
+          <div className="absolute z-40 pointer-events-none bg-indigo-600 text-white text-[9px] font-black px-2.5 py-1 rounded-lg shadow-lg border border-indigo-400 backdrop-blur-sm"
+               style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
+            📍 Mover a: <span className="underline">{dragOverInfo.horaTexto}</span>
+          </div>
+        )}
+
+        <div className="absolute left-0 right-0 z-30 flex items-center pointer-events-none transition-all duration-300" style={{ top: `${currentTimeMinutes}%` }}>
+          <div className="w-[50px] bg-emerald-600 text-white text-[7px] font-black text-center py-0.5 rounded-r shadow-md">HOY</div>
+          <div className="flex-1 border-t-2 border-emerald-600 shadow-sm"></div>
+        </div>
+
+        {horasCalendario.map((itemHora, idx) => {
+          const [fH, fM] = itemHora.val24.split(':').map(Number);
+          const minutosFilaInicio = fH * 60 + fM;
+          const minutosFilaFin = minutosFilaInicio + 60;
+
+          const esHorarioLaboral = fH >= 9 && fH <= 21;
+
+          const convertirHoraAMinutos = (horaStr) => {
+            if (!horaStr) return 0;
+            const partes = horaStr.trim().toUpperCase().split(' ');
+            if (partes.length < 2) return 0;
+            const [hStr, mStr] = partes[0].split(':').map(Number);
+            const periodo = partes[1];
+            
+            let horas24 = hStr;
+            if (periodo.includes('P') && horas24 < 12) horas24 += 12;
+            if (periodo.includes('A') && horas24 === 12) horas24 = 0;
+            
+            return horas24 * 60 + (mStr || 0);
+          };
+
+          const minutosAHoraTexto = (totalMinutos) => {
+            const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
+            const h24 = Math.floor(minutosNorm / 60);
+            const min = minutosNorm % 60;
+            const ampm = h24 >= 12 ? 'PM' : 'AM';
+            const h12 = h24 % 12 || 12;
+            return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
+          };
+
+          return (
+            <div key={idx} className="grid items-stretch min-h-[50px] border-b border-slate-800/80 text-[9px] relative" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+              <div className={`border-r border-slate-800 p-0.5 font-bold text-[7px] flex items-center justify-center text-center transition-colors ${esHorarioLaboral ? 'bg-emerald-950/40 text-emerald-400' : 'bg-slate-900/80 text-slate-500'}`}>
+                {itemHora.label}
               </div>
 
-              <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
-                {dragOverInfo.horaTexto && (
-                  <div className="absolute z-40 pointer-events-none bg-indigo-600/90 text-white text-[9px] font-black px-2.5 py-1 rounded-lg shadow-lg border border-indigo-400 backdrop-blur-sm"
-                       style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
-                    📍 Mover a: <span className="underline">{dragOverInfo.horaTexto}</span>
-                  </div>
-                )}
+              {diasVisibles.map((dia, dIdx) => {
+                const fechaStr = dia.fechaObj.toISOString().split('T')[0];
 
-                <div className="absolute left-0 right-0 z-30 flex items-center pointer-events-none" style={{ top: `${currentTimeMinutes}%` }}>
-                  <div className="w-[50px] bg-rose-500 text-white text-[7px] font-black text-center py-0.5 rounded-r">HOY</div>
-                  <div className="flex-1 border-t-2 border-rose-500"></div>
-                </div>
+                const citasEnEstaHora = citasFirestore.filter(c => {
+                  if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
+                  const minutosCitaInicio = convertirHoraAMinutos(c.hora);
+                  return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
+                });
 
-                {horasCalendario.map((itemHora, idx) => {
-                  const [fH, fM] = itemHora.val24.split(':').map(Number);
-                  const minutosFilaInicio = fH * 60 + fM;
-                  const minutosFilaFin = minutosFilaInicio + 60;
+                const bloqueosEnEstaHora = citasFirestore.filter(c => {
+                  if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
+                  const minutosBloqueoInicio = convertirHoraAMinutos(c.hora);
+                  return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
+                });
 
-                  return (
-                    <div key={idx} className="grid items-stretch min-h-[50px] border-b border-slate-100 text-[9px] bg-white hover:bg-slate-50/50 transition relative" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                      <div className="bg-slate-50 border-r border-slate-200 p-0.5 text-slate-400 font-bold text-[7px] flex items-center justify-center text-center">
-                        {itemHora.label}
-                      </div>
+                const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
 
-                      {diasVisibles.map((dia, dIdx) => {
-                        const fechaStr = dia.fechaObj.toISOString().split('T')[0];
+                return (
+                  <div 
+                    key={dIdx} 
+                    className={`border-r border-slate-800/60 last:border-r-0 p-1 relative flex flex-row gap-1 items-stretch overflow-visible transition-colors ${
+                      dragOverInfo.diaStr === fechaStr ? 'bg-indigo-950/50' : (esHorarioLaboral ? 'bg-emerald-950/10 hover:bg-emerald-900/20' : 'bg-slate-900/30 hover:bg-slate-900/60')
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const offsetY = e.clientY - rect.top;
+                      const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                      const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                      const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
 
-                        // Renderizamos únicamente en la celda correspondiente a la hora de inicio exacta del evento
-                        const elementosEnEstaHora = citasFirestore.filter(c => {
-                          if (c.fechaStr !== fechaStr || !c.hora) return false;
-                          const partesHora = c.hora.trim().toUpperCase().split(' ');
-                          if (partesHora.length < 2) return false;
-                          const [cH, cM] = partesHora[0].split(':').map(Number);
-                          const cPeriodo = partesHora[1];
-                          let realH = cH;
-                          if (cPeriodo === 'PM' && realH < 12) realH += 12;
-                          if (cPeriodo === 'AM' && realH === 12) realH = 0;
-                          const minutosCitaInicio = realH * 60 + cM;
+                      const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
 
-                          // Verificamos si esta fila contiene la hora de inicio exacta del elemento
-                          return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
-                        });
+                      setDragOverInfo({
+                        diaStr: fechaStr,
+                        horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
+                        y: e.clientY
+                      });
+                    }}
+                    onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
+                      const citaId = e.dataTransfer.getData("text/plain");
+                      if (!citaId) return;
+                      const citaArrastrada = citasFirestore.find(c => (c.id || c.uid) === citaId);
+                      if (!citaArrastrada || citaArrastrada.esBloqueo) return;
+
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const offsetY = e.clientY - rect.top;
+                      const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                      const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                      const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                      const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
+                      actualizarCitaArrastrada(citaArrastrada, fechaStr, nuevaHoraFormateada);
+                    }}
+                  >
+                    {elementosEnEstaHora.length > 0 ? (
+                      elementosEnEstaHora.map((itemCita, cIdx) => {
+                        const minutosItemInicio = convertirHoraAMinutos(itemCita.hora);
+                        const citaKey = itemCita.id || itemCita.uid;
+                        const estaEditandoBloqueo = bloqueoEditandoId === citaKey;
+
+                        let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+                        if (itemCita.esBloqueo && itemCita.horaFin) {
+                          const minFin = convertirHoraAMinutos(itemCita.horaFin);
+                          if (minFin > minutosItemInicio) {
+                            duracionMin = minFin - minutosItemInicio;
+                          } else if (minFin < minutosItemInicio) {
+                            duracionMin = (1440 - minutosItemInicio) + minFin;
+                          }
+                        }
+
+                        const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+                        const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                        const alturaTotalPixeles = (duracionMin / 60) * 50;
+
+                        const totalCol = elementosEnEstaHora.length;
+                        const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
+                        const leftPercent = totalCol > 1 ? `${(cIdx * (100 / totalCol))}%` : '0px';
 
                         return (
                           <div 
-                            key={dIdx} 
-                            className={`border-r border-slate-100 last:border-r-0 p-1 relative flex flex-row gap-1 items-stretch overflow-visible transition-colors ${dragOverInfo.diaStr === fechaStr ? 'bg-indigo-50/40' : ''}`}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const offsetY = e.clientY - rect.top;
-                              const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                              const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                              const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                              const nuevoH24 = Math.floor(totalMinutosNuevos / 60) % 24;
-                              const nuevoMin = totalMinutosNuevos % 60;
-                              const ampm = nuevoH24 >= 12 ? 'PM' : 'AM';
-                              const h12 = nuevoH24 % 12 || 12;
-                              const horaFormateada = `${String(h12).padStart(2, '0')}:${String(nuevoMin).padStart(2, '0')} ${ampm}`;
-
-                              setDragOverInfo({
-                                diaStr: fechaStr,
-                                horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
-                                y: e.clientY
-                              });
+                            key={cIdx}
+                            draggable={!itemCita.esBloqueo}
+                            onDragStart={(e) => e.dataTransfer.setData("text/plain", citaKey)}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              if (itemCita.esBloqueo) {
+                                setBloqueoEditandoId(estaEditandoBloqueo ? null : citaKey);
+                              }
                             }}
-                            onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
-                              const citaId = e.dataTransfer.getData("text/plain");
-                              if (!citaId) return;
-                              const citaArrastrada = citasFirestore.find(c => (c.id || c.uid) === citaId);
-                              if (!citaArrastrada || citaArrastrada.esBloqueo) return;
-
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const offsetY = e.clientY - rect.top;
-                              const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                              const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                              const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                              const nuevoH24 = Math.floor(totalMinutosNuevos / 60) % 24;
-                              const nuevoMin = totalMinutosNuevos % 60;
-                              const ampm = nuevoH24 >= 12 ? 'PM' : 'AM';
-                              const h12 = nuevoH24 % 12 || 12;
-                              const nuevaHoraFormateada = `${String(h12).padStart(2, '0')}:${String(nuevoMin).padStart(2, '0')} ${ampm}`;
-
-                              actualizarCitaArrastrada(citaArrastrada, fechaStr, nuevaHoraFormateada);
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              if (!itemCita.esBloqueo) abrirModalCita(itemCita); 
+                              if (itemCita.esBloqueo && estaEditandoBloqueo) {
+                                setBloqueoEditandoId(null);
+                              }
+                            }} 
+                            style={{ 
+                              top: `${topPercent}%`, 
+                              height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 38)}px` : `${Math.max((duracionMin / 60) * 100, 38)}%`, 
+                              minHeight: '38px', 
+                              zIndex: itemCita.esBloqueo ? (estaEditandoBloqueo ? 50 : 30) : 40,
+                              width: `calc(${widthPercent} - 4px)`,
+                              left: `calc(${leftPercent} + 2px)`
                             }}
+                            className={`absolute p-1.5 border transition-all duration-150 shadow-md flex flex-col justify-between overflow-hidden rounded-none ${
+                              itemCita.esBloqueo 
+                                ? `bg-rose-950 text-rose-200 ${estaEditandoBloqueo ? 'border-2 border-white ring-2 ring-rose-500' : 'border-rose-800'} font-bold cursor-pointer hover:bg-rose-900 select-none` 
+                                : 'cursor-grab active:cursor-grabbing hover:scale-[1.02] border-slate-700/80 bg-slate-800 text-slate-100'
+                            }`}
                           >
-                            {elementosEnEstaHora.length > 0 ? (
-                              elementosEnEstaHora.map((itemCita, cIdx) => {
-                                const partesHora = itemCita.hora.trim().toUpperCase().split(' ');
-                                const [cH, cM] = partesHora[0].split(':').map(Number);
-                                const cPeriodo = partesHora[1];
-                                let realH = cH;
-                                if (cPeriodo === 'PM' && realH < 12) realH += 12;
-                                if (cPeriodo === 'AM' && realH === 12) realH = 0;
-                                const minutosItemInicio = realH * 60 + cM;
+                            <div className="flex justify-between items-center pointer-events-none">
+                              <span className="font-black truncate text-[8px] block text-white">
+                                {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : itemCita.cliente}
+                              </span>
+                              <span className="text-[7px] font-bold text-slate-300">{itemCita.hora} {itemCita.horaFin ? `- ${itemCita.horaFin}` : ''}</span>
+                            </div>
 
-                                let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-                                if (itemCita.esBloqueo && itemCita.horaFin) {
-                                  const minFin = horaAMinutos(itemCita.horaFin);
-                                  if (minFin > minutosItemInicio) duracionMin = minFin - minutosItemInicio;
-                                }
+                            {!itemCita.esBloqueo && (
+                              <span className="text-[7px] text-slate-300 truncate font-bold block pointer-events-none">
+                                {itemCita.servicio} ({duracionMin}m)
+                              </span>
+                            )}
 
-                                // Offset dentro de la misma celda de inicio basado en los minutos transcurridos de esa hora
-                                const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-                                const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-                                
-                                // Calculamos la altura total proporcional en porcentaje de acuerdo a los minutos totales de duración,
-                                // permitiendo que se extienda y pase libremente por encima de las siguientes líneas de hora sin duplicarse.
-                                const heightPercent = Math.max((duracionMin / 60) * 100, 38);
-                                const citaKey = itemCita.id || itemCita.uid;
-                                const widthPercentClass = elementosEnEstaHora.length > 1 ? 'w-[48%]' : 'left-1 right-1';
-                                const leftOffsetStyle = elementosEnEstaHora.length > 1 && cIdx === 1 ? 'left-[52%]' : 'left-1';
+                            {itemCita.esBloqueo && estaEditandoBloqueo && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (typeof eliminarCitaOBloqueo === 'function') {
+                                      eliminarCitaOBloqueo(itemCita);
+                                    }
+                                    setBloqueoEditandoId(null);
+                                  }}
+                                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded px-1.5 py-0.5 text-[8px] font-bold shadow-lg z-50 flex items-center gap-0.5"
+                                >
+                                  🗑️ Eliminar
+                                </button>
 
-                                return (
-                                  <div 
-                                    key={cIdx}
-                                    draggable={!itemCita.esBloqueo}
-                                    onDragStart={(e) => e.dataTransfer.setData("text/plain", citaKey)}
-                                    onClick={(e) => { e.stopPropagation(); abrirModalCita(itemCita); }} 
-                                    style={{ top: `${topPercent}%`, height: `${heightPercent}%`, minHeight: '38px', zIndex: 35 }}
-                                    className={`absolute ${widthPercentClass} ${leftOffsetStyle} p-1.5 rounded-xl border transition shadow-sm flex flex-col justify-center overflow-hidden ${itemCita.esBloqueo ? 'bg-rose-100 text-rose-900 border-rose-300 font-bold cursor-pointer hover:bg-rose-200' : 'cursor-grab active:cursor-grabbing hover:scale-[1.02] ' + itemCita.color}`}
-                                  >
-                                    <div className="flex justify-between items-center pointer-events-none">
-                                      <span className="font-black truncate text-[8px] block">
-                                        {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : itemCita.cliente}
-                                      </span>
-                                      <span className="text-[7px] font-bold opacity-80">{itemCita.hora} {itemCita.horaFin ? `- ${itemCita.horaFin}` : ''}</span>
-                                    </div>
-                                    {!itemCita.esBloqueo && (
-                                      <span className="text-[7px] opacity-75 truncate font-bold block pointer-events-none">
-                                        {itemCita.servicio} ({duracionMin}m)
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <div className="text-center text-slate-200 text-[9px] h-full flex items-center justify-center"></div>
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0 h-4 bg-rose-600 hover:bg-rose-500 cursor-s-resize flex items-center justify-center transition-colors touch-none"
+                                  title="Arrastra para cambiar hora de cierre"
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    const startY = e.clientY;
+                                    const minInicioOriginal = minutosItemInicio;
+                                    
+                                    const onMouseMove = (moveEvent) => {
+                                      const deltaY = moveEvent.clientY - startY;
+                                      const deltaMinutos = Math.round(deltaY / (50 / 60) / 15) * 15;
+                                      const nuevosMinFin = minInicioOriginal + duracionMin + deltaMinutos;
+                                      const nuevaHoraFinStr = minutosAHoraTexto(nuevosMinFin);
+                                      
+                                      if (typeof actualizarHoraFinBloqueo === 'function') {
+                                        actualizarHoraFinBloqueo(itemCita, nuevaHoraFinStr);
+                                      }
+                                    };
+
+                                    const onMouseUp = () => {
+                                      window.removeEventListener('mousemove', onMouseMove);
+                                      window.removeEventListener('mouseup', onMouseUp);
+                                    };
+
+                                    window.addEventListener('mousemove', onMouseMove);
+                                    window.addEventListener('mouseup', onMouseUp);
+                                  }}
+                                  onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                    const touchStartY = e.touches[0].clientY;
+                                    const minInicioOriginal = minutosItemInicio;
+
+                                    const onTouchMove = (moveEvent) => {
+                                      const deltaY = moveEvent.touches[0].clientY - touchStartY;
+                                      const deltaMinutos = Math.round(deltaY / (50 / 60) / 15) * 15;
+                                      const nuevosMinFin = minInicioOriginal + duracionMin + deltaMinutos;
+                                      const nuevaHoraFinStr = minutosAHoraTexto(nuevosMinFin);
+
+                                      if (typeof actualizarHoraFinBloqueo === 'function') {
+                                        actualizarHoraFinBloqueo(itemCita, nuevaHoraFinStr);
+                                      }
+                                    };
+
+                                    const onTouchEnd = () => {
+                                      window.removeEventListener('touchmove', onTouchMove);
+                                      window.removeEventListener('touchend', onTouchEnd);
+                                    };
+
+                                    window.addEventListener('touchmove', onTouchMove);
+                                    window.addEventListener('touchend', onTouchEnd);
+                                  }}
+                                >
+                                  <div className="w-8 h-1 bg-white rounded-full"></div>
+                                </div>
+                              </>
                             )}
                           </div>
                         );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
+                      })
+                    ) : (
+                      <div className="text-center text-slate-600 text-[9px] h-full flex items-center justify-center"></div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+</div>
         )}
 
         {modalBloqueoAbierto && (
@@ -1477,7 +1731,7 @@ export default function PanelProfesionales() {
                 {modalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Guardar Cambios de Bloqueo' : 'Guardar Reprogramación'}</>}
               </button>
               
-              <button disabled={modalLoading} eval onClick={() => eliminarCitaFirestore()} className="w-full bg-red-50 border border-red-200 text-red-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-red-100">
+              <button disabled={modalLoading} onClick={() => eliminarCitaFirestore()} className="w-full bg-red-50 border border-red-200 text-red-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-red-100">
                 <Trash2 className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Eliminar Bloqueo' : 'Eliminar Registro'}
               </button>
             </div>
@@ -1595,19 +1849,11 @@ export default function PanelProfesionales() {
         </button>
         <button onClick={() => setActiveTab('estadisticas')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'estadisticas' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
           <Sparkles className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wide">Panel</span>
+          <span className="text-[9px] uppercase tracking-wide">Estadísticas</span>
         </button>
         <button onClick={() => setActiveTab('perfil')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'perfil' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
           <Edit3 className="w-5 h-5" />
           <span className="text-[9px] uppercase tracking-wide">Perfil</span>
-        </button>
-        <button 
-          type="button"
-          onClick={() => setShowLogoutModal(value => !value)}
-          className="flex flex-col items-center gap-1 text-slate-400 font-bold cursor-pointer hover:text-red-600 transition-colors"
-        >
-          <LogOut className="w-5 h-5 text-red-600" />
-          <span className="text-[9px] text-red-600 uppercase tracking-wide">Salir</span>
         </button>
       </nav>
     </div>
