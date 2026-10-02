@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, Sparkles, CheckCircle2, Edit3, Save, RefreshCw, AlertCircle, 
   Plus, Tag, ArrowRight, AlertTriangle, 
-  Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown
+  Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown, FileText, DollarSign, User, Phone, Check
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
+import Wallet from './Wallet'
 
 // Horario completo de las 24 horas del día
 const horasCalendario = [
@@ -50,7 +51,7 @@ export default function PanelProfesionales() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   
-  const [vistaCalendario, setVistaCalendario] = useState('semanal'); // 'diario', '3dias', 'semanal'
+  const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
@@ -65,8 +66,6 @@ export default function PanelProfesionales() {
   const [nuevaHoraCita, setNuevaHoraCita] = useState('');
   const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('1:00 a. m.');
   const [nuevoMotivoBloqueo, setNuevoMotivoBloqueo] = useState('');
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [menuAgendaAbierto, setMenuAgendaAbierto] = useState(false);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
@@ -107,25 +106,31 @@ export default function PanelProfesionales() {
   const [citasFirestore, setCitasFirestore] = useState([]);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Estados para Facturación Manual
+  const [facturaCliente, setFacturaCliente] = useState('');
+  const [facturaTelefono, setFacturaTelefono] = useState('');
+  const [facturaServicio, setFacturaServicio] = useState('');
+  const [facturaValor, setFacturaValor] = useState('');
+  const [facturaMetodoPago, setFacturaMetodoPago] = useState('Efectivo');
+  const [facturaNotas, setFacturaNotas] = useState('');
+  const [facturasGuardadas, setFacturasGuardadas] = useState([]);
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
-    const limpio = horaStr.trim().toUpperCase();
+    const limpio = horaStr.trim().toUpperCase().replace(/\./g, '');
+    const partesHora = limpio.split(':');
+    const h = parseInt(partesHora[0], 10) || 0;
+    const m = parseInt(partesHora[1], 10) || 0;
     
-    if (limpio.includes(':') && !limpio.includes('M')) {
-      const [h, m] = limpio.split(':').map(Number);
-      return (h || 0) * 60 + (m || 0);
-    }
+    const esPM = limpio.includes('P');
+    const esAM = limpio.includes('A');
 
-    const sinPuntos = limpio.replace(/\./g, '');
-    const partes = sinPuntos.split(' ');
-    const [h, m] = partes[0].split(':').map(Number);
-    const periodo = partes[1]; 
-    
-    let realH = h || 0;
-    if (periodo === 'PM' && realH < 12) realH += 12;
-    if (periodo === 'AM' && realH === 12) realH = 0;
-    return realH * 60 + (m || 0);
+    let realH = h;
+    if (esPM && realH < 12) realH += 12;
+    if (esAM && realH === 12) realH = 0;
+    return realH * 60 + m;
   };
 
   const renderFieldView = (label, value) => {
@@ -192,7 +197,6 @@ export default function PanelProfesionales() {
   useEffect(() => {
     const calcTime = () => {
       const now = new Date();
-      // Cálculo basado en las 24 horas completas (1440 minutos totales del día)
       setCurrentTimeMinutes(Math.max(0, Math.min(100, ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100)));
     };
     calcTime();
@@ -287,6 +291,7 @@ export default function PanelProfesionales() {
           });
 
           primerCargaRef.current = false;
+          // CORRECCIÓN: Se permite conservar los elementos bloqueados asegurando que no se descarten por error
           setCitasFirestore(citasServer.filter(c => c.estado !== 'cancelada' && c.estado !== 'cancelado'));
         });
 
@@ -717,10 +722,7 @@ export default function PanelProfesionales() {
                 </div>
 
                 {horasCalendario.map((itemHora, idx) => {
-                  const [horaFilaStr, periodoFila] = itemHora.label.split(' ');
-                  let [fH, fM] = horaFilaStr.split(':').map(Number);
-                  if (periodoFila === 'PM' && fH < 12) fH += 12;
-                  if (periodoFila === 'AM' && fH === 12) fH = 0;
+                  const [fH, fM] = itemHora.val24.split(':').map(Number);
                   const minutosFilaInicio = fH * 60 + fM;
                   const minutosFilaFin = minutosFilaInicio + 60;
 
@@ -1166,6 +1168,11 @@ export default function PanelProfesionales() {
           </div>
         )}
 
+        {/* Módulo Integrado Facturacionmanual.jsx */}
+        {activeTab === 'facturacion' && (
+          <Wallet />
+        )}
+
         {activeTab === 'estadisticas' && (
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs"><p className="text-[9px] font-bold text-slate-400 uppercase">Calificación</p><p className="text-2xl font-black text-indigo-600 mt-1">4.9 ★</p></div>
@@ -1550,30 +1557,34 @@ export default function PanelProfesionales() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2.5 flex justify-around items-center z-40 max-w-lg mx-auto shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2.5 flex justify-around items-center z-40 max-w-lg mx-auto shadow-lg">
         <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
           <Calendar className="w-4 h-4" />
-          <span className="text-[8px] uppercase">Agenda</span>
+          <span className="text-[7px] uppercase">Agenda</span>
         </button>
         <button onClick={() => setActiveTab('servicios')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
           <Tag className="w-4 h-4" />
-          <span className="text-[8px] uppercase">Servicios</span>
+          <span className="text-[7px] uppercase">Servicios</span>
+        </button>
+        <button onClick={() => setActiveTab('facturacion')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
+          <FileText className="w-4 h-4" />
+          <span className="text-[7px] uppercase">Facturación</span>
         </button>
         <button onClick={() => setActiveTab('estadisticas')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
           <Sparkles className="w-4 h-4" />
-          <span className="text-[8px] uppercase">Panel</span>
+          <span className="text-[7px] uppercase">Panel</span>
         </button>
         <button onClick={() => setActiveTab('perfil')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
           <Edit3 className="w-4 h-4" />
-          <span className="text-[8px] uppercase">Perfil</span>
+          <span className="text-[7px] uppercase">Perfil</span>
         </button>
         <button 
           type="button"
-          onClick={() => setShowLogoutModal(value => !value)} // abre modal salir
+          onClick={() => setShowLogoutModal(value => !value)}
           className="flex flex-col items-center gap-0.5 text-slate-400 font-bold cursor-pointer hover:text-red-600 transition-colors"
         >
           <LogOut className="w-4 h-4 text-red-600" />
-          <span className="text-[8px] text-red-600 uppercase">Salir</span>
+          <span className="text-[7px] text-red-600 uppercase">Salir</span>
         </button>
       </nav>
     </div>
