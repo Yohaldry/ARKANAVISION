@@ -112,12 +112,24 @@ const BarberBookingView = ({ onBookingComplete }) => {
     if (!form.nombre || !form.apellido || !form.telefono || !form.direccion) return alert("Completa los campos obligatorios (*).");
     try {
       const bookingData = {
-        barberoId, barberoName: barber.name, fecha: selectedDate, hora: selectedTime,
-        servicios: selectedServices.map(s => s.name),
+        barberoId, 
+        barberoName: barber.name, 
+        fecha: selectedDate, 
+        hora: selectedTime,
+        // Guardamos un array de objetos con nombre y precio formateado (o numérico)
+        servicios: selectedServices.map(s => ({
+          nombre: s.name,
+          precio: s.priceFormatted,
+          precioNum: s.priceNum
+        })),
         precioTotal: formatCOP(totalPrecioNum),
         duracionTotal: `${totalDuracion} min`,
         clienteNombre: `${form.nombre} ${form.apellido}`,
-        ...form, referencia: form.referencia || 'N/A', torreApto: form.torreApto || 'N/A', estado: 'pendiente', createdAt: new Date().toISOString()
+        ...form, 
+        referencia: form.referencia || 'N/A', 
+        torreApto: form.torreApto || 'N/A', 
+        estado: 'pendiente', 
+        createdAt: new Date().toISOString()
       };
       await addDoc(collection(db, "citas"), bookingData);
       setDetalleCita(bookingData);

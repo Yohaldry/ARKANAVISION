@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, Sparkles, CheckCircle2, Edit3, Save, RefreshCw, AlertCircle, 
   Plus, Tag, ArrowRight, AlertTriangle, 
-  Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown, FileText, DollarSign, User, Phone, Check
+  Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown, FileText, Check
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where } from 'firebase/firestore';
@@ -66,6 +66,7 @@ export default function PanelProfesionales() {
   const [nuevaHoraCita, setNuevaHoraCita] = useState('');
   const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('1:00 a. m.');
   const [nuevoMotivoBloqueo, setNuevoMotivoBloqueo] = useState('');
+  const [nuevoServicioCita, setNuevoServicioCita] = useState('');
 
   const [menuAgendaAbierto, setMenuAgendaAbierto] = useState(false);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
@@ -74,7 +75,7 @@ export default function PanelProfesionales() {
   const [datosBloqueo, setDatosBloqueo] = useState({ 
     fechaStr: new Date().toISOString().split('T')[0], 
     horaInicio: '12:00 a. m.', 
-    horaFin: '1:00 a. m.', 
+    horaFin: '7:00 a. m.', 
     motivo: 'No disponible' 
   });
 
@@ -107,15 +108,6 @@ export default function PanelProfesionales() {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Estados para Facturación Manual
-  const [facturaCliente, setFacturaCliente] = useState('');
-  const [facturaTelefono, setFacturaTelefono] = useState('');
-  const [facturaServicio, setFacturaServicio] = useState('');
-  const [facturaValor, setFacturaValor] = useState('');
-  const [facturaMetodoPago, setFacturaMetodoPago] = useState('Efectivo');
-  const [facturaNotas, setFacturaNotas] = useState('');
-  const [facturasGuardadas, setFacturasGuardadas] = useState([]);
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
@@ -291,8 +283,7 @@ export default function PanelProfesionales() {
           });
 
           primerCargaRef.current = false;
-          // CORRECCIÓN: Se permite conservar los elementos bloqueados asegurando que no se descarten por error
-          setCitasFirestore(citasServer.filter(c => c.estado !== 'cancelada' && c.estado !== 'cancelado'));
+          setCitasFirestore(citasServer);
         });
 
       } else { 
@@ -335,8 +326,9 @@ export default function PanelProfesionales() {
     setCitaSeleccionada(cita);
     setNuevaFechaCita(cita.fechaStr || '');
     setNuevaHoraCita(cita.hora || '');
-    setNuevaHoraFinCita(cita.horaFin || '1:00 a. m.');
+    setNuevaHoraFinCita(cita.horaFin || '7:00 a. m.');
     setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
+    setNuevoServicioCita(cita.servicio || '');
   };
 
   const actualizarCitaArrastrada = async (cita, nuevaFechaStr, nuevaHoraExacta) => {
@@ -384,10 +376,13 @@ export default function PanelProfesionales() {
         datosActualizacion.motivo = nuevoMotivoBloqueo;
       } else {
         datosActualizacion.estado = nuevoEstado;
+        if (nuevoServicioCita) {
+          datosActualizacion.servicio = nuevoServicioCita;
+        }
       }
 
       await updateDoc(citaRef, datosActualizacion);
-      setSuccessMsg(citaSeleccionada.esBloqueo ? 'Bloqueo actualizado correctamente' : 'Cita actualizada correctamente');
+      setSuccessMsg(citaSeleccionada.esBloqueo ? 'Bloqueo actualizado correctamente' : `Cita actualizada a: ${nuevoEstado}`);
       setCitaSeleccionada(null);
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch {
@@ -735,6 +730,7 @@ export default function PanelProfesionales() {
                       {diasVisibles.map((dia, dIdx) => {
                         const fechaStr = dia.fechaObj.toISOString().split('T')[0];
 
+                        // Renderizamos únicamente en la celda correspondiente a la hora de inicio exacta del evento
                         const elementosEnEstaHora = citasFirestore.filter(c => {
                           if (c.fechaStr !== fechaStr || !c.hora) return false;
                           const partesHora = c.hora.trim().toUpperCase().split(' ');
@@ -746,13 +742,8 @@ export default function PanelProfesionales() {
                           if (cPeriodo === 'AM' && realH === 12) realH = 0;
                           const minutosCitaInicio = realH * 60 + cM;
 
-                          if (c.esBloqueo && c.horaFin) {
-                            const minFinBloqueo = horaAMinutos(c.horaFin);
-                            return minutosCitaInicio <= minutosFilaFin && minFinBloqueo > minutosFilaInicio;
-                          }
-
-                          const minutosCitaFin = minutosCitaInicio + parseInt(c.duracionTotal || 45, 10);
-                          return minutosCitaInicio < minutosFilaFin && minutosCitaFin > minutosFilaInicio;
+                          // Verificamos si esta fila contiene la hora de inicio exacta del elemento
+                          return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
                         });
 
                         return (
@@ -819,7 +810,12 @@ export default function PanelProfesionales() {
                                   if (minFin > minutosItemInicio) duracionMin = minFin - minutosItemInicio;
                                 }
 
-                                const topPercent = Math.max(0, ((minutosItemInicio - minutosFilaInicio) / 60) * 100);
+                                // Offset dentro de la misma celda de inicio basado en los minutos transcurridos de esa hora
+                                const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+                                const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                                
+                                // Calculamos la altura total proporcional en porcentaje de acuerdo a los minutos totales de duración,
+                                // permitiendo que se extienda y pase libremente por encima de las siguientes líneas de hora sin duplicarse.
                                 const heightPercent = Math.max((duracionMin / 60) * 100, 38);
                                 const citaKey = itemCita.id || itemCita.uid;
                                 const widthPercentClass = elementosEnEstaHora.length > 1 ? 'w-[48%]' : 'left-1 right-1';
@@ -831,8 +827,8 @@ export default function PanelProfesionales() {
                                     draggable={!itemCita.esBloqueo}
                                     onDragStart={(e) => e.dataTransfer.setData("text/plain", citaKey)}
                                     onClick={(e) => { e.stopPropagation(); abrirModalCita(itemCita); }} 
-                                    style={{ top: `${topPercent}%`, height: `${heightPercent}%`, minHeight: '38px' }}
-                                    className={`absolute ${widthPercentClass} ${leftOffsetStyle} p-1.5 rounded-xl border transition shadow-sm z-20 flex flex-col justify-center overflow-visible ${itemCita.esBloqueo ? 'bg-rose-100 text-rose-900 border-rose-300 font-bold cursor-pointer hover:bg-rose-200' : 'cursor-grab active:cursor-grabbing hover:scale-[1.02] ' + itemCita.color}`}
+                                    style={{ top: `${topPercent}%`, height: `${heightPercent}%`, minHeight: '38px', zIndex: 35 }}
+                                    className={`absolute ${widthPercentClass} ${leftOffsetStyle} p-1.5 rounded-xl border transition shadow-sm flex flex-col justify-center overflow-hidden ${itemCita.esBloqueo ? 'bg-rose-100 text-rose-900 border-rose-300 font-bold cursor-pointer hover:bg-rose-200' : 'cursor-grab active:cursor-grabbing hover:scale-[1.02] ' + itemCita.color}`}
                                   >
                                     <div className="flex justify-between items-center pointer-events-none">
                                       <span className="font-black truncate text-[8px] block">
@@ -1168,7 +1164,6 @@ export default function PanelProfesionales() {
           </div>
         )}
 
-        {/* Módulo Integrado Facturacionmanual.jsx */}
         {activeTab === 'facturacion' && (
           <Wallet />
         )}
@@ -1400,6 +1395,22 @@ export default function PanelProfesionales() {
                 )}
               </div>
 
+              {!citaSeleccionada.esBloqueo && (
+                <div className="space-y-2 pt-1">
+                  <label className="text-[8px] text-slate-400 font-bold block mb-0.5 uppercase">Cambiar / Actualizar Servicio</label>
+                  <select 
+                    value={nuevoServicioCita} 
+                    onChange={e => setNuevoServicioCita(e.target.value)} 
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium"
+                  >
+                    <option value={citaSeleccionada.servicio}>{citaSeleccionada.servicio} (Actual)</option>
+                    {serviciosFirebase.map((serv) => (
+                      <option key={serv.id} value={serv.nombre}>{serv.nombre} - {serv.precio}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <p className="font-bold text-slate-700 uppercase text-[9px]">
                   {citaSeleccionada.esBloqueo ? 'Modificar Bloqueo:' : 'Reprogramar Fecha y Hora:'}
@@ -1443,20 +1454,32 @@ export default function PanelProfesionales() {
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <button disabled={modalLoading} onClick={() => actualizarCitaFirestore('Confirmada')} className={`w-full text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition ${citaSeleccionada.esBloqueo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
-                {modalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Guardar Cambios de Bloqueo' : 'Guardar / Reprogramar'}</>}
+              {!citaSeleccionada.esBloqueo && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    disabled={modalLoading} 
+                    onClick={() => actualizarCitaFirestore('finalizada')} 
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition shadow-sm"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Finalizar
+                  </button>
+                  <button 
+                    disabled={modalLoading} 
+                    onClick={() => actualizarCitaFirestore('cancelada')} 
+                    className="w-full bg-amber-50 border border-amber-200 text-amber-700 font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-amber-100"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+
+              <button disabled={modalLoading} onClick={() => actualizarCitaFirestore(citaSeleccionada.esBloqueo ? 'bloqueado' : 'confirmada')} className={`w-full text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition ${citaSeleccionada.esBloqueo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                {modalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Guardar Cambios de Bloqueo' : 'Guardar Reprogramación'}</>}
               </button>
               
-              <div className={citaSeleccionada.esBloqueo ? "flex gap-2" : "grid grid-cols-2 gap-2"}>
-                {!citaSeleccionada.esBloqueo && (
-                  <button disabled={modalLoading} onClick={() => actualizarCitaFirestore('Cancelada')} className="bg-amber-50 border border-amber-200 text-amber-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-amber-100">
-                    Cancelar Cita
-                  </button>
-                )}
-                <button disabled={modalLoading} onClick={() => eliminarCitaFirestore()} className="w-full bg-red-50 border border-red-200 text-red-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-red-100">
-                  <Trash2 className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Eliminar Bloqueo' : 'Eliminar'}
-                </button>
-              </div>
+              <button disabled={modalLoading} eval onClick={() => eliminarCitaFirestore()} className="w-full bg-red-50 border border-red-200 text-red-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-red-100">
+                <Trash2 className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Eliminar Bloqueo' : 'Eliminar Registro'}
+              </button>
             </div>
           </div>
         </div>
@@ -1557,34 +1580,34 @@ export default function PanelProfesionales() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2.5 flex justify-around items-center z-40 max-w-lg mx-auto shadow-lg">
-        <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
-          <Calendar className="w-4 h-4" />
-          <span className="text-[7px] uppercase">Agenda</span>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-3 py-3.5 flex justify-around items-center z-40 max-w-lg mx-auto shadow-xl">
+        <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'agenda' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
+          <Calendar className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wide">Agenda</span>
         </button>
-        <button onClick={() => setActiveTab('servicios')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
-          <Tag className="w-4 h-4" />
-          <span className="text-[7px] uppercase">Servicios</span>
+        <button onClick={() => setActiveTab('servicios')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'servicios' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
+          <Tag className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wide">Servicios</span>
         </button>
-        <button onClick={() => setActiveTab('facturacion')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
-          <FileText className="w-4 h-4" />
-          <span className="text-[7px] uppercase">Facturación</span>
+        <button onClick={() => setActiveTab('facturacion')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'facturacion' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
+          <FileText className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wide">Facturación</span>
         </button>
-        <button onClick={() => setActiveTab('estadisticas')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
-          <Sparkles className="w-4 h-4" />
-          <span className="text-[7px] uppercase">Panel</span>
+        <button onClick={() => setActiveTab('estadisticas')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'estadisticas' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
+          <Sparkles className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wide">Panel</span>
         </button>
-        <button onClick={() => setActiveTab('perfil')} className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600 font-black' : 'text-slate-400 font-bold'}`}>
-          <Edit3 className="w-4 h-4" />
-          <span className="text-[7px] uppercase">Perfil</span>
+        <button onClick={() => setActiveTab('perfil')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'perfil' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
+          <Edit3 className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wide">Perfil</span>
         </button>
         <button 
           type="button"
           onClick={() => setShowLogoutModal(value => !value)}
-          className="flex flex-col items-center gap-0.5 text-slate-400 font-bold cursor-pointer hover:text-red-600 transition-colors"
+          className="flex flex-col items-center gap-1 text-slate-400 font-bold cursor-pointer hover:text-red-600 transition-colors"
         >
-          <LogOut className="w-4 h-4 text-red-600" />
-          <span className="text-[7px] text-red-600 uppercase">Salir</span>
+          <LogOut className="w-5 h-5 text-red-600" />
+          <span className="text-[9px] text-red-600 uppercase tracking-wide">Salir</span>
         </button>
       </nav>
     </div>
