@@ -87,27 +87,61 @@ export default function PanelProfesionales() {
     hora: '12:00 a. m.'
   });
 
- const handleCerrarSesion = async () => {
-  const confirmar = window.confirm("🚪 ¿Estás seguro de que deseas cerrar sesión?");
-  
-  if (confirmar) {
-    try {
-      // 1. Ejecuta el cierre de sesión real en tu backend (Ejemplo con Firebase Auth)
-      await signOut(auth);
-      
-      // 2. Si manejas localStorage o sessionStorage, limpia los datos de sesión
-      localStorage.clear();
-      sessionStorage.clear();
+  const handleCerrarSesion = () => {
+    if (document.getElementById('modal-salir-arkana')) return;
 
-      // 3. Redirige al usuario a la pantalla de inicio de sesión o recarga la vista
-      window.location.href = "/login"; // O usa tu router (ej. navigate('/login'))
-      
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      alert("Hubo un error al intentar cerrar sesión. Por favor, intenta de nuevo.");
-    }
-  }
-};
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-salir-arkana';
+    overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200';
+    
+    overlay.innerHTML = `
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-5 text-slate-100 space-y-4 scale-100 animate-in zoom-in-95 duration-150">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400 text-lg shadow-inner">
+            🚪
+          </div>
+          <div>
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-200">Cerrar Sesión</h3>
+            <p class="text-[10px] text-slate-400">¿Estás seguro de que deseas salir del sistema?</p>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+          <button
+            id="btn-cancelar-salir"
+            type="button"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all duration-200 cursor-pointer active:scale-95"
+          >
+            Cancelar
+          </button>
+          <button
+            id="btn-confirmar-salir"
+            type="button"
+            class="bg-red-600 hover:bg-red-500 text-white border border-red-500 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-lg shadow-red-900/30 active:scale-95"
+          >
+            Sí, Salir
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('btn-cancelar-salir').onclick = () => {
+      overlay.remove();
+    };
+
+    document.getElementById('btn-confirmar-salir').onclick = async () => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        await signOut(auth);
+        window.location.href = '/panelprofesionales';
+      } catch (error) {
+        console.error("Error al cerrar sesión:", error);
+        overlay.remove();
+      }
+    };
+  };
 
   const [serviciosFirebase, setServiciosFirebase] = useState([]);
   const [showServicioModal, setShowServicioModal] = useState(false);
@@ -642,9 +676,7 @@ export default function PanelProfesionales() {
         {activeTab === 'agenda' && (
       <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-slate-100 pb-1">
   
-  {/* 1. CONTROLES SUPERIORES (FIJOS Y COMPACTOS) */}
   <div className="shrink-0 space-y-1.5">
-    {/* Controles superiores: Fecha y Botones de Vista */}
     <div className="bg-slate-950 border border-slate-800 rounded-2xl p-2 shadow-xl space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
@@ -687,7 +719,6 @@ export default function PanelProfesionales() {
       </div>
     </div>
 
-    {/* Controles de la derecha: Botón HOY, Opciones de Agenda y Botón SALIR */}
     <div className="relative flex justify-end items-center gap-2">
       <button
         type="button"
@@ -697,21 +728,11 @@ export default function PanelProfesionales() {
         📍 Hoy
       </button>
 
-      {/* Botón de Opciones de Agenda en Azul Oscuro */}
       <button 
         onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
         className="bg-blue-900 hover:bg-blue-950 border border-blue-700/60 text-blue-100 font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
       >
         <Plus className="w-3.5 h-3.5 text-blue-300" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-300" />
-      </button>
-
-      {/* Botón Salir en Rojo */}
-      <button
-        type="button"
-        onClick={handleCerrarSesion} // Reemplaza esto con tu función real de salida si difiere
-        className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/40 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
-      >
-        🚪 Salir
       </button>
 
       {menuAgendaAbierto && (
@@ -721,7 +742,7 @@ export default function PanelProfesionales() {
               setMenuAgendaAbierto(false);
               setModalNuevaCitaAbierto(true);
             }}
-            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-600/20 hover:text-indigo-400 transition-colors flex items-center gap-2"
+            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-600/20 hover:text-indigo-400 transition-colors flex items-center gap-2 cursor-pointer"
           >
             ✨ Cita nueva
           </button>
@@ -730,7 +751,7 @@ export default function PanelProfesionales() {
               setMenuAgendaAbierto(false);
               setModalBloqueoAbierto(true);
             }}
-            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-600/20 hover:text-rose-400 transition-colors flex items-center gap-2 text-rose-400"
+            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-600/20 hover:text-rose-400 transition-colors flex items-center gap-2 text-rose-400 cursor-pointer"
           >
             🚫 Horario no disponible
           </button>
@@ -739,7 +760,6 @@ export default function PanelProfesionales() {
     </div>
   </div>
 
-  {/* 2. CONTENEDOR DE LA AGENDA (OCUPA EL RESTO EXACTO Y MANTIENE BORDES REDONDEADOS VISIBLES) */}
   <div 
     className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-xl border border-slate-800 bg-slate-950 [perspective:1400px] mb-2"
     onTouchStart={(e) => {
@@ -799,7 +819,6 @@ export default function PanelProfesionales() {
       }
     }}
   >
-    {/* 1. PÁGINA DE FONDO */}
     <div className="libro-pagina-fondo absolute inset-0 bg-slate-950 p-1 opacity-0 transition-opacity duration-150 pointer-events-none">
       <div className="grid sticky top-0 z-20 bg-slate-900 border-b border-slate-800 text-center text-[9px] font-black uppercase text-slate-400" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
         <div className="text-left pl-2 py-2 text-slate-500 font-bold text-[8px] border-r border-slate-800">Hora</div>
@@ -821,10 +840,7 @@ export default function PanelProfesionales() {
       </div>
     </div>
 
-    {/* 2. PÁGINA ACTUAL (CONTENEDOR DE LA TABLA) */}
     <div className="libro-pagina-actual bg-slate-950 relative w-full text-slate-100 [transform-style:preserve-3d] origin-left shadow-2xl rounded-2xl overflow-hidden">
-      
-      {/* CABECERA DE LOS DÍAS FIJA AL HACER SCROLL VERTICAL */}
       <div className="grid sticky top-0 z-20 bg-slate-900 border-b border-slate-800 text-center text-[9px] font-black uppercase text-slate-400" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
         <div className="text-left pl-2 py-2 text-slate-500 font-bold text-[8px] border-r border-slate-800 bg-slate-900">Hora</div>
         {diasVisibles.map((d, i) => {
@@ -957,7 +973,6 @@ export default function PanelProfesionales() {
                       elementosEnEstaHora.map((itemCita, cIdx) => {
                         const minutosItemInicio = convertirHoraAMinutos(itemCita.hora);
                         const citaKey = itemCita.id || itemCita.uid;
-                        const estaEditandoBloqueo = bloqueoEditandoId === citaKey;
 
                         let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
                         if (itemCita.esBloqueo && itemCita.horaFin) {
@@ -982,30 +997,21 @@ export default function PanelProfesionales() {
                             key={cIdx}
                             draggable={!itemCita.esBloqueo}
                             onDragStart={(e) => e.dataTransfer.setData("text/plain", citaKey)}
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              if (itemCita.esBloqueo) {
-                                setBloqueoEditandoId(estaEditandoBloqueo ? null : citaKey);
-                              }
-                            }}
                             onClick={(e) => { 
                               e.stopPropagation(); 
-                              if (!itemCita.esBloqueo) abrirModalCita(itemCita); 
-                              if (itemCita.esBloqueo && estaEditandoBloqueo) {
-                                setBloqueoEditandoId(null);
-                              }
+                              abrirModalCita(itemCita); 
                             }} 
                             style={{ 
                               top: `${topPercent}%`, 
                               height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 38)}px` : `${Math.max((duracionMin / 60) * 100, 38)}%`, 
                               minHeight: '38px', 
-                              zIndex: itemCita.esBloqueo ? (estaEditandoBloqueo ? 50 : 30) : 40,
+                              zIndex: itemCita.esBloqueo ? 30 : 40,
                               width: `calc(${widthPercent} - 4px)`,
                               left: `calc(${leftPercent} + 2px)`
                             }}
                             className={`absolute p-1.5 border transition-all duration-150 shadow-md flex flex-col justify-between overflow-hidden rounded-none ${
                               itemCita.esBloqueo 
-                                ? `bg-rose-950 text-rose-200 ${estaEditandoBloqueo ? 'border-2 border-white ring-2 ring-rose-500' : 'border-rose-800'} font-bold cursor-pointer hover:bg-rose-900 select-none` 
+                                ? 'bg-rose-950 text-rose-200 border-rose-800 font-bold cursor-pointer hover:bg-rose-900 select-none' 
                                 : 'cursor-grab active:cursor-grabbing hover:scale-[1.02] border-slate-700/80 bg-slate-800 text-slate-100'
                             }`}
                           >
@@ -1020,79 +1026,6 @@ export default function PanelProfesionales() {
                               <span className="text-[7px] text-slate-300 truncate font-bold block pointer-events-none">
                                 {itemCita.servicio} ({duracionMin}m)
                               </span>
-                            )}
-
-                            {itemCita.esBloqueo && estaEditandoBloqueo && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (typeof eliminarCitaOBloqueo === 'function') {
-                                      eliminarCitaOBloqueo(itemCita);
-                                    }
-                                    setBloqueoEditandoId(null);
-                                  }}
-                                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded px-1.5 py-0.5 text-[8px] font-bold shadow-lg z-50 flex items-center gap-0.5"
-                                >
-                                  🗑️ Eliminar
-                                </button>
-
-                                <div 
-                                  className="absolute bottom-0 left-0 right-0 h-4 bg-rose-600 hover:bg-rose-500 cursor-s-resize flex items-center justify-center transition-colors touch-none"
-                                  title="Arrastra para cambiar hora de cierre"
-                                  onMouseDown={(e) => {
-                                    e.stopPropagation();
-                                    const startY = e.clientY;
-                                    const minInicioOriginal = minutosItemInicio;
-                                    
-                                    const onMouseMove = (moveEvent) => {
-                                      const deltaY = moveEvent.clientY - startY;
-                                      const deltaMinutos = Math.round(deltaY / (50 / 60) / 15) * 15;
-                                      const nuevosMinFin = minInicioOriginal + duracionMin + deltaMinutos;
-                                      const nuevaHoraFinStr = minutosAHoraTexto(nuevosMinFin);
-                                      
-                                      if (typeof actualizarHoraFinBloqueo === 'function') {
-                                        actualizarHoraFinBloqueo(itemCita, nuevaHoraFinStr);
-                                      }
-                                    };
-
-                                    const onMouseUp = () => {
-                                      window.removeEventListener('mousemove', onMouseMove);
-                                      window.removeEventListener('mouseup', onMouseUp);
-                                    };
-
-                                    window.addEventListener('mousemove', onMouseMove);
-                                    window.addEventListener('mouseup', onMouseUp);
-                                  }}
-                                  onTouchStart={(e) => {
-                                    e.stopPropagation();
-                                    const touchStartY = e.touches[0].clientY;
-                                    const minInicioOriginal = minutosItemInicio;
-
-                                    const onTouchMove = (moveEvent) => {
-                                      const deltaY = moveEvent.touches[0].clientY - touchStartY;
-                                      const deltaMinutos = Math.round(deltaY / (50 / 60) / 15) * 15;
-                                      const nuevosMinFin = minInicioOriginal + duracionMin + deltaMinutos;
-                                      const nuevaHoraFinStr = minutosAHoraTexto(nuevosMinFin);
-
-                                      if (typeof actualizarHoraFinBloqueo === 'function') {
-                                        actualizarHoraFinBloqueo(itemCita, nuevaHoraFinStr);
-                                      }
-                                    };
-
-                                    const onTouchEnd = () => {
-                                      window.removeEventListener('touchmove', onTouchMove);
-                                      window.removeEventListener('touchend', onTouchEnd);
-                                    };
-
-                                    window.addEventListener('touchmove', onTouchMove);
-                                    window.addEventListener('touchend', onTouchEnd);
-                                  }}
-                                >
-                                  <div className="w-8 h-1 bg-white rounded-full"></div>
-                                </div>
-                              </>
                             )}
                           </div>
                         );
@@ -1114,108 +1047,205 @@ export default function PanelProfesionales() {
 
         {modalBloqueoAbierto && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                  🚫 Agregar Horario No Disponible
-                </h3>
-                <button onClick={() => setModalBloqueoAbierto(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
-              </div>
+  <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+      <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+        🚫 Agregar Horario No Disponible
+      </h3>
+      <button onClick={() => setModalBloqueoAbierto(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
+    </div>
 
-              <div className="space-y-3 text-[11px]">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Fecha:</label>
-                  <input 
-                    type="date" 
-                    value={datosBloqueo.fechaStr} 
-                    onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaStr: e.target.value})}
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                  />
-                </div>
+    <div className="space-y-3 text-[11px]">
+      <div>
+        <label className="block font-bold text-slate-600 mb-1">Tipo de Bloqueo:</label>
+        <select 
+          value={datosBloqueo.tipoRepeticion || 'unico'} 
+          onChange={(e) => setDatosBloqueo({...datosBloqueo, tipoRepeticion: e.target.value})}
+          className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
+        >
+          <option value="unico">Día único</option>
+          <option value="rango">Rango de fechas (Continuo)</option>
+          <option value="semanal">Días específicos de la semana (Recurrente)</option>
+        </select>
+      </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Hora Inicio:</label>
-                    <select 
-                      value={datosBloqueo.horaInicio} 
-                      onChange={(e) => setDatosBloqueo({...datosBloqueo, horaInicio: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
-                    >
-                      {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.label}>{h.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Hora Fin:</label>
-                    <select 
-                      value={datosBloqueo.horaFin} 
-                      onChange={(e) => setDatosBloqueo({...datosBloqueo, horaFin: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
-                    >
-                      {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.label}>{h.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Motivo del bloqueo:</label>
-                  <input 
-                    type="text" 
-                    value={datosBloqueo.motivo} 
-                    onChange={(e) => setDatosBloqueo({...datosBloqueo, motivo: e.target.value})}
-                    placeholder="Ej: Madrugada, Descanso..."
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button 
-                  onClick={() => setModalBloqueoAbierto(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-[10px] cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={async () => {
-                    const minInicio = horaAMinutos(datosBloqueo.horaInicio);
-                    const minFin = horaAMinutos(datosBloqueo.horaFin);
-                    if (minFin <= minInicio) {
-                      alert('La hora fin debe ser posterior a la hora de inicio.');
-                      return;
-                    }
-                    const duracionTotalMinutos = minFin - minInicio;
-
-                    const nuevoBloqueo = {
-                      barberoId: authUser.uid,
-                      estado: 'bloqueado',
-                      fecha: datosBloqueo.fechaStr,
-                      hora: datosBloqueo.horaInicio,
-                      horaFin: datosBloqueo.horaFin,
-                      duracionTotal: duracionTotalMinutos,
-                      motivo: datosBloqueo.motivo,
-                      clienteNombre: 'BLOQUEADO'
-                    };
-
-                    try {
-                      await addDoc(collection(db, 'citas'), nuevoBloqueo);
-                      setSuccessMsg('Horario no disponible registrado correctamente.');
-                      setModalBloqueoAbierto(false);
-                      setTimeout(() => setSuccessMsg(''), 3000);
-                    } catch {
-                      setErrorMsg('Error al guardar el bloqueo en la base de datos.');
-                    }
-                  }}
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl transition text-[10px] shadow-sm cursor-pointer"
-                >
-                  Guardar Bloqueo
-                </button>
-              </div>
-            </div>
+      {datosBloqueo.tipoRepeticion === 'rango' ? (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-bold text-slate-600 mb-1">Fecha Inicio:</label>
+            <input 
+              type="date" 
+              value={datosBloqueo.fechaStr} 
+              onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaStr: e.target.value})}
+              className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+            />
           </div>
+          <div>
+            <label className="block font-bold text-slate-600 mb-1">Fecha Fin:</label>
+            <input 
+              type="date" 
+              value={datosBloqueo.fechaFinRango || ''} 
+              onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaFinRango: e.target.value})}
+              className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+            />
+          </div>
+        </div>
+      ) : (
+        <div>
+          <label className="block font-bold text-slate-600 mb-1">Fecha:</label>
+          <input 
+            type="date" 
+            value={datosBloqueo.fechaStr} 
+            onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaStr: e.target.value})}
+            className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+          />
+        </div>
+      )}
+
+      {datosBloqueo.tipoRepeticion === 'semanal' && (
+        <div>
+          <label className="block font-bold text-slate-600 mb-1">Repetir durante (semanas/meses):</label>
+          <input 
+            type="number" 
+            min="1" 
+            max="52"
+            value={datosBloqueo.cantidadSemanas || 1} 
+            onChange={(e) => setDatosBloqueo({...datosBloqueo, cantidadSemanas: parseInt(e.target.value) || 1})}
+            placeholder="Ej: 4 semanas"
+            className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block font-bold text-slate-600 mb-1">Hora Inicio:</label>
+          <select 
+            value={datosBloqueo.horaInicio} 
+            onChange={(e) => setDatosBloqueo({...datosBloqueo, horaInicio: e.target.value})}
+            className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
+          >
+            {horasCalendario.map((h, i) => (
+              <option key={i} value={h.label}>{h.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block font-bold text-slate-600 mb-1">Hora Fin:</label>
+          <select 
+            value={datosBloqueo.horaFin} 
+            onChange={(e) => setDatosBloqueo({...datosBloqueo, horaFin: e.target.value})}
+            className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
+          >
+            {horasCalendario.map((h, i) => (
+              <option key={i} value={h.label}>{h.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block font-bold text-slate-600 mb-1">Motivo del bloqueo:</label>
+        <input 
+          type="text" 
+          value={datosBloqueo.motivo} 
+          onChange={(e) => setDatosBloqueo({...datosBloqueo, motivo: e.target.value})}
+          placeholder="Ej: Madrugada, Descanso, Vacaciones..."
+          className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+        />
+      </div>
+    </div>
+
+    <div className="flex gap-2 pt-2">
+      <button 
+        onClick={() => setModalBloqueoAbierto(false)}
+        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-[10px] cursor-pointer"
+      >
+        Cancelar
+      </button>
+      <button 
+        onClick={async () => {
+          const minInicio = horaAMinutos(datosBloqueo.horaInicio);
+          const minFin = horaAMinutos(datosBloqueo.horaFin);
+          if (minFin <= minInicio) {
+            alert('La hora fin debe ser posterior a la hora de inicio.');
+            return;
+          }
+          const duracionTotalMinutos = minFin - minInicio;
+          const tipo = datosBloqueo.tipoRepeticion || 'unico';
+
+          let fechasAGenerar = [];
+
+          if (tipo === 'unico') {
+            if (!datosBloqueo.fechaStr) {
+              alert('Por favor selecciona una fecha.');
+              return;
+            }
+            fechasAGenerar.push(datosBloqueo.fechaStr);
+          } else if (tipo === 'rango') {
+            if (!datosBloqueo.fechaStr || !datosBloqueo.fechaFinRango) {
+              alert('Por favor selecciona la fecha de inicio y fin.');
+              return;
+            }
+            let curr = new Date(datosBloqueo.fechaStr + 'T00:00:00');
+            let end = new Date(datosBloqueo.fechaFinRango + 'T00:00:00');
+            
+            if (curr > end) {
+              alert('La fecha de inicio no puede ser posterior a la fecha fin.');
+              return;
+            }
+
+            while (curr <= end) {
+              fechasAGenerar.push(curr.toISOString().split('T')[0]);
+              curr.setDate(curr.getDate() + 1);
+            }
+          } else if (tipo === 'semanal') {
+            if (!datosBloqueo.fechaStr) {
+              alert('Por favor selecciona una fecha base.');
+              return;
+            }
+            const semanas = datosBloqueo.cantidadSemanas || 1;
+            let baseDate = new Date(datosBloqueo.fechaStr + 'T00:00:00');
+
+            for (let i = 0; i < semanas; i++) {
+              let d = new Date(baseDate);
+              d.setDate(d.getDate() + (i * 7));
+              fechasAGenerar.push(d.toISOString().split('T')[0]);
+            }
+          }
+
+          try {
+            const batchPromises = fechasAGenerar.map(async (fecha) => {
+              const nuevoBloqueo = {
+                barberoId: authUser.uid,
+                estado: 'bloqueado',
+                fecha: fecha,
+                hora: datosBloqueo.horaInicio,
+                horaFin: datosBloqueo.horaFin,
+                duracionTotal: duracionTotalMinutos,
+                motivo: datosBloqueo.motivo,
+                clienteNombre: 'BLOQUEADO'
+              };
+              return addDoc(collection(db, 'citas'), nuevoBloqueo);
+            });
+
+            await Promise.all(batchPromises);
+
+            setSuccessMsg(`Se han registrado ${fechasAGenerar.length} bloqueos correctamente.`);
+            setModalBloqueoAbierto(false);
+            setTimeout(() => setSuccessMsg(''), 3000);
+          } catch (error) {
+            console.error(error);
+            setErrorMsg('Error al guardar los bloqueos en la base de datos.');
+          }
+        }}
+        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl transition text-[10px] shadow-sm cursor-pointer"
+      >
+        Guardar Bloqueo(s)
+      </button>
+    </div>
+  </div>
+</div>
         )}
 
         {modalNuevaCitaAbierto && (
@@ -1585,6 +1615,51 @@ export default function PanelProfesionales() {
         )}
       </main>
 
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 flex items-center justify-around z-40 shadow-lg">
+        <button 
+          onClick={() => setActiveTab('agenda')}
+          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Calendar className="w-4 h-4" />
+          Agenda
+        </button>
+        <button 
+          onClick={() => setActiveTab('servicios')}
+          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Tag className="w-4 h-4" />
+          Servicios
+        </button>
+        <button 
+          onClick={() => setActiveTab('facturacion')}
+          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <FileText className="w-4 h-4" />
+          Finanzas
+        </button>
+        <button 
+          onClick={() => setActiveTab('estadisticas')}
+          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Stats
+        </button>
+        <button 
+          onClick={() => setActiveTab('perfil')}
+          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Edit3 className="w-4 h-4" />
+          Perfil
+        </button>
+        <button 
+          onClick={handleCerrarSesion}
+          className="flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer text-red-600 hover:text-red-700"
+        >
+          <LogOut className="w-4 h-4 text-red-600" />
+          Salir
+        </button>
+      </nav>
+
       {showLogoutModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn font-sans">
           <div className="w-full max-w-xs bg-white border border-slate-200 shadow-2xl rounded-2xl p-5 space-y-4 text-center">
@@ -1669,193 +1744,34 @@ export default function PanelProfesionales() {
                 <p className="font-bold text-slate-700 uppercase text-[9px]">
                   {citaSeleccionada.esBloqueo ? 'Modificar Bloqueo:' : 'Reprogramar Fecha y Hora:'}
                 </p>
-                
-                <input type="date" value={nuevaFechaCita} onChange={e => setNuevaFechaCita(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600" />
-                
-                {citaSeleccionada.esBloqueo ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[8px] text-slate-400 font-bold block mb-0.5">Hora Inicio</label>
-                        <select value={nuevaHoraCita} onChange={e => setNuevaHoraCita(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 text-[10px]">
-                          {horasCalendario.map((h, i) => (
-                            <option key={i} value={h.label}>{h.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[8px] text-slate-400 font-bold block mb-0.5">Hora Fin</label>
-                        <select value={nuevaHoraFinCita} onChange={e => setNuevaHoraFinCita(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 text-[10px]">
-                          {horasCalendario.map((h, i) => (
-                            <option key={i} value={h.label}>{h.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[8px] text-slate-400 font-bold block mb-0.5">Motivo</label>
-                      <input type="text" value={nuevoMotivoBloqueo} onChange={e => setNuevoMotivoBloqueo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600" placeholder="Motivo..." />
-                    </div>
-                  </>
-                ) : (
-                  <select value={nuevaHoraCita} onChange={e => setNuevaHoraCita(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600">
-                    {horasCalendario.map((h, i) => (
-                      <option key={i} value={h.label}>{h.label} ({h.val24})</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 pt-2">
-              {!citaSeleccionada.esBloqueo && (
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    disabled={modalLoading} 
-                    onClick={() => actualizarCitaFirestore('finalizada')} 
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition shadow-sm"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Finalizar
-                  </button>
-                  <button 
-                    disabled={modalLoading} 
-                    onClick={() => actualizarCitaFirestore('cancelada')} 
-                    className="w-full bg-amber-50 border border-amber-200 text-amber-700 font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-amber-100"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
-
-              <button disabled={modalLoading} onClick={() => actualizarCitaFirestore(citaSeleccionada.esBloqueo ? 'bloqueado' : 'confirmada')} className={`w-full text-white font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition ${citaSeleccionada.esBloqueo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
-                {modalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Guardar Cambios de Bloqueo' : 'Guardar Reprogramación'}</>}
-              </button>
-              
-              <button disabled={modalLoading} onClick={() => eliminarCitaFirestore()} className="w-full bg-red-50 border border-red-200 text-red-700 font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer hover:bg-red-100">
-                <Trash2 className="w-3.5 h-3.5" /> {citaSeleccionada.esBloqueo ? 'Eliminar Bloqueo' : 'Eliminar Registro'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showServicioModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h4 className={`text-xs font-black uppercase ${formServicio.categoria === 'paquete' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                {servicioEditando 
-                  ? 'Editar Elemento' 
-                  : (formServicio.categoria === 'paquete' ? '📦 Nuevo Paquete / Combo' : '✂️ Nuevo Servicio Individual')}
-              </h4>
-              <button onClick={() => setShowServicioModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleGuardarServicio} className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-slate-500">
-                  {formServicio.categoria === 'paquete' ? 'Nombre del Paquete *' : 'Nombre del Servicio *'}
-                </label>
                 <input 
-                  type="text" 
-                  name="nombre" 
-                  required 
-                  value={formServicio.nombre} 
-                  onChange={(e) => setFormServicio(prev => ({ ...prev, nombre: e.target.value }))} 
-                  placeholder={formServicio.categoria === 'paquete' ? "Ej: Combo VIP" : "Ej: Corte Mid Fade"} 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500" 
+                  type="date" 
+                  value={nuevaFechaCita} 
+                  onChange={e => setNuevaFechaCita(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
                 />
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-slate-500">Descripción</label>
-                <textarea 
-                  name="descripcion" 
-                  rows="2" 
-                  value={formServicio.descripcion} 
-                  onChange={(e) => setFormServicio(prev => ({ ...prev, descripcion: e.target.value }))} 
-                  placeholder="Detalles de lo que incluye..." 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 resize-none" 
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-slate-500">Precio *</label>
-                  <input 
-                    type="text" 
-                    name="precio" 
-                    required 
-                    value={formServicio.precio} 
-                    onChange={(e) => setFormServicio(prev => ({ ...prev, precio: e.target.value }))} 
-                    placeholder="Ej: $45.000 COP" 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500" 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-slate-500">Duración *</label>
-                  <input 
-                    type="text" 
-                    name="duracion" 
-                    required
-                    value={formServicio.duracion} 
-                    onChange={(e) => setFormServicio(prev => ({ ...prev, duracion: e.target.value }))} 
-                    placeholder="Ej: 45 min" 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500" 
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex gap-2">
-                <button 
-                  type="button" 
-                  onClick={() => setShowServicioModal(false)}
-                  className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className={`w-1/2 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-md ${
-                    formServicio.categoria === 'paquete' 
-                      ? 'bg-emerald-600 hover:bg-emerald-700' 
-                      : 'bg-indigo-600 hover:bg-indigo-700'
-                  }`}
-                >
-                  {servicioEditando 
-                    ? 'Actualizar' 
-                    : (formServicio.categoria === 'paquete' ? 'Guardar Paquete' : 'Guardar Servicio')}
-                </button>
-              </div>
-            </form>
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button 
+                onClick={eliminarCitaFirestore} 
+                disabled={modalLoading}
+                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-bold text-[10px] flex items-center justify-center gap-1 cursor-pointer transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Eliminar
+              </button>
+              <button 
+                onClick={() => actualizarCitaFirestore('confirmada')} 
+                disabled={modalLoading}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition shadow-sm"
+              >
+                {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Guardar</>}
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-3 py-3.5 flex justify-around items-center z-40 max-w-lg mx-auto shadow-xl">
-        <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'agenda' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
-          <Calendar className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wide">Agenda</span>
-        </button>
-        <button onClick={() => setActiveTab('servicios')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'servicios' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
-          <Tag className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wide">Servicios</span>
-        </button>
-        <button onClick={() => setActiveTab('facturacion')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'facturacion' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
-          <FileText className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wide">Facturación</span>
-        </button>
-        <button onClick={() => setActiveTab('estadisticas')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'estadisticas' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
-          <Sparkles className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wide">Estadísticas</span>
-        </button>
-        <button onClick={() => setActiveTab('perfil')} className={`flex flex-col items-center gap-1 cursor-pointer transition ${activeTab === 'perfil' ? 'text-indigo-600 font-black scale-105' : 'text-slate-400 font-bold hover:text-slate-600'}`}>
-          <Edit3 className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wide">Perfil</span>
-        </button>
-      </nav>
     </div>
   );
 }
