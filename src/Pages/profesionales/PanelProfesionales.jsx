@@ -463,18 +463,21 @@ export default function PanelProfesionales() {
     setModalLoading(false);
   };
 
-  const handleGuardarServicio = async (e) => {
+const handleGuardarServicio = async (e) => {
     e.preventDefault();
     if (!formServicio.nombre || !formServicio.precio) return alert('Nombre y precio son obligatorios');
 
     try {
+      const colorSeleccionado = formServicio.color || (formServicio.categoria === 'paquete' ? '#3b82f6' : '#eab308');
+
       if (servicioEditando) {
         await updateDoc(doc(db, 'servicios', servicioEditando.id), {
           nombre: formServicio.nombre,
           descripcion: formServicio.descripcion,
           precio: formServicio.precio,
           duracion: formServicio.duracion,
-          categoria: formServicio.categoria || 'servicio'
+          categoria: formServicio.categoria || 'servicio',
+          color: colorSeleccionado
         });
         setSuccessMsg('Elemento actualizado con éxito');
       } else {
@@ -484,13 +487,14 @@ export default function PanelProfesionales() {
           descripcion: formServicio.descripcion,
           precio: formServicio.precio,
           duracion: formServicio.duracion,
-          categoria: formServicio.categoria || 'servicio'
+          categoria: formServicio.categoria || 'servicio',
+          color: colorSeleccionado
         });
         setSuccessMsg('Elemento agregado con éxito');
       }
       setShowServicioModal(false);
       setServicioEditando(null);
-      setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
+      setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio', color: '#eab308' });
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch {
       setErrorMsg('Error al guardar el elemento');
@@ -1386,18 +1390,18 @@ export default function PanelProfesionales() {
   <div className="space-y-3">
     <div className="flex justify-between items-center">
       <div>
-        <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
-        <p className="text-[9px] text-slate-400">Configura los servicios y paquetes que ofreces a tus clientes</p>
+        <h3 className="text-xs font-black uppercase text-slate-100">Mis Servicios y Paquetes</h3>
+        <p className="text-[9px] text-neutral-400">Configura los servicios y paquetes que ofreces a tus clientes</p>
       </div>
       <div className="flex items-center gap-1.5">
         <button 
           type="button"
           onClick={() => {
             setServicioEditando(null);
-            setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
+            setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio', color: '#eab308' });
             setShowServicioModal(true);
           }}
-          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+          className="bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
         >
           <Plus className="w-3 h-3" /> Servicio
         </button>
@@ -1405,10 +1409,10 @@ export default function PanelProfesionales() {
           type="button"
           onClick={() => {
             setServicioEditando(null);
-            setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '60 min', categoria: 'paquete' });
+            setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '60 min', categoria: 'paquete', color: '#3b82f6' });
             setShowServicioModal(true);
           }}
-          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+          className="bg-neutral-800 hover:bg-neutral-700 text-slate-200 border border-neutral-700 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
         >
           <Plus className="w-3 h-3" /> Paquete
         </button>
@@ -1417,26 +1421,37 @@ export default function PanelProfesionales() {
 
     <div className="space-y-2">
       {serviciosFirebase.length === 0 ? (
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl text-center text-slate-400 text-[10px]">
+        <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl text-center text-neutral-400 text-[10px]">
           No tienes servicios ni paquetes creados. Agrega tu primer elemento personalizado.
         </div>
       ) : (
         serviciosFirebase.map(serv => {
           const esPaquete = serv.categoria === 'paquete';
+          // Asignar un color por defecto si no lo tiene registrado
+          const colorServicio = serv.color || (esPaquete ? '#3b82f6' : '#eab308');
+
           return (
-            <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
-                    {esPaquete ? 'Paquete' : 'Servicio'}
-                  </span>
-                  <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
-                  <span className="text-[8px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+            <div key={serv.id} className="bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
+              <div className="flex items-start gap-2.5">
+                {/* Indicador visual de color elegido */}
+                <div 
+                  className="w-3 h-3 rounded-full mt-1 shrink-0 border border-white/20 shadow-xs" 
+                  style={{ backgroundColor: colorServicio }} 
+                  title={`Color: ${colorServicio}`}
+                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'}`}>
+                      {esPaquete ? 'Paquete' : 'Servicio'}
+                    </span>
+                    <p className="text-[11px] font-bold text-white">{serv.nombre}</p>
+                    <span className="text-[8px] bg-neutral-800 border border-neutral-700 text-neutral-300 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                  </div>
+                  <p className="text-[9px] text-neutral-400 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
                 </div>
-                <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
               </div>
               <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                <p className={`text-[11px] font-bold ${esPaquete ? 'text-emerald-600' : 'text-fuchsia-600'}`}>{serv.precio}</p>
+                <p className="text-[11px] font-bold text-yellow-400">{serv.precio}</p>
                 <div className="flex items-center gap-1">
                   <button 
                     type="button"
@@ -1447,18 +1462,19 @@ export default function PanelProfesionales() {
                         descripcion: serv.descripcion || '', 
                         precio: serv.precio, 
                         duracion: serv.duracion || '45 min',
-                        categoria: serv.categoria || 'servicio'
+                        categoria: serv.categoria || 'servicio',
+                        color: serv.color || (serv.categoria === 'paquete' ? '#3b82f6' : '#eab308')
                       });
                       setShowServicioModal(true);
                     }}
-                    className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                    className="p-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-yellow-400 cursor-pointer transition-colors"
                   >
                     <Edit3 className="w-3 h-3" />
                   </button>
                   <button 
                     type="button"
                     onClick={() => eliminarServicioFirestore(serv.id)}
-                    className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer"
+                    className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-400 hover:bg-rose-900/60 cursor-pointer transition-colors"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -1472,16 +1488,16 @@ export default function PanelProfesionales() {
 
     {/* MODAL INTEGRADO PARA AGREGAR / EDITAR SERVICIOS Y PAQUETES */}
     {showServicioModal && (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-xs font-black uppercase text-slate-900">
+      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95 text-slate-100">
+          <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+            <h3 className="text-xs font-black uppercase text-white">
               {servicioEditando ? '✏️ Editar Servicio / Paquete' : '✨ Nuevo Servicio o Paquete'}
             </h3>
             <button 
               type="button"
               onClick={() => setShowServicioModal(false)} 
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+              className="p-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white cursor-pointer"
             >
               ✕
             </button>
@@ -1489,11 +1505,11 @@ export default function PanelProfesionales() {
 
           <form onSubmit={handleGuardarServicio} className="space-y-3 text-[10px]">
             <div className="space-y-1">
-              <label className="font-bold text-slate-500 uppercase text-[9px]">Tipo</label>
+              <label className="font-bold text-neutral-400 uppercase text-[9px]">Tipo</label>
               <select 
                 value={formServicio.categoria} 
                 onChange={e => setFormServicio({...formServicio, categoria: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium"
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2 text-slate-100 outline-none focus:border-yellow-500 font-medium"
               >
                 <option value="servicio">Servicio</option>
                 <option value="paquete">Paquete</option>
@@ -1501,63 +1517,94 @@ export default function PanelProfesionales() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
+              <label className="font-bold text-neutral-400 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
               <input 
                 type="text" 
                 required
                 placeholder="Ej: Corte Fade + Barba VIP" 
                 value={formServicio.nombre} 
                 onChange={e => setFormServicio({...formServicio, nombre: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600" 
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción</label>
+              <label className="font-bold text-neutral-400 uppercase text-[9px]">Descripción</label>
               <textarea 
                 rows="2" 
                 placeholder="Detalles de lo que incluye..." 
                 value={formServicio.descripcion} 
                 onChange={e => setFormServicio({...formServicio, descripcion: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600 resize-none" 
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500 resize-none" 
               />
+            </div>
+
+            {/* Selector de Color Libre + Paleta Rápida */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-neutral-400 uppercase text-[9px]">Color del Servicio</label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 flex items-center bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5">
+                  <input 
+                    type="color" 
+                    value={formServicio.color || '#eab308'} 
+                    onChange={e => setFormServicio({...formServicio, color: e.target.value})}
+                    className="w-7 h-6 rounded border-0 bg-transparent cursor-pointer outline-none"
+                  />
+                  <span className="ml-2 text-xs font-mono uppercase text-neutral-300">
+                    {formServicio.color || '#eab308'}
+                  </span>
+                </div>
+              </div>
+              {/* Sugerencias de colores rápidos */}
+              <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                {['#eab308', '#f59e0b', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#10b981', '#06b6d4', '#f43f5e', '#64748b'].map((colorHex) => (
+                  <button
+                    key={colorHex}
+                    type="button"
+                    onClick={() => setFormServicio({ ...formServicio, color: colorHex })}
+                    className="w-5 h-5 rounded-full border border-white/20 hover:scale-110 transition-transform cursor-pointer"
+                    style={{ backgroundColor: colorHex }}
+                    title={colorHex}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="font-bold text-slate-500 uppercase text-[9px]">Precio *</label>
+                <label className="font-bold text-neutral-400 uppercase text-[9px]">Precio *</label>
                 <input 
                   type="text" 
                   required
                   placeholder="Ej: $45.000" 
                   value={formServicio.precio} 
                   onChange={e => setFormServicio({...formServicio, precio: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600" 
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
                 />
               </div>
               <div className="space-y-1">
-                <label className="font-bold text-slate-500 uppercase text-[9px]">Duración</label>
+                <label className="font-bold text-neutral-400 uppercase text-[9px]">Duración</label>
                 <input 
                   type="text" 
                   placeholder="Ej: 45 min" 
                   value={formServicio.duracion} 
                   onChange={e => setFormServicio({...formServicio, duracion: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600" 
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
                 />
               </div>
             </div>
 
-            <div className="flex gap-2 pt-3 border-t border-slate-100">
+            <div className="flex gap-2 pt-3 border-t border-neutral-800">
               <button 
                 type="button" 
                 onClick={() => setShowServicioModal(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer"
+                className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer border border-neutral-700"
               >
                 Cancelar
               </button>
               <button 
                 type="submit" 
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase transition-colors cursor-pointer shadow-sm"
+                className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-2 rounded-xl text-[10px] uppercase transition-colors cursor-pointer shadow-sm"
               >
                 Guardar
               </button>

@@ -58,15 +58,11 @@ const BarberBookingView = ({ onBookingComplete }) => {
             duration: parseInt(sData.duracion) || 45, 
             priceNum: typeof sData.precio === 'number' ? sData.precio : parseInt(String(sData.precio || '35000').replace(/[^0-9]/g, '')) || 35000,
             priceFormatted: sData.precioText || sData.precio || '$35.000 COP', 
-            categoria: sData.categoria || 'servicio' 
+            categoria: sData.categoria || 'servicio',
+            color: sData.color || '#3b82f6'
           });
         });
-        if (!listaServicios.length) {
-          listaServicios = [
-            { id: '1', name: "Corte Mid Fade", duration: 45, priceNum: 35000, priceFormatted: "$35.000 COP", categoria: 'servicio' },
-            { id: 'p1', name: "Paquete VIP (Corte + Barba)", duration: 60, priceNum: 55000, priceFormatted: "$55.000 COP", categoria: 'paquete' }
-          ];
-        }
+     
         
         setBarber({
           id: docSnap.id, name: data.nombre || "Profesional", location: data.ciudad || "Bogotá D.C.", rating: "4.9", reviewsCount: 28,
@@ -292,18 +288,38 @@ useEffect(() => {
           </div>
 
           <div className="flex flex-wrap gap-1.5 pt-0.5 max-h-12 overflow-y-auto scrollbar-none">
-            {selectedServices.map(s => {
-              const isPaq = s.categoria === 'paquete';
-              return (
-                <span key={s.id} className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-lg border ${isPaq ? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-300' : 'bg-indigo-950/60 border-indigo-800/80 text-indigo-300'}`}>
-                  <span className="font-semibold mr-1">{s.name}</span>
-                  <span className="opacity-75 mr-1.5">({s.priceFormatted})</span>
-                  {selectedServices.length > 1 && (
-                    <button onClick={(e) => removeServiceTag(s.id, e)} className="hover:text-red-400 transition-colors"><FiX size={12} /></button>
-                  )}
-                </span>
-              );
-            })}
+            {selectedServices && selectedServices.length > 0 ? (
+              selectedServices.map(s => {
+                const serviceColor = s.color || s.hex || s.colorHex || '#3b82f6';
+                
+                return (
+                  <span 
+                    key={s.id || s.name} 
+                    style={{
+                      backgroundColor: `${serviceColor}33`,
+                      borderColor: `${serviceColor}`,
+                      color: '#f8fafc'
+                    }}
+                    className="inline-flex items-center text-[10px] px-2.5 py-1 rounded-lg border font-medium shadow-sm"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full mr-1.5 inline-block shrink-0 shadow-sm" style={{ backgroundColor: serviceColor }}></span>
+                    <span className="font-bold mr-1">{s.name}</span>
+                    <span className="opacity-75 mr-1.5">({s.priceFormatted || s.precio})</span>
+                    {selectedServices.length > 1 && (
+                      <button 
+                        type="button" 
+                        onClick={(e) => removeServiceTag(s.id, e)} 
+                        className="hover:text-red-400 opacity-75 hover:opacity-100 transition-opacity ml-1 cursor-pointer"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+                  </span>
+                );
+              })
+            ) : (
+              <span className="text-[10px] text-neutral-500 italic">No hay servicios o paquetes seleccionados</span>
+            )}
           </div>
         </div>
 
