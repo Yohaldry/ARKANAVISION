@@ -22,13 +22,13 @@ const BarberBookingView = ({ onBookingComplete }) => {
   const [detalleCita, setDetalleCita] = useState(null);
   const [form, setForm] = useState({ nombre: '', apellido: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false });
 
-  // Generar automáticamente las 24 horas del día en formato de 12 horas (AM/PM)
+  // Generar automáticamente las 24 horas del día correctamente en formato de 12 horas (AM/PM)
   const generate24Hours = () => {
     const times = [];
     for (let i = 0; i < 24; i++) {
       const hour24 = i;
       const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-      const ampm = hour24 < 12 ? 'AM' : 'PM';
+      const ampm = hour24 >= 12 ? 'PM' : 'AM';
       const formattedHour = `${hour12.toString().padStart(2, '0')}:00 ${ampm}`;
       times.push(formattedHour);
     }
@@ -81,53 +81,97 @@ const BarberBookingView = ({ onBookingComplete }) => {
     fetchAll();
   }, [barberoId]);
 
-  // Convierte texto de hora a minutos exactos del día (0 a 1439)
+  // Función robusta corregida para interpretar adecuadamente AM/PM en las horas
   const timeToMinutes = (timeStr) => {
     if (!timeStr) return 0;
-    const clean = timeStr.trim().toUpperCase().replace(/\./g, '').replace('A M', 'AM').replace('P M', 'PM');
-    const [time, modifier] = clean.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    if (modifier === 'PM' && hours < 12) hours += 12;
-    if (modifier === 'AM' && hours === 12) hours = 0;
+    const clean = timeStr.trim().toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ');
+    const isPM = clean.includes('PM');
+    const isAM = clean.includes('AM');
+    const timePart = clean.replace(/(AM|PM)/g, '').trim();
+    let [hours, minutes] = timePart.split(':').map(Number);
+    
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+    
     return hours * 60 + (minutes || 0);
   };
 
-  useEffect(() => {
-    if (!barberoId) return;
-    return onSnapshot(query(collection(db, "citas"), where("barberoId", "==", barberoId)), (snap) => {
-      const booked = [];
+useEffect(() => {
+    if (!barberoId || !selectedDate) return;
+
+    const unsubscribe = onSnapshot(query(collection(db, "citas"), where("barberoId", "==", barberoId)), (snap) => {
+      const bookedSet = new Set();
       const timesList = barber?.availableTimes || all24Hours;
+
+      // Función robusta que detecta AM/PM y maneja horas guardadas sin etiqueta
+      const parseToMin = (str) => {
+        if (!str) return null;
+        let clean = str.toString().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+        
+        let isPM = clean.includes('pm') || clean.includes('p m');
+        let isAM = clean.includes('am') || clean.includes('a m');
+
+        let timePart = clean.replace(/pm|am|p m|a m/g, '').trim();
+        let parts = timePart.split(':');
+        let hours = parseInt(parts[0], 10) || 0;
+        let minutes = parseInt(parts[1], 10) || 0;
+        
+        if (isPM) {
+          if (hours < 12) hours += 12;
+        } else if (isAM) {
+          if (hours === 12) hours = 0;
+        } else {
+          // Si no tiene etiqueta AM/PM pero está en el rango de 1 a 7,
+          // se interpreta correctamente como horario de tarde (PM) para evitar confusiones.
+          if (hours >= 1 && hours <= 7) {
+            hours += 12;
+          }
+        }
+        
+        return hours * 60 + minutes;
+      };
 
       snap.forEach(d => {
         const c = d.data();
-        if (c.fecha === selectedDate) {
-          const estado = c.estado?.toLowerCase() || '';
-          if (!['cancelada', 'cancelado'].includes(estado)) {
-            // Si el bloqueo o cita tiene un rango de horas (inicio y fin)
-            if (c.hora && c.horaFin) {
-              const startMin = timeToMinutes(c.hora);
-              const endMin = timeToMinutes(c.horaFin);
+        
+        if (c.fecha && c.fecha.trim() === selectedDate.trim()) {
+          const estado = (c.estado || '').toLowerCase().trim();
+          const esCancelada = estado === 'cancelada' || estado === 'cancelado';
 
+          if (!esCancelada) {
+            const startMin = parseToMin(c.hora);
+            let duracionMinutos = 45;
+            
+            if (c.duracionTotal) {
+              duracionMinutos = parseInt(c.duracionTotal, 10) || 45;
+            }
+
+            const endMin = c.horaFin ? parseToMin(c.horaFin) : (startMin !== null ? startMin + duracionMinutos : null);
+
+            if (startMin !== null) {
               timesList.forEach(t => {
-                const tMin = timeToMinutes(t);
-                // Si la hora se encuentra dentro del rango bloqueado
-                if (tMin >= startMin && tMin <= endMin) {
-                  booked.push(t.toUpperCase());
+                const tMin = parseToMin(t);
+                
+                let estaEnRango = false;
+                if (endMin !== null && endMin > startMin) {
+                  estaEnRango = (tMin >= startMin && tMin < endMin);
+                } else {
+                  estaEnRango = (tMin === startMin);
+                }
+
+                if (estaEnRango) {
+                  bookedSet.add(t);
                 }
               });
-            } else if (c.hora) {
-              // Cita o bloqueo de una sola hora exacta
-              let horaLimpia = c.hora.trim().toUpperCase()
-                .replace(/\./g, '')
-                .replace('A M', 'AM')
-                .replace('P M', 'PM');
-              booked.push(horaLimpia);
             }
           }
         }
       });
-      setHorasOcupadas([...new Set(booked)]);
+
+      setHorasOcupadas(Array.from(bookedSet));
     });
+
+    return () => unsubscribe();
   }, [barberoId, selectedDate, barber]);
 
   const toggleServiceSelection = (service) => {
@@ -177,7 +221,7 @@ const BarberBookingView = ({ onBookingComplete }) => {
         ...form, 
         referencia: form.referencia || 'N/A', 
         torreApto: form.torreApto || 'N/A', 
-        estado: 'pendiente', 
+        estado: 'confirmada', 
         createdAt: new Date().toISOString()
       };
       await addDoc(collection(db, "citas"), bookingData);
@@ -196,9 +240,9 @@ const BarberBookingView = ({ onBookingComplete }) => {
   return (
     <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex flex-col justify-between overflow-hidden relative shadow-2xl border border-neutral-900">
       <div className="absolute inset-0 z-0">
-        <img src={barber.image} alt={barber.name} className="w-full h-full object-cover object-top filter brightness-95 contrast-105" />
-        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-neutral-950/30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/60 via-transparent to-transparent" />
+        <img src={barber.image} alt={barber.name} className="w-full h-full object-cover object-top filter brightness-100 contrast-105" />
+        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-neutral-950/60 to-neutral-950/10" />
+        <div className="absolute inset-0 bg-neutral-950/20" />
       </div>
 
       <div className="relative z-10 px-5 pt-3 flex items-center justify-between">
@@ -217,7 +261,7 @@ const BarberBookingView = ({ onBookingComplete }) => {
           <h1 className="text-lg font-bold tracking-tight text-white leading-tight">{barber.name}</h1>
           <p className="text-neutral-300 text-[11px] flex items-center mt-0.5 mb-1"><FiMapPin className="text-indigo-400 mr-1 shrink-0" /><span className="truncate">{barber.location}</span></p>
           <div className="relative">
-            <p className={`text-neutral-400 text-[10px] leading-relaxed bg-neutral-900/60 backdrop-blur-sm p-2 rounded-xl border border-neutral-800/80 transition-all ${showFullBio ? '' : 'line-clamp-2'}`}>
+            <p className={`text-neutral-300 text-[10px] leading-relaxed bg-neutral-900/50 backdrop-blur-sm p-2 rounded-xl border border-neutral-800/80 transition-all ${showFullBio ? '' : 'line-clamp-2'}`}>
               {barber.bio}
             </p>
             {barber.bio && barber.bio.length > 80 && (
@@ -228,7 +272,6 @@ const BarberBookingView = ({ onBookingComplete }) => {
           </div>
         </div>
 
-        {/* Recuadros Servicios y Paquetes */}
         <div className="space-y-1">
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => setModalType('servicios')} className="bg-neutral-900/80 border border-neutral-800 hover:border-indigo-500/60 p-2 rounded-xl text-left transition-all flex flex-col justify-between group cursor-pointer">
@@ -264,55 +307,27 @@ const BarberBookingView = ({ onBookingComplete }) => {
           </div>
         </div>
 
-        {/* Selector de Fecha */}
-        <div className="space-y-1">
-          <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-400 flex items-center px-0.5"><FiCalendar className="mr-1 text-indigo-400" /> Fecha de la Cita</span>
-          <input type="date" value={selectedDate} min={todayStr} onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(null); }} className="w-full bg-neutral-900/80 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
-        </div>
-
-        {/* Listado de 24 Horas (Disponibles y Ocupadas/Bloqueadas) */}
-        <div className="space-y-1">
-          <div className="flex justify-between items-center px-0.5">
-            <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-400 flex items-center"><FiClock className="mr-1 text-indigo-400" /> Horarios 24h Disponibles</span>
-            {selectedTime && <span className="text-[9px] text-emerald-400 font-bold">Seleccionado: {selectedTime}</span>}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-300 flex items-center px-0.5"><FiCalendar className="mr-1 text-indigo-400" /> Fecha</span>
+            <input type="date" value={selectedDate} min={todayStr} onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(null); }} className="w-full bg-neutral-900/90 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
           </div>
-          
-          <div className="grid grid-cols-4 gap-1 max-h-24 overflow-y-auto pr-1">
-            {all24Hours.map((time) => {
-              const isOccupied = horasOcupadas.includes(time.toUpperCase());
-              const isSelected = selectedTime === time;
 
-              if (isOccupied) {
-                return (
-                  <div
-                    key={time}
-                    className="bg-red-950/40 border border-red-900/50 text-red-400 py-1 px-1 rounded-lg text-[9px] font-bold text-center opacity-70 cursor-not-allowed select-none flex flex-col items-center justify-center"
-                  >
-                    <span>{time}</span>
-                    <span className="text-[7px] text-red-300">Ocupado</span>
-                  </div>
-                );
-              }
-
-              return (
-                <button
-                  key={time}
-                  type="button"
-                  onClick={() => setSelectedTime(time)}
-                  className={`py-1.5 px-1 rounded-lg text-[9px] font-bold transition-all cursor-pointer border ${
-                    isSelected
-                      ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-900/40 scale-[1.02]'
-                      : 'bg-emerald-950/30 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-600'
-                  }`}
-                >
-                  {time}
-                </button>
-              );
-            })}
+          <div className="space-y-1">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-300 flex items-center px-0.5"><FiClock className="mr-1 text-indigo-400" /> Hora</span>
+            <button 
+              type="button" 
+              onClick={() => setModalType('horas')} 
+              className="w-full bg-neutral-900/90 border border-neutral-800 hover:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-left flex items-center justify-between cursor-pointer transition-all"
+            >
+              <span className={selectedTime ? "text-emerald-400 font-bold truncate" : "text-neutral-400 truncate"}>
+                {selectedTime || "Seleccionar..."}
+              </span>
+              <FiArrowRight className="text-indigo-400 shrink-0 ml-1" />
+            </button>
           </div>
         </div>
 
-        {/* Botón de Confirmación Principal */}
         <div className="pt-0.5">
           <motion.button whileTap={{ scale: 0.98 }} disabled={!selectedTime} onClick={() => setModalType('form')} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-xl shadow-xl flex items-center justify-between cursor-pointer">
             <div className="flex flex-col text-left">
@@ -326,12 +341,63 @@ const BarberBookingView = ({ onBookingComplete }) => {
         </div>
       </div>
 
-      {/* Modales Genéricos */}
       <AnimatePresence>
         {modalType && (
-          <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4">
+          <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4">
             <motion.div initial={{ opacity: 0, y: 300 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 300 }} className="w-full max-h-[85vh] bg-neutral-900 border border-neutral-800 rounded-t-3xl sm:rounded-2xl p-5 flex flex-col overflow-y-auto shadow-2xl text-white">
               
+              {modalType === 'horas' && (
+                <>
+                  <div className="flex justify-between items-center mb-3 border-b border-neutral-800 pb-2.5">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center"><FiClock className="mr-1.5" /> Disponibilidad de Horas</h3>
+                      <p className="text-[10px] text-neutral-400">Fecha: {selectedDate}</p>
+                    </div>
+                    <button onClick={() => setModalType(null)} className="bg-neutral-800 p-1.5 rounded-full hover:bg-neutral-700 text-neutral-300"><FiX size={16} /></button>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[50vh] pr-1 py-1">
+                    {all24Hours.map((time) => {
+                      const isOccupied = horasOcupadas.includes(time.toUpperCase());
+                      const isSelected = selectedTime === time;
+
+                      if (isOccupied) {
+                        return (
+                          <div
+                            key={time}
+                            className="bg-red-950/40 border border-red-900/60 text-red-400 py-2.5 px-2 rounded-xl text-[11px] font-bold text-center opacity-80 cursor-not-allowed select-none flex flex-col items-center justify-center"
+                          >
+                            <span className="line-through text-red-400">{time}</span>
+                            <span className="text-[8px] text-red-400 uppercase tracking-wider mt-0.5">Ocupado</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTime(time);
+                            setModalType(null);
+                          }}
+                          className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer border flex flex-col items-center justify-center ${
+                            isSelected
+                              ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-900/40 scale-[1.02]'
+                              : 'bg-emerald-950/30 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-600'
+                          }`}
+                        >
+                          <span>{time}</span>
+                          <span className="text-[8px] text-emerald-400 uppercase tracking-wider mt-0.5">Disponible</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button onClick={() => setModalType(null)} className="w-full mt-4 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer">Cerrar</button>
+                </>
+              )}
+
               {modalType === 'servicios' && (
                 <>
                   <div className="flex justify-between items-center mb-3 border-b border-neutral-800 pb-2.5">

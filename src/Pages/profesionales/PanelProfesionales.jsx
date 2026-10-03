@@ -674,7 +674,7 @@ export default function PanelProfesionales() {
         {errorMsg && <div className="mb-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-[10px] flex gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-red-600" />{errorMsg}</div>}
 
         {activeTab === 'agenda' && (
-      <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-slate-100 pb-1">
+    <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-slate-100 pb-1">
   
   <div className="shrink-0 space-y-1.5">
     <div className="bg-slate-950 border border-slate-800 rounded-2xl p-2 shadow-xl space-y-1.5">
@@ -831,13 +831,6 @@ export default function PanelProfesionales() {
           );
         })}
       </div>
-      <div className="p-2 space-y-1 opacity-40">
-        {horasCalendario.slice(0, 6).map((h, i) => (
-          <div key={i} className="h-[50px] border-b border-slate-800/80 flex items-center px-2 text-[8px] text-slate-600">
-            {h.label}
-          </div>
-        ))}
-      </div>
     </div>
 
     <div className="libro-pagina-actual bg-slate-950 relative w-full text-slate-100 [transform-style:preserve-3d] origin-left shadow-2xl rounded-2xl overflow-hidden">
@@ -882,18 +875,45 @@ export default function PanelProfesionales() {
 
           const esHorarioLaboral = fH >= 9 && fH <= 21;
 
-          const convertirHoraAMinutos = (horaStr) => {
+          // Función de conversión independiente para Citas y Bloqueos
+        const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
             if (!horaStr) return 0;
-            const partes = horaStr.trim().toUpperCase().split(' ');
-            if (partes.length < 2) return 0;
-            const [hStr, mStr] = partes[0].split(':').map(Number);
-            const periodo = partes[1];
+            let clean = horaStr.toString().toUpperCase().trim();
             
-            let horas24 = hStr;
-            if (periodo.includes('P') && horas24 < 12) horas24 += 12;
-            if (periodo.includes('A') && horas24 === 12) horas24 = 0;
+            let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
+            let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
+
+            let timePart = clean.replace(/[^0-9:]/g, '').trim();
+            let parts = timePart.split(':');
+            let hours = parseInt(parts[0], 10) || 0;
+            let minutes = parseInt(parts[1], 10) || 0;
             
-            return horas24 * 60 + (mStr || 0);
+            if (esBloqueo) {
+              // Los bloqueos se quedan con su conversión estándar (respetando si es PM real)
+              if (isPM && hours < 12) hours += 12;
+              if (isAM && hours === 12) hours = 0;
+            } else {
+              // Regla estricta para las citas de los clientes
+              if (isPM && hours < 12) {
+                hours += 12;
+              } else if (isAM && hours === 12) {
+                hours = 0;
+              } else if (!isPM && !isAM && hours >= 1 && hours <= 7) {
+                // Si no tiene etiqueta pero está entre 1 y 7, es por la tarde
+                hours += 12;
+              } else if (isPM && hours >= 1 && hours <= 7 && clean.includes('A. M.')) {
+                // Por si acaso trae texto cruzado, priorizamos la lógica de la tarde si corresponde
+                // (Pero si dice A.M. explícitamente y es 1 o 2, lo dejamos en su hora de la tarde si tu base guarda así las 1 PM)
+              }
+            }
+
+            // Corrección directa si la cita dice claramente "1:00 a. m." o "2:00 a. m." en la base de datos pero debería ser p.m.
+            // (Si tus citas de la 1 y 2 de la tarde se guardaron por error con etiqueta AM en Firestore, las convertimos a PM aquí):
+            if (!esBloqueo && isAM && (hours === 1 || hours === 2)) {
+              hours += 12;
+            }
+            
+            return hours * 60 + minutes;
           };
 
           const minutosAHoraTexto = (totalMinutos) => {
@@ -916,13 +936,13 @@ export default function PanelProfesionales() {
 
                 const citasEnEstaHora = citasFirestore.filter(c => {
                   if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
-                  const minutosCitaInicio = convertirHoraAMinutos(c.hora);
+                  const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
                   return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
                 });
 
                 const bloqueosEnEstaHora = citasFirestore.filter(c => {
                   if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
-                  const minutosBloqueoInicio = convertirHoraAMinutos(c.hora);
+                  const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
                   return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
                 });
 
@@ -971,12 +991,12 @@ export default function PanelProfesionales() {
                   >
                     {elementosEnEstaHora.length > 0 ? (
                       elementosEnEstaHora.map((itemCita, cIdx) => {
-                        const minutosItemInicio = convertirHoraAMinutos(itemCita.hora);
+                        const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
                         const citaKey = itemCita.id || itemCita.uid;
 
                         let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
                         if (itemCita.esBloqueo && itemCita.horaFin) {
-                          const minFin = convertirHoraAMinutos(itemCita.horaFin);
+                          const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
                           if (minFin > minutosItemInicio) {
                             duracionMin = minFin - minutosItemInicio;
                           } else if (minFin < minutosItemInicio) {
@@ -1017,7 +1037,7 @@ export default function PanelProfesionales() {
                           >
                             <div className="flex justify-between items-center pointer-events-none">
                               <span className="font-black truncate text-[8px] block text-white">
-                                {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : itemCita.cliente}
+                                {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
                               </span>
                               <span className="text-[7px] font-bold text-slate-300">{itemCita.hora} {itemCita.horaFin ? `- ${itemCita.horaFin}` : ''}</span>
                             </div>
@@ -1362,91 +1382,192 @@ export default function PanelProfesionales() {
           </div>
         )}
 
-        {activeTab === 'servicios' && (
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
-                <p className="text-[9px] text-slate-400">Configura los servicios y paquetes que ofreces a tus clientes</p>
+       {activeTab === 'servicios' && (
+  <div className="space-y-3">
+    <div className="flex justify-between items-center">
+      <div>
+        <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
+        <p className="text-[9px] text-slate-400">Configura los servicios y paquetes que ofreces a tus clientes</p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button 
+          type="button"
+          onClick={() => {
+            setServicioEditando(null);
+            setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
+            setShowServicioModal(true);
+          }}
+          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+        >
+          <Plus className="w-3 h-3" /> Servicio
+        </button>
+        <button 
+          type="button"
+          onClick={() => {
+            setServicioEditando(null);
+            setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '60 min', categoria: 'paquete' });
+            setShowServicioModal(true);
+          }}
+          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+        >
+          <Plus className="w-3 h-3" /> Paquete
+        </button>
+      </div>
+    </div>
+
+    <div className="space-y-2">
+      {serviciosFirebase.length === 0 ? (
+        <div className="bg-white border border-slate-200 p-6 rounded-2xl text-center text-slate-400 text-[10px]">
+          No tienes servicios ni paquetes creados. Agrega tu primer elemento personalizado.
+        </div>
+      ) : (
+        serviciosFirebase.map(serv => {
+          const esPaquete = serv.categoria === 'paquete';
+          return (
+            <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
+                    {esPaquete ? 'Paquete' : 'Servicio'}
+                  </span>
+                  <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
+                  <span className="text-[8px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                </div>
+                <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button 
-                  onClick={() => {
-                    setServicioEditando(null);
-                    setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
-                    setShowServicioModal(true);
-                  }}
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
-                >
-                  <Plus className="w-3 h-3" /> Servicio
-                </button>
-                <button 
-                  onClick={() => {
-                    setServicioEditando(null);
-                    setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '60 min', categoria: 'paquete' });
-                    setShowServicioModal(true);
-                  }}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
-                >
-                  <Plus className="w-3 h-3" /> Paquete
-                </button>
+              <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                <p className={`text-[11px] font-bold ${esPaquete ? 'text-emerald-600' : 'text-fuchsia-600'}`}>{serv.precio}</p>
+                <div className="flex items-center gap-1">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setServicioEditando(serv);
+                      setFormServicio({ 
+                        nombre: serv.nombre, 
+                        descripcion: serv.descripcion || '', 
+                        precio: serv.precio, 
+                        duracion: serv.duracion || '45 min',
+                        categoria: serv.categoria || 'servicio'
+                      });
+                      setShowServicioModal(true);
+                    }}
+                    className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => eliminarServicioFirestore(serv.id)}
+                    className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+
+    {/* MODAL INTEGRADO PARA AGREGAR / EDITAR SERVICIOS Y PAQUETES */}
+    {showServicioModal && (
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-xs font-black uppercase text-slate-900">
+              {servicioEditando ? '✏️ Editar Servicio / Paquete' : '✨ Nuevo Servicio o Paquete'}
+            </h3>
+            <button 
+              type="button"
+              onClick={() => setShowServicioModal(false)} 
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleGuardarServicio} className="space-y-3 text-[10px]">
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Tipo</label>
+              <select 
+                value={formServicio.categoria} 
+                onChange={e => setFormServicio({...formServicio, categoria: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium"
+              >
+                <option value="servicio">Servicio</option>
+                <option value="paquete">Paquete</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
+              <input 
+                type="text" 
+                required
+                placeholder="Ej: Corte Fade + Barba VIP" 
+                value={formServicio.nombre} 
+                onChange={e => setFormServicio({...formServicio, nombre: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600" 
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción</label>
+              <textarea 
+                rows="2" 
+                placeholder="Detalles de lo que incluye..." 
+                value={formServicio.descripcion} 
+                onChange={e => setFormServicio({...formServicio, descripcion: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600 resize-none" 
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Precio *</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Ej: $45.000" 
+                  value={formServicio.precio} 
+                  onChange={e => setFormServicio({...formServicio, precio: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Duración</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: 45 min" 
+                  value={formServicio.duracion} 
+                  onChange={e => setFormServicio({...formServicio, duracion: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-900 outline-none focus:border-indigo-600" 
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              {serviciosFirebase.length === 0 ? (
-                <div className="bg-white border border-slate-200 p-6 rounded-2xl text-center text-slate-400 text-[10px]">
-                  No tienes servicios ni paquetes creados. Agrega tu primer elemento personalizado.
-                </div>
-              ) : (
-                serviciosFirebase.map(serv => {
-                  const esPaquete = serv.categoria === 'paquete';
-                  return (
-                    <div key={serv.id} className="bg-white border border-slate-200 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
-                            {esPaquete ? 'Paquete' : 'Servicio'}
-                          </span>
-                          <p className="text-[11px] font-bold text-slate-900">{serv.nombre}</p>
-                          <span className="text-[8px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
-                        </div>
-                        <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
-                      </div>
-                      <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                        <p className={`text-[11px] font-bold ${esPaquete ? 'text-emerald-600' : 'text-fuchsia-600'}`}>{serv.precio}</p>
-                        <div className="flex items-center gap-1">
-                          <button 
-                            onClick={() => {
-                              setServicioEditando(serv);
-                              setFormServicio({ 
-                                nombre: serv.nombre, 
-                                descripcion: serv.descripcion || '', 
-                                precio: serv.precio, 
-                                duracion: serv.duracion || '45 min',
-                                categoria: serv.categoria || 'servicio'
-                              });
-                              setShowServicioModal(true);
-                            }}
-                            className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
-                          >
-                            <Edit3 className="w-3 h-3" />
-                          </button>
-                          <button 
-                            onClick={() => eliminarServicioFirestore(serv.id)}
-                            className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+            <div className="flex gap-2 pt-3 border-t border-slate-100">
+              <button 
+                type="button" 
+                onClick={() => setShowServicioModal(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase transition-colors cursor-pointer shadow-sm"
+              >
+                Guardar
+              </button>
             </div>
-          </div>
-        )}
+          </form>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
         {activeTab === 'facturacion' && (
           <Wallet />
