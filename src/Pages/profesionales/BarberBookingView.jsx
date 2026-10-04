@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiStar, FiMapPin, FiClock, FiCalendar, FiScissors, FiCheckCircle, FiArrowRight, FiAward, FiUser, FiPhone, FiHome, FiInfo, FiX, FiPackage, FiCheck } from 'react-icons/fi';
+import { FiStar, FiMapPin, FiClock, FiCalendar, FiScissors, FiCheckCircle, FiArrowRight, FiAward, FiUser, FiPhone, FiHome, FiInfo, FiX, FiPackage, FiCheck, FiMail } from 'react-icons/fi';
 import { RiMotorbikeLine } from 'react-icons/ri';
 import { db } from '../../components/firebase';
 import { doc, getDoc, collection, addDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import emailjs from '@emailjs/browser';
 
 const BarberBookingView = ({ onBookingComplete }) => {
   const { barberoId } = useParams();
@@ -20,7 +21,7 @@ const BarberBookingView = ({ onBookingComplete }) => {
   const [horasOcupadas, setHorasOcupadas] = useState([]);
   const [modalType, setModalType] = useState(null);
   const [detalleCita, setDetalleCita] = useState(null);
-  const [form, setForm] = useState({ nombre: '', apellido: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false });
+  const [form, setForm] = useState({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false });
 
   // Generar automáticamente las 24 horas del día correctamente en formato de 12 horas (AM/PM)
   const generate24Hours = () => {
@@ -65,7 +66,7 @@ const BarberBookingView = ({ onBookingComplete }) => {
      
         
         setBarber({
-          id: docSnap.id, name: data.nombre || "Profesional", location: data.ciudad || "Bogotá D.C.", rating: "4.9", reviewsCount: 28,
+          id: docSnap.id, name: data.nombre || "Profesional", email: data.email || "", location: data.ciudad || "Bogotá D.C.", rating: "4.9", reviewsCount: 28,
           image: data.foto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
           bio: data.descripcion || data.biografia || "Experto en visagismo y tendencias.", services: listaServicios,
           availableTimes: all24Hours
@@ -199,7 +200,7 @@ useEffect(() => {
 
   const handleBooking = async (e) => {
     e.preventDefault();
-    if (!form.nombre || !form.apellido || !form.telefono || !form.direccion) return alert("Completa los campos obligatorios (*).");
+    if (!form.nombre || !form.apellido || !form.email || !form.telefono || !form.direccion) return alert("Completa los campos obligatorios (*).");
     try {
       const bookingData = {
         barberoId, 
@@ -214,17 +215,58 @@ useEffect(() => {
         precioTotal: formatCOP(totalPrecioNum),
         duracionTotal: `${totalDuracion} min`,
         clienteNombre: `${form.nombre} ${form.apellido}`,
+        email: form.email,
         ...form, 
         referencia: form.referencia || 'N/A', 
         torreApto: form.torreApto || 'N/A', 
         estado: 'confirmada', 
         createdAt: new Date().toISOString()
       };
+
       await addDoc(collection(db, "citas"), bookingData);
+
+      const serviciosTexto = selectedServices.map(s => s.name).join(', ');
+
+   
+const templateParamsClient = {
+        to_name: bookingData.clienteNombre,
+        to_email: form.email, // Correo del cliente
+        barbero_nombre: barber.name,
+        fecha_cita: selectedDate,
+        hora_cita: selectedTime,
+        servicios: serviciosTexto,
+        total: bookingData.precioTotal,
+      };
+
+      const templateParamsBarber = {
+        to_name: barber.name,
+        to_email: barber.email || barber.correo || "yohaldryquintero1995@gmail.com", 
+        cliente_nombre: bookingData.clienteNombre,
+        cliente_telefono: form.telefono,
+        fecha_cita: selectedDate,
+        hora_cita: selectedTime,
+        direccion: form.direccion,
+        torre_apto: form.torreApto || 'N/A',
+        referencia: form.referencia || 'N/A',
+        servicios: serviciosTexto,
+        total: bookingData.precioTotal,
+      };
+
+      const SERVICE_ID = "service_z91pc3e"; 
+      const PUBLIC_KEY = "JkBxr3kN07cKntGLN"; 
+
+      await Promise.all([
+        emailjs.send(SERVICE_ID, 'template_qqht1ab', templateParamsClient, PUBLIC_KEY),
+        emailjs.send(SERVICE_ID, 'template_reteht9', templateParamsBarber, PUBLIC_KEY)
+      ]);
+
       setDetalleCita(bookingData);
       setModalType('success');
       if (onBookingComplete) onBookingComplete(bookingData);
-    } catch (err) { alert("No se pudo completar la reserva."); }
+    } catch (err) { 
+      console.error(err);
+      alert("La cita se guardó pero hubo un error al enviar los correos."); 
+    }
   };
 
   if (loading) return <div className="w-full h-screen max-w-md mx-auto bg-neutral-950 text-white flex items-center justify-center text-xs">Cargando perfil...</div>;
@@ -534,6 +576,7 @@ useEffect(() => {
                       <div className="space-y-1"><label className="text-[9px] uppercase font-semibold text-neutral-400 flex items-center"><FiUser className="mr-1 text-indigo-400" /> Nombre *</label><input type="text" name="nombre" required value={form.nombre} onChange={handleChange} placeholder="Tu nombre" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" /></div>
                       <div className="space-y-1"><label className="text-[9px] uppercase font-semibold text-neutral-400">Apellido *</label><input type="text" name="apellido" required value={form.apellido} onChange={handleChange} placeholder="Tu apellido" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" /></div>
                     </div>
+                    <div className="space-y-1"><label className="text-[9px] uppercase font-semibold text-neutral-400 flex items-center"><FiMail className="mr-1 text-indigo-400" /> Correo Electrónico *</label><input type="email" name="email" required value={form.email} onChange={handleChange} placeholder="tucorreo@email.com" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" /></div>
                     <div className="space-y-1"><label className="text-[9px] uppercase font-semibold text-neutral-400 flex items-center"><FiPhone className="mr-1 text-indigo-400" /> Teléfono / WhatsApp *</label><input type="tel" name="telefono" required value={form.telefono} onChange={handleChange} placeholder="Ej: 3001234567" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" /></div>
                     <div className="space-y-1"><label className="text-[9px] uppercase font-semibold text-neutral-400 flex items-center"><FiHome className="mr-1 text-indigo-400" /> Dirección Exacta *</label><input type="text" name="direccion" required value={form.direccion} onChange={handleChange} placeholder="Calle, Carrera, etc." className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" /></div>
                     <div className="grid grid-cols-2 gap-2">
@@ -561,11 +604,12 @@ useEffect(() => {
                     <div className="flex justify-between py-1 border-b border-neutral-900"><span className="text-neutral-400">Servicios:</span><span className="font-semibold text-indigo-400 text-right">{detalleCita.servicios.map(s => s.nombre).join(', ')}</span></div>
                     <div className="flex justify-between py-1 border-b border-neutral-900"><span className="text-neutral-400">Fecha y Hora:</span><span className="font-semibold text-white">{detalleCita.fecha} - {detalleCita.hora}</span></div>
                     <div className="flex justify-between py-1 border-b border-neutral-900"><span className="text-neutral-400">Cliente:</span><span className="font-semibold text-white">{detalleCita.clienteNombre}</span></div>
+                    <div className="flex justify-between py-1 border-b border-neutral-900"><span className="text-neutral-400">Correo:</span><span className="font-semibold text-white">{detalleCita.email}</span></div>
                     <div className="flex justify-between py-1 border-b border-neutral-900"><span className="text-neutral-400">Teléfono:</span><span className="font-semibold text-white">{detalleCita.telefono}</span></div>
                     <div className="flex justify-between py-1"><span className="text-neutral-400">Total a Pagar:</span><span className="font-bold text-emerald-400">{detalleCita.precioTotal}</span></div>
                   </div>
                   <div className="flex flex-col gap-2 pt-1">
-                    <button onClick={() => { setModalType(null); setDetalleCita(null); setForm({ nombre: '', apellido: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false }); }} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">Volver a Agendar</button>
+                    <button onClick={() => { setModalType(null); setDetalleCita(null); setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false }); }} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">Volver a Agendar</button>
                     <button onClick={() => window.location.reload()} className="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">Finalizar</button>
                   </div>
                 </div>

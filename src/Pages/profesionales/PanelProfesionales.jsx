@@ -321,6 +321,7 @@ export default function PanelProfesionales() {
               if (estado === 'bloqueado') colorClase = 'bg-rose-100 border-rose-300 text-rose-800 font-bold';
 
               citasServer.push({
+                ...data,
                 id: docSnap.id, 
                 cliente: data.clienteNombre || 'BLOQUEADO', 
                 clienteTelefono: data.telefono || data.clienteTelefono || '',
@@ -378,14 +379,18 @@ export default function PanelProfesionales() {
     }
   };
 
-  const abrirModalCita = (cita) => {
-    setCitaSeleccionada(cita);
-    setNuevaFechaCita(cita.fechaStr || '');
-    setNuevaHoraCita(cita.hora || '');
-    setNuevaHoraFinCita(cita.horaFin || '7:00 a. m.');
-    setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
-    setNuevoServicioCita(cita.servicio || '');
-  };
+ const abrirModalCita = (cita) => {
+  setCitaSeleccionada(cita);
+  console.log("esto es",cita)
+  setNuevaFechaCita(cita.fechaStr || cita.fecha || '');
+  setNuevaHoraCita(cita.hora || '');
+  setNuevaHoraFinCita(cita.horaFin || 'No disponible');
+  setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
+  
+  // Extraemos el nombre del primer servicio del array de Firestore
+  const nombreServicio = cita.servicios?.[0]?.nombre || '';
+  setNuevoServicioCita(nombreServicio);
+};
 
   const actualizarCitaArrastrada = async (cita, nuevaFechaStr, nuevaHoraExacta) => {
     try {
@@ -1860,86 +1865,91 @@ const handleGuardarServicio = async (e) => {
         </div>
       )}
 
-      {citaSeleccionada && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-900">
-                  {citaSeleccionada.esBloqueo ? '🚫 Gestionar Horario No Disponible' : 'Gestionar Cita / Servicio'}
-                </h3>
-                <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.esBloqueo ? citaSeleccionada.motivo : citaSeleccionada.servicio}</p>
-              </div>
-              <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"><X className="w-4 h-4" /></button>
-            </div>
-
-            <div className="space-y-2 text-[10px]">
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
-                {citaSeleccionada.esBloqueo ? (
-                  <>
-                    <p><strong className="text-slate-500">Motivo:</strong> <span className="text-rose-700 font-bold">{citaSeleccionada.motivo || 'No disponible'}</span></p>
-                    <p><strong className="text-slate-500">Fecha:</strong> <span className="text-slate-900">{citaSeleccionada.fechaStr}</span></p>
-                    <p><strong className="text-slate-500">Rango:</strong> <span className="text-slate-900">{citaSeleccionada.hora} - {citaSeleccionada.horaFin || 'N/A'}</span></p>
-                  </>
-                ) : (
-                  <>
-                    <p><strong className="text-slate-500">Cliente:</strong> <span className="text-slate-900 font-bold">{citaSeleccionada.cliente}</span></p>
-                    {citaSeleccionada.clienteTelefono && <p><strong className="text-slate-500">Teléfono:</strong> <span className="text-slate-900">{citaSeleccionada.clienteTelefono}</span></p>}
-                    <p><strong className="text-slate-500">Fecha actual:</strong> <span className="text-slate-900">{citaSeleccionada.fechaStr}</span></p>
-                    <p><strong className="text-slate-500">Hora actual:</strong> <span className="text-slate-900">{citaSeleccionada.hora}</span></p>
-                    <p><strong className="text-slate-500">Estado:</strong> <span className="uppercase text-emerald-600 font-bold">{citaSeleccionada.estado}</span></p>
-                  </>
-                )}
-              </div>
-
-              {!citaSeleccionada.esBloqueo && (
-                <div className="space-y-2 pt-1">
-                  <label className="text-[8px] text-slate-400 font-bold block mb-0.5 uppercase">Cambiar / Actualizar Servicio</label>
-                  <select 
-                    value={nuevoServicioCita} 
-                    onChange={e => setNuevoServicioCita(e.target.value)} 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium"
-                  >
-                    <option value={citaSeleccionada.servicio}>{citaSeleccionada.servicio} (Actual)</option>
-                    {serviciosFirebase.map((serv) => (
-                      <option key={serv.id} value={serv.nombre}>{serv.nombre} - {serv.precio}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <p className="font-bold text-slate-700 uppercase text-[9px]">
-                  {citaSeleccionada.esBloqueo ? 'Modificar Bloqueo:' : 'Reprogramar Fecha y Hora:'}
-                </p>
-                <input 
-                  type="date" 
-                  value={nuevaFechaCita} 
-                  onChange={e => setNuevaFechaCita(e.target.value)} 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2 border-t border-slate-100">
-              <button 
-                onClick={eliminarCitaFirestore} 
-                disabled={modalLoading}
-                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-bold text-[10px] flex items-center justify-center gap-1 cursor-pointer transition"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Eliminar
-              </button>
-              <button 
-                onClick={() => actualizarCitaFirestore('confirmada')} 
-                disabled={modalLoading}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition shadow-sm"
-              >
-                {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Guardar</>}
-              </button>
-            </div>
-          </div>
+    {citaSeleccionada && (
+  <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 className="text-xs font-black uppercase text-slate-900">
+            {citaSeleccionada.esBloqueo ? '🚫 Gestionar Horario No Disponible' : 'Gestionar Cita / Servicio'}
+          </h3>
+          <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.esBloqueo ? citaSeleccionada.motivo : citaSeleccionada.servicio}</p>
         </div>
-      )}
+        <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"><X className="w-4 h-4" /></button>
+      </div>
+
+      <div className="space-y-2 text-[10px]">
+        <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
+          {citaSeleccionada.esBloqueo ? (
+            <>
+              <p><strong className="text-slate-500">Motivo:</strong> <span className="text-rose-700 font-bold">{citaSeleccionada.motivo || 'No disponible'}</span></p>
+              <p><strong className="text-slate-500">Fecha:</strong> <span className="text-slate-900">{citaSeleccionada.fechaStr}</span></p>
+              <p><strong className="text-slate-500">Rango:</strong> <span className="text-slate-900">{citaSeleccionada.hora} - {citaSeleccionada.horaFin || 'N/A'}</span></p>
+            </>
+          ) : (
+            <>
+              <p><strong className="text-slate-500">Cliente:</strong> <span className="text-slate-900 font-bold">{citaSeleccionada.clienteNombre || citaSeleccionada.cliente}</span></p>
+              {citaSeleccionada.clienteTelefono && <p><strong className="text-slate-500">Teléfono:</strong> <span className="text-slate-900">{citaSeleccionada.clienteTelefono}</span></p>}
+              
+              <p><strong className="text-slate-500">Dirección:</strong> <span className="text-slate-900">{citaSeleccionada.direccion || 'No especificada'}</span></p>
+              <p><strong className="text-slate-500">Servicio:</strong> <span className="text-slate-900 font-medium">{citaSeleccionada.servicio || 'Servicio General'}</span></p>
+              <p><strong className="text-slate-500">Monto:</strong> <span className="text-indigo-600 font-bold">{citaSeleccionada.precioTotal || citaSeleccionada.monto || '$0'}</span></p>
+
+              <p><strong className="text-slate-500">Fecha actual:</strong> <span className="text-slate-900">{citaSeleccionada.fecha}</span></p>
+              <p><strong className="text-slate-500">Hora actual:</strong> <span className="text-slate-900">{citaSeleccionada.hora}</span></p>
+              <p><strong className="text-slate-500">Estado:</strong> <span className="uppercase text-emerald-600 font-bold">{citaSeleccionada.estado}</span></p>
+            </>
+          )}
+        </div>
+
+        {!citaSeleccionada.esBloqueo && (
+          <div className="space-y-2 pt-1">
+            <label className="text-[8px] text-slate-400 font-bold block mb-0.5 uppercase">Cambiar / Actualizar Servicio</label>
+            <select 
+              value={nuevoServicioCita} 
+              onChange={e => setNuevoServicioCita(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium"
+            >
+              <option value={citaSeleccionada.servicio}>{citaSeleccionada.servicio} (Actual)</option>
+              {serviciosFirebase.map((serv) => (
+                <option key={serv.id} value={serv.nombre}>{serv.nombre} - {serv.precio}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <p className="font-bold text-slate-700 uppercase text-[9px]">
+            {citaSeleccionada.esBloqueo ? 'Modificar Bloqueo:' : 'Reprogramar Fecha y Hora:'}
+          </p>
+          <input 
+            type="date" 
+            value={nuevaFechaCita} 
+            onChange={e => setNuevaFechaCita(e.target.value)} 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-2 border-t border-slate-100">
+        <button 
+          onClick={eliminarCitaFirestore} 
+          disabled={modalLoading}
+          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-bold text-[10px] flex items-center justify-center gap-1 cursor-pointer transition"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Eliminar
+        </button>
+        <button 
+          onClick={() => actualizarCitaFirestore('confirmada')} 
+          disabled={modalLoading}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition shadow-sm"
+        >
+          {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Guardar</>}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
