@@ -60,7 +60,7 @@ export default function PanelProfesionales() {
 
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
-const [emailFresha, setEmailFresha] = useState('');
+
   const [nuevaFechaCita, setNuevaFechaCita] = useState('');
   const [nuevaHoraCita, setNuevaHoraCita] = useState('');
   const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('1:00 a. m.');
@@ -290,7 +290,7 @@ const [emailFresha, setEmailFresha] = useState('');
       if (user) {
         setAuthUser(user);
 
-       unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', user.uid), (docSnap) => {
+        unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', user.uid), (docSnap) => {
           if (docSnap.exists()) {
             const d = docSnap.data();
             setBarberData(d);
@@ -301,8 +301,7 @@ const [emailFresha, setEmailFresha] = useState('');
             setDescripcion(d.descripcion || '');
             setFoto(d.foto || '');
             setTelefono(d.telefono || '');
-            setEmailFresha(d.emailFresha || ''); // Corregido de data a d
-            setCorreoPerfil(d.correo || d.email || user.email || ''); // Busca en correo, en email del documento, o en el email de auth
+            setCorreoPerfil(d.correo || user.email || '');
             setZonasTrabajo(d.zonasTrabajo || []);
           } else {
             setCorreoPerfil(user.email || '');
@@ -1679,7 +1678,7 @@ const [emailFresha, setEmailFresha] = useState('');
         )}
 
         {activeTab === 'perfil' && (
-         <div className="space-y-3">
+          <div className="space-y-3">
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 shadow-xs">
               <h3 className="text-[11px] font-black uppercase text-indigo-950 flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5 text-indigo-600" /> Link de Reserva para Clientes</h3>
               <p className="text-[9px] text-indigo-800">Comparte este enlace para que tus clientes reserven directamente contigo:</p>
@@ -1706,7 +1705,6 @@ const [emailFresha, setEmailFresha] = useState('');
                   {renderFieldView("Teléfono / WhatsApp", telefono)}
                   {renderFieldView("Correo Electrónico", correoPerfil)}
                 </div>
-                {renderFieldView("Email Fresha", emailFresha)}
                 <div className="grid grid-cols-2 gap-2">
                   {renderFieldView("Ciudad", ciudad)}
                   {renderFieldView("Experiencia", experiencia)}
@@ -1747,7 +1745,7 @@ const [emailFresha, setEmailFresha] = useState('');
                     e.preventDefault(); 
                     setLoading(true); 
                     await updateDoc(doc(db, 'profesionales', authUser.uid), { 
-                      nombre, descripcion, foto, telefono, correo: correoPerfil, emailFresha, zonasTrabajo, experiencia, ciudad, especialidad 
+                      nombre, descripcion, foto, telefono, correo: correoPerfil, zonasTrabajo, experiencia, ciudad, especialidad 
                     }); 
                     setSuccessMsg('¡Perfil actualizado con éxito!'); 
                     setLoading(false); 
@@ -1785,11 +1783,6 @@ const [emailFresha, setEmailFresha] = useState('');
                         <label className="font-bold text-slate-500 uppercase text-[9px]">Correo Electrónico</label>
                         <input type="email" value={correoPerfil} onChange={e => setCorreoPerfil(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
                       </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-500 uppercase text-[9px]">Email Fresha</label>
-                      <input type="email" value={emailFresha || ''} onChange={e => setEmailFresha(e.target.value)} placeholder="correo@fresha.com" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">

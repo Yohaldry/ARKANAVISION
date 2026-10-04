@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff } from 'lucide-react';
 import { db, auth } from '../../components/firebase'; 
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const Wallet = () => {
   const [vistaTab, setVistaTab] = useState('domicilios'); // Iniciamos en domicilios para verificar rápido
@@ -20,7 +20,7 @@ const Wallet = () => {
   const [fechaEspecifica, setFechaEspecifica] = useState(hoyStr);
   const [fechaInicio, setFechaInicio] = useState(hoyStr);
   const [fechaFin, setFechaFin] = useState(hoyStr);
-const [quincenaActivaModal, setQuincenaActivaModal] = useState(null);
+  const [quincenaActivaModal, setQuincenaActivaModal] = useState(null);
   const [servicios, setServicios] = useState([]);
   const [citasFinalizadas, setCitasFinalizadas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ const [quincenaActivaModal, setQuincenaActivaModal] = useState(null);
   const [porcentajeBarbero, setPorcentajeBarbero] = useState(35);
   const [alertaExito, setAlertaExito] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('¡Guardado con éxito!');
-const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
+  const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
   const [modalAgregarOpen, setModalAgregarOpen] = useState(false);
   const [modalVerMasOpen, setModalVerMasOpen] = useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
@@ -69,36 +69,36 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
     hora: new Date().toTimeString().slice(0, 5)
   });
 
-const [mostrarQ1, setMostrarQ1] = useState(false);
-const [mostrarQ2, setMostrarQ2] = useState(false);
-const [timerQ1, setTimerQ1] = useState(null);
-const [timerQ2, setTimerQ2] = useState(null);
+  const [mostrarQ1, setMostrarQ1] = useState(false);
+  const [mostrarQ2, setMostrarQ2] = useState(false);
+  const [timerQ1, setTimerQ1] = useState(null);
+  const [timerQ2, setTimerQ2] = useState(null);
 
-const handleToggleQ1 = (e) => {
-  e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
-  if (mostrarQ1) {
-    setMostrarQ1(false);
-    if (timerQ1) clearTimeout(timerQ1);
-  } else {
-    setMostrarQ1(true);
-    if (timerQ1) clearTimeout(timerQ1);
-    const id = setTimeout(() => setMostrarQ1(false), 10000);
-    setTimerQ1(id);
-  }
-};
+  const handleToggleQ1 = (e) => {
+    e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
+    if (mostrarQ1) {
+      setMostrarQ1(false);
+      if (timerQ1) clearTimeout(timerQ1);
+    } else {
+      setMostrarQ1(true);
+      if (timerQ1) clearTimeout(timerQ1);
+      const id = setTimeout(() => setMostrarQ1(false), 10000);
+      setTimerQ1(id);
+    }
+  };
 
-const handleToggleQ2 = (e) => {
-  e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
-  if (mostrarQ2) {
-    setMostrarQ2(false);
-    if (timerQ2) clearTimeout(timerQ2);
-  } else {
-    setMostrarQ2(true);
-    if (timerQ2) clearTimeout(timerQ2);
-    const id = setTimeout(() => setMostrarQ2(false), 10000);
-    setTimerQ2(id);
-  }
-};
+  const handleToggleQ2 = (e) => {
+    e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
+    if (mostrarQ2) {
+      setMostrarQ2(false);
+      if (timerQ2) clearTimeout(timerQ2);
+    } else {
+      setMostrarQ2(true);
+      if (timerQ2) clearTimeout(timerQ2);
+      const id = setTimeout(() => setMostrarQ2(false), 10000);
+      setTimerQ2(id);
+    }
+  };
 
   const valorTotalNum = parseFloat(nuevoServicio.total) || 0;
   const porcentajeNum = parseFloat(nuevoServicio.porcentajeBarberForm) || 0;
@@ -107,6 +107,85 @@ const handleToggleQ2 = (e) => {
   const valorEditTotalNum = parseFloat(formEdicion.total) || 0;
   const porcentajeEditNum = parseFloat(formEdicion.porcentajeBarberForm) || 0;
   const gananciaEditCalculadaEnVivo = (valorEditTotalNum * porcentajeEditNum) / 100;
+
+  // Función para dictar por voz y rellenar el formulario de registro automáticamente
+  const escucharComandoVoz = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta el reconocimiento de voz. Usa Google Chrome.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-CO';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    setMensajeExito('🎙️ Escuchando... Di algo como: "Corte para Carlos Pérez por 45000 con 35%"');
+    setAlertaExito(true);
+
+    recognition.onresult = (event) => {
+      const textoVoz = event.results[0][0].transcript.toLowerCase();
+
+      const matchTotal = textoVoz.match(/(\d+)(?:\s*(?:mil|pesos))?/g);
+      let totalExtraido = '';
+      if (matchTotal) {
+        const numeros = matchTotal.map(n => parseInt(n.replace(/\D/g, ''), 10));
+        const maxNum = Math.max(...numeros);
+        if (maxNum > 100) totalExtraido = String(maxNum);
+      }
+
+      const matchPorcentaje = textoVoz.match(/(?:con|al)\s+(\d{1,3})/);
+      const porcentajeExtraido = matchPorcentaje ? matchPorcentaje[1] : '35';
+
+      const matchCliente = textoVoz.match(/(?:para|de)\s+([a-záéíóúñ\s]+?)(?=\s+por|\s+con|\s+de|$)/i);
+      let clienteExtraido = matchCliente ? matchCliente[1].trim() : '';
+      clienteExtraido = clienteExtraido.charAt(0).toUpperCase() + clienteExtraido.slice(1);
+
+      setNuevoServicio(prev => ({
+        ...prev,
+        cliente: clienteExtraido || prev.cliente,
+        total: totalExtraido || prev.total,
+        porcentajeBarberForm: porcentajeExtraido,
+        servicio: textoVoz.includes('barba') ? 'Corte + Barba' : 'Corte Superior'
+      }));
+
+      setMensajeExito('¡Datos rellenados por voz con éxito!');
+      setTimeout(() => setAlertaExito(false), 3000);
+    };
+
+    recognition.onerror = () => {
+      setMensajeExito('No se pudo reconocer el audio. Inténtalo de nuevo.');
+      setTimeout(() => setAlertaExito(false), 3000);
+    };
+
+    recognition.start();
+  };
+
+  // Función para filtrar y mapear correos de Fresha usando el emailFresha del profesional[cite: 7]
+  const filtrarCorreosFresha = (listaCorreos = [], emailProfesionalFresha = '') => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const correosFiltrados = listaCorreos.filter(correo => {
+      const asunto = (correo.subject || '').toLowerCase();
+      const remitente = (correo.sender || '').toLowerCase();
+      
+      const esNuevaCita = asunto.includes("nueva cita");
+      const esFresha = remitente.includes("fresha") || (emailProfesionalFresha && remitente.includes(emailProfesionalFresha.toLowerCase()));
+
+      if (esNuevaCita && esFresha && correo.date) {
+        const fechaCorreo = new Date(correo.date);
+        fechaCorreo.setHours(0, 0, 0, 0);
+        return fechaCorreo >= hoy;
+      }
+      return false;
+    });
+
+    console.log("aqui estan", correosFiltrados);
+    return correosFiltrados;
+  };
 
   const obtenerServicios = async () => {
     try {
@@ -131,7 +210,6 @@ const handleToggleQ2 = (e) => {
     }
   };
 
-  // Obtener citas finalizadas desde la colección 'citas'[cite: 11] filtrando por el barbero autenticado
   const obtenerCitasFinalizadas = async () => {
     try {
       setLoadingCitas(true);
@@ -143,7 +221,6 @@ const handleToggleQ2 = (e) => {
       }));
 
       const citasValidas = data.filter(item => {
-        // Validamos contra 'barberoId' (como viene en tu base de datos) y variantes
         const esDelBarbero = user ? (item.barberoId === user.uid || item.barberId === user.uid || item.barberoid === user.uid) : true;
         const estadoCita = item.estado ? item.estado.toLowerCase().trim() : '';
         return esDelBarbero && (estadoCita === 'finalizado' || estadoCita === 'finalizada');
@@ -158,10 +235,38 @@ const handleToggleQ2 = (e) => {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         obtenerServicios();
         obtenerCitasFinalizadas();
+        
+        try {
+          const docRef = doc(db, 'profesionales', user.uid);
+          const docSnap = await getDoc(docRef);
+          
+          let emailFreshaDelProfesional = '';
+          if (docSnap.exists()) {
+            const dataProf = docSnap.data();
+            emailFreshaDelProfesional = dataProf.emailFresha || '';
+          }
+
+          console.log("Email Fresha del profesional:", emailFreshaDelProfesional);
+
+          const listaCorreosReales = [
+            { 
+              subject: "Nueva Cita", 
+              sender: emailFreshaDelProfesional || "notifications@fresha.com", 
+              date: new Date().toISOString(),
+              body: "Corte Superior con Yohaldry. Datos del cliente: Carlos Pérez. Teléfono: *******1234"
+            }
+          ];
+
+          filtrarCorreosFresha(listaCorreosReales, emailFreshaDelProfesional);
+
+        } catch (error) {
+          console.error("Error al obtener el emailFresha del profesional:", error);
+        }
+
       } else {
         setLoading(false);
         setLoadingCitas(false);
@@ -171,7 +276,6 @@ const handleToggleQ2 = (e) => {
   }, []);
 
   const parsearPrecioCita = (cita) => {
-    // Buscamos en los posibles campos de precio dentro del documento de la cita, priorizando precioTotal
     const valorBruto = cita.precioTotal || cita.precio || cita.total || cita.costo || cita.valor;
     if (typeof valorBruto === 'number') return valorBruto;
     if (!valorBruto) return 0;
@@ -324,28 +428,6 @@ const handleToggleQ2 = (e) => {
   const diaActual = hoyObj.getDate();
   const ultimoDiaMes = new Date(anioActual, mesActual + 1, 0).getDate();
 
-  const serviciosQ1 = servicios.filter(item => {
-    if (!item.fecha) return false;
-    const [y, m, d] = item.fecha.split('-').map(Number);
-    return y === anioActual && (m - 1) === mesActual && d >= 1 && d <= 15;
-  });
-
-  const serviciosQ2 = servicios.filter(item => {
-    if (!item.fecha) return false;
-    const [y, m, d] = item.fecha.split('-').map(Number);
-    return y === anioActual && (m - 1) === mesActual && d >= 16 && d <= ultimoDiaMes;
-  });
-
-  const gananciaQ1 = serviciosQ1.reduce((acc, item) => {
-    const g = item.ganancias !== undefined ? Number(item.ganancias) : ((Number(item.total) || 0) * (Number(porcentajeBarbero) || 0) / 100);
-    return acc + g;
-  }, 0);
-
-  const gananciaQ2 = serviciosQ2.reduce((acc, item) => {
-    const g = item.ganancias !== undefined ? Number(item.ganancias) : ((Number(item.total) || 0) * (Number(porcentajeBarbero) || 0) / 100);
-    return acc + g;
-  }, 0);
-
   const esPrimeraQuincenaActiva = diaActual <= 15;
 
   const filtrarServiciosPorTiempo = (lista) => {
@@ -433,7 +515,6 @@ const handleToggleQ2 = (e) => {
   return (
     <div className="p-2 sm:p-4 bg-slate-50 text-slate-800 min-h-screen max-w-4xl mx-auto relative font-sans">
       
-      {/* ALERTA FLOTANTE ÉXITO */}
       {alertaExito && (
         <div className="fixed top-3 right-3 z-50 animate-bounce">
           <div className="bg-white border border-amber-300 text-slate-800 px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 text-xs">
@@ -443,8 +524,7 @@ const handleToggleQ2 = (e) => {
         </div>
       )}
 
-      {/* HEADER */}
-   <div className="flex justify-between items-center mb-3 px-1">
+      <div className="flex justify-between items-center mb-3 px-1">
         <div>
           <h1 className="text-base sm:text-xl font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
             <WalletIcon className="text-blue-600" size={20} /> 
@@ -463,37 +543,35 @@ const handleToggleQ2 = (e) => {
         )}
       </div>
 
-      {/* PESTAÑAS PRINCIPALES */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-  <button
-    onClick={() => setVistaTab('manual')}
-    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
-      vistaTab === 'manual'
-        ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
-        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-    }`}
-  >
-    <Percent size={14} /> Gestión Manual (%)
-  </button>
-  <button
-    onClick={() => setVistaTab('domicilios')}
-    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
-      vistaTab === 'domicilios'
-        ? 'bg-blue-900 text-white border-blue-950 shadow-md'
-        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-    }`}
-  >
-    <Home size={14} /> Domicilios 100% ({citasFinalizadas.length})
-  </button>
-</div>
+        <button
+          onClick={() => setVistaTab('manual')}
+          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+            vistaTab === 'manual'
+              ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Percent size={14} /> Gestión Manual (%)
+        </button>
+        <button
+          onClick={() => setVistaTab('domicilios')}
+          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+            vistaTab === 'domicilios'
+              ? 'bg-blue-900 text-white border-blue-950 shadow-md'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Home size={14} /> Domicilios 100% ({citasFinalizadas.length})
+        </button>
+      </div>
 
-      {/* QUINCENAS (SOLO EN VISTA MANUAL) */}
-   {vistaTab === 'manual' && (() => {
+      {vistaTab === 'manual' && (() => {
         const obtenerDatosDiario = (diaInicio, diaFin) => {
           const dias = [];
           const fechaActualContexto = new Date();
           const anioActual = fechaActualContexto.getFullYear();
-          const mesActual = fechaActualContexto.getMonth(); // 0-11
+          const mesActual = fechaActualContexto.getMonth();
 
           for (let d = diaInicio; d <= diaFin; d++) {
             const serviciosDia = servicios.filter(s => {
@@ -565,107 +643,101 @@ const handleToggleQ2 = (e) => {
 
         return (
           <>
-           {/* Botón general o cabecera para controlar los montos con estilo azul eléctrico Arkana */}
-   <div className="grid grid-cols-2 gap-2 mb-3">
-  {/* 1ra Quincena */}
-  <div 
-    onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
-    className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
-  >
-    <div className="flex justify-between items-center mb-1 relative z-10">
-      <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
-        <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
-      </span>
-      {esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
-    </div>
-    
-    <div className="h-7 w-full my-1 relative z-10 flex items-center">
-      <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
-        <defs>
-          <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-          </linearGradient>
-        </defs>
-        <path d={q1Grafico.areaD} fill="url(#gradQ1)" />
-        <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        {q1Grafico.puntos.map((pt, i) => (
-          <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
-        ))}
-      </svg>
-    </div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div 
+                onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
+                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+              >
+                <div className="flex justify-between items-center mb-1 relative z-10">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+                    <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
+                  </span>
+                  {esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
+                </div>
+                
+                <div className="h-7 w-full my-1 relative z-10 flex items-center">
+                  <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d={q1Grafico.areaD} fill="url(#gradQ1)" />
+                    <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    {q1Grafico.puntos.map((pt, i) => (
+                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
+                    ))}
+                  </svg>
+                </div>
 
-    <div className="flex items-center justify-between relative z-10">
-      <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm font-extrabold text-blue-950">
-          {mostrarQ1 ? `$${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
-        </span>
-        <button 
-          onClick={handleToggleQ1}
-          className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
-          title={mostrarQ1 ? "Ocultar monto" : "Ver monto"}
-        >
-          {mostrarQ1 ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
-      </div>
-    </div>
-  </div>
+                <div className="flex items-center justify-between relative z-10">
+                  <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-extrabold text-blue-950">
+                      {mostrarQ1 ? `$${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
+                    </span>
+                    <button 
+                      onClick={handleToggleQ1}
+                      className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
+                      title={mostrarQ1 ? "Ocultar monto" : "Ver monto"}
+                    >
+                      {mostrarQ1 ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-  {/* 2da Quincena */}
-  <div 
-    onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
-    className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
-  >
-    <div className="flex justify-between items-center mb-1 relative z-10">
-      <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
-        <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
-      </span>
-      {!esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
-    </div>
+              <div 
+                onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
+                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+              >
+                <div className="flex justify-between items-center mb-1 relative z-10">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+                    <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
+                  </span>
+                  {!esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
+                </div>
 
-    <div className="h-7 w-full my-1 relative z-10 flex items-center">
-      <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
-        <defs>
-          <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-          </linearGradient>
-        </defs>
-        <path d={q2Grafico.areaD} fill="url(#gradQ2)" />
-        <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        {q2Grafico.puntos.map((pt, i) => (
-          <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
-        ))}
-      </svg>
-    </div>
+                <div className="h-7 w-full my-1 relative z-10 flex items-center">
+                  <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d={q2Grafico.areaD} fill="url(#gradQ2)" />
+                    <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    {q2Grafico.puntos.map((pt, i) => (
+                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
+                    ))}
+                  </svg>
+                </div>
 
-    <div className="flex items-center justify-between relative z-10">
-      <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm font-extrabold text-blue-950">
-          {mostrarQ2 ? `$${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
-        </span>
-        <button 
-          onClick={handleToggleQ2}
-          className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
-          title={mostrarQ2 ? "Ocultar monto" : "Ver monto"}
-        >
-          {mostrarQ2 ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+                <div className="flex items-center justify-between relative z-10">
+                  <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-extrabold text-blue-950">
+                      {mostrarQ2 ? `$${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
+                    </span>
+                    <button 
+                      onClick={handleToggleQ2}
+                      className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
+                      title={mostrarQ2 ? "Ocultar monto" : "Ver monto"}
+                    >
+                      {mostrarQ2 ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            {/* MODAL DE RENDIMIENTO FINANCIERO */}
             {quincenaActivaModal && (() => {
               const modalGrafico = generarPathYCoordenadas(quincenaActivaModal.datos, 300, 100);
               return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
                   <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[90vh]">
-                    
-                    {/* Header del Modal */}
                     <div className="flex justify-between items-center px-5 py-4 border-b border-blue-100 bg-blue-50/50 flex-shrink-0">
                       <div>
                         <span className="text-xs font-bold tracking-wider text-blue-600 uppercase flex items-center gap-1.5">
@@ -684,10 +756,7 @@ const handleToggleQ2 = (e) => {
                       </button>
                     </div>
 
-                    {/* Cuerpo del Modal */}
                     <div className="p-5 overflow-y-auto space-y-5 flex-grow">
-                      
-                      {/* Resumen Total */}
                       <div className="flex justify-between items-center bg-blue-50/80 p-3.5 rounded-xl border border-blue-100">
                         <div>
                           <p className="text-xs text-slate-500 font-medium">Total Producido</p>
@@ -699,7 +768,6 @@ const handleToggleQ2 = (e) => {
                         </div>
                       </div>
 
-                      {/* Gráfica Profesional Ampliada */}
                       <div className="bg-slate-950 p-4 rounded-xl border border-blue-500/30 relative">
                         <div className="flex justify-between text-[10px] text-cyan-400 mb-2 font-mono">
                           <span>MÁX: ${modalGrafico.max.toLocaleString()}</span>
@@ -730,7 +798,6 @@ const handleToggleQ2 = (e) => {
                         </div>
                       </div>
 
-                      {/* Detalle Día por Fila */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
                           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Desglose Día por Día</h4>
@@ -761,10 +828,8 @@ const handleToggleQ2 = (e) => {
                           ))}
                         </div>
                       </div>
-
                     </div>
 
-                    {/* Footer del Modal Principal */}
                     <div className="p-4 border-t border-blue-100 bg-blue-50/50 text-right flex-shrink-0">
                       <button 
                         onClick={() => {
@@ -776,10 +841,8 @@ const handleToggleQ2 = (e) => {
                         Cerrar Análisis
                       </button>
                     </div>
-
                   </div>
 
-                  {/* SUB-MODAL: DETALLE DE SERVICIOS DEL DÍA SELECCIONADO */}
                   {diaSeleccionadoModal !== null && (() => {
                     const fechaContextoModal = new Date();
                     const anioModal = fechaContextoModal.getFullYear();
@@ -820,8 +883,6 @@ const handleToggleQ2 = (e) => {
                     return (
                       <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn">
                         <div className="bg-white border border-blue-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[85vh]">
-                          
-                          {/* Header del Sub-Modal */}
                           <div className="flex justify-between items-center px-5 py-4 border-b border-blue-100 bg-blue-600 text-white">
                             <div>
                               <span className="text-[10px] font-bold tracking-wider text-blue-100 uppercase">
@@ -837,7 +898,6 @@ const handleToggleQ2 = (e) => {
                             </button>
                           </div>
 
-                          {/* Lista de Servicios */}
                           <div className="p-5 overflow-y-auto space-y-3 flex-grow">
                             <div className="flex justify-between items-center bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-100 text-xs">
                               <span className="text-slate-600">Total servicios: <strong className="text-slate-900">{serviciosDelDia.length}</strong></span>
@@ -874,7 +934,6 @@ const handleToggleQ2 = (e) => {
                             )}
                           </div>
 
-                          {/* Footer Sub-Modal */}
                           <div className="p-3.5 border-t border-slate-100 bg-slate-50 text-right">
                             <button 
                               onClick={() => setDiaSeleccionadoModal(null)}
@@ -883,7 +942,6 @@ const handleToggleQ2 = (e) => {
                               Volver al Resumen
                             </button>
                           </div>
-
                         </div>
                       </div>
                     );
@@ -896,32 +954,31 @@ const handleToggleQ2 = (e) => {
         );
       })()}
 
-      {/* FILTROS TIEMPO */}
-     <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-3 scrollbar-none">
-  {[
-    { id: 'dia', label: 'Hoy' },
-    { id: 'especifico', label: 'Día' },
-    { id: 'rango', label: 'Rango' },
-    { id: 'semana', label: 'Semana' },
-    { id: 'quincena', label: 'Quincena' },
-    { id: 'mes', label: 'Mes' },
-    { id: 'anio', label: 'Año' },
-  ].map((tab) => (
-    <button
-      key={tab.id}
-      onClick={() => setFiltroTiempo(tab.id)}
-      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${
-        filtroTiempo === tab.id
-          ? 'bg-blue-600 text-white shadow-sm'
-          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-      }`}
-    >
-      {tab.label}
-    </button>
-  ))}
-</div>
+      <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-3 scrollbar-none">
+        {[
+          { id: 'dia', label: 'Hoy' },
+          { id: 'especifico', label: 'Día' },
+          { id: 'rango', label: 'Rango' },
+          { id: 'semana', label: 'Semana' },
+          { id: 'quincena', label: 'Quincena' },
+          { id: 'mes', label: 'Mes' },
+          { id: 'anio', label: 'Año' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setFiltroTiempo(tab.id)}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${
+              filtroTiempo === tab.id
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-{filtroTiempo === 'especifico' && (
+      {filtroTiempo === 'especifico' && (
         <div className="p-2.5 rounded-xl mb-3 flex items-center justify-between gap-2 text-[11px] border bg-blue-50 border-blue-200 text-blue-950">
           <span className="font-semibold flex items-center gap-1">
             <Calendar size={13} className="text-blue-600" /> Día a consultar:
@@ -958,7 +1015,6 @@ const handleToggleQ2 = (e) => {
         </div>
       )}
 
-      {/* TARJETA PRINCIPAL SEGÚN PESTAÑA ACTIVA */}
       {vistaTab === 'manual' ? (
         <div className="bg-white border border-blue-200 p-3.5 rounded-xl mb-3 shadow-sm relative">
           <div className="flex justify-between items-center gap-2 mb-2">
@@ -1001,129 +1057,89 @@ const handleToggleQ2 = (e) => {
         </div>
       )}
 
-      {/* RESUMEN AGRUPADO */}
       {vistaTab === 'manual' ? (
-      <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
-  <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
-    <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-      <Calendar size={14} className="text-blue-600" /> Historial de Servicios Manuales
-    </h3>
-    <span className="text-[10px] bg-blue-100 text-blue-900 px-2.5 py-0.5 rounded-full font-extrabold border border-blue-200">
-      {serviciosFiltrados.length} servicios registrados
-    </span>
-  </div>
+        <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
+          <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
+            <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+              <Calendar size={14} className="text-blue-600" /> Historial de Servicios Manuales
+            </h3>
+            <span className="text-[10px] bg-blue-100 text-blue-900 px-2.5 py-0.5 rounded-full font-extrabold border border-blue-200">
+              {serviciosFiltrados.length} servicios registrados
+            </span>
+          </div>
 
-  <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto">
-    {loading ? (
-      <div className="py-6 text-center text-blue-500 text-xs font-medium">Cargando datos...</div>
-    ) : serviciosFiltrados && serviciosFiltrados.length > 0 ? (
-      [...serviciosFiltrados]
-        .sort((a, b) => {
-          const fechaA = new Date(`${a.fecha || '1970-01-01'}T${a.hora || '00:00'}`);
-          const fechaB = new Date(`${b.fecha || '1970-01-01'}T${b.hora || '00:00'}`);
-          return fechaB - fechaA; // Del más reciente al más antiguo
-        })
-        .map((srv, index) => {
-          const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
-          const totalServicio = Number(srv.total) || 0;
+          <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto">
+            {loading ? (
+              <div className="py-6 text-center text-blue-500 text-xs font-medium">Cargando datos...</div>
+            ) : serviciosFiltrados && serviciosFiltrados.length > 0 ? (
+              [...serviciosFiltrados]
+                .sort((a, b) => {
+                  const fechaA = new Date(`${a.fecha || '1970-01-01'}T${a.hora || '00:00'}`);
+                  const fechaB = new Date(`${b.fecha || '1970-01-01'}T${b.hora || '00:00'}`);
+                  return fechaB - fechaA;
+                })
+                .map((srv, index) => {
+                  const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
+                  const totalServicio = Number(srv.total) || 0;
 
-          return (
-            <div 
-              key={srv.id || index}
-              className="p-3 flex items-center justify-between hover:bg-blue-50/40 transition-colors group"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0 border border-blue-200">
-                  <Calendar size={16} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-blue-950">{srv.servicio || 'Servicio sin nombre'}</p>
-                  <p className="text-[10px] text-slate-600 font-medium">
-                    Cliente: <span className="text-blue-700 font-semibold">{srv.cliente || 'General'}</span>
-                  </p>
-                  <p className="text-[9px] text-blue-500 font-mono mt-0.5">
-                    {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
-                  </p>
-                </div>
+                  return (
+                    <div 
+                      key={srv.id || index}
+                      className="p-3 flex items-center justify-between hover:bg-blue-50/40 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0 border border-blue-200">
+                          <Calendar size={16} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-blue-950">{srv.servicio || 'Servicio sin nombre'}</p>
+                          <p className="text-[10px] text-slate-600 font-medium">
+                            Cliente: <span className="text-blue-700 font-semibold">{srv.cliente || 'General'}</span>
+                          </p>
+                          <p className="text-[9px] text-blue-500 font-mono mt-0.5">
+                            {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs font-extrabold text-blue-600">+${gananciaServicio.toLocaleString()} COP</p>
+                          <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
+                          {srv.porcentajeValor && (
+                            <span className="inline-block mt-0.5 text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium border border-blue-200">
+                              {srv.porcentajeValor}%
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
+                          <button 
+                            onClick={() => abrirModalEditar(srv)}
+                            title="Editar servicio"
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button 
+                            onClick={() => setServicioAEliminar(srv)}
+                            title="Eliminar servicio"
+                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            ) : (
+              <div className="py-8 text-center text-slate-500 text-xs font-medium">
+                No hay servicios manuales registrados en este período.
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-extrabold text-blue-600">+${gananciaServicio.toLocaleString()} COP</p>
-                  <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
-                  {srv.porcentajeValor && (
-                    <span className="inline-block mt-0.5 text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium border border-blue-200">
-                      {srv.porcentajeValor}%
-                    </span>
-                  )}
-                </div>
-
-                {/* Botones de Acción (Editar / Eliminar) */}
-                <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
-                  <button 
-                    onClick={() => abrirModalEditar(srv)}
-                    title="Editar servicio"
-                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200"
-                  >
-                    <Edit2 size={13} />
-                  </button>
-                  <button 
-                    onClick={() => setServicioAEliminar(srv)}
-                    title="Eliminar servicio"
-                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })
-    ) : (
-      <div className="py-8 text-center text-slate-500 text-xs font-medium">
-        No hay servicios manuales registrados en este período.
-      </div>
-    )}
-  </div>
-
-  {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
-  {servicioAEliminar && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/30 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-4 text-center">
-        <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
-          <Trash2 size={22} />
+            )}
+          </div>
         </div>
-        
-        <div>
-          <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-1">¿Eliminar Servicio?</h4>
-          <p className="text-xs text-slate-600">
-            Estás a punto de eliminar el registro de <strong className="text-blue-700">{servicioAEliminar.servicio}</strong> para el cliente <strong className="text-slate-900">{servicioAEliminar.cliente || 'General'}</strong>. Esta acción no se puede deshacer.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 pt-2">
-          <button
-            onClick={() => setServicioAEliminar(null)}
-            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all border border-slate-200"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={() => {
-              if (typeof eliminarServicio === 'function') {
-                eliminarServicio(servicioAEliminar.id || servicioAEliminar._id);
-              }
-              setServicioAEliminar(null);
-            }}
-            className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-600/20"
-          >
-            Sí, Eliminar
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
-</div>
       ) : (
         <div className="bg-white border border-blue-100 rounded-2xl overflow-hidden shadow-sm">
           <div className="p-3 border-b border-blue-50 flex justify-between items-center bg-blue-50/50">
@@ -1188,79 +1204,13 @@ const handleToggleQ2 = (e) => {
               ))
             ) : (
               <div className="py-10 text-center text-slate-400 text-xs font-medium">
-                No hay citas con estado <strong className="text-blue-900">finalizado</strong> (o <strong className="text-blue-900">finalizada</strong>) registradas para este perfil en este período.
+                No hay citas con estado <strong className="text-blue-900">finalizado</strong> registradas para este período.
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* MODAL DETALLE DE DÍA SELECCIONADO (MANUAL) */}
-      {modalDiaOpen && diaSeleccionadoDetalle && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-blue-200 rounded-xl p-4 max-w-sm w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Detalle del Día</h3>
-                <p className="text-[11px] text-blue-700 font-semibold">{diaSeleccionadoDetalle.fecha}</p>
-              </div>
-              <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded-full">
-                Total: ${diaSeleccionadoDetalle.totalCaja.toLocaleString()}
-              </span>
-            </div>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto mb-3 pr-1">
-              {diaSeleccionadoDetalle.servicios.map((s) => (
-                <div key={s.id} className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs flex justify-between items-center">
-                  <div>
-                    <p className="font-bold text-slate-900 flex items-center gap-1">
-                      <User size={11} className="text-slate-400" /> {s.cliente}
-                    </p>
-                    <p className="text-[10px] text-slate-500">{s.servicio} • <span className="text-slate-400">{s.hora}</span></p>
-                    {s.ganancias !== undefined && (
-                      <p className="text-[10px] text-emerald-600 font-semibold">Ganancia: ${Number(s.ganancias).toLocaleString()}</p>
-                    )}
-                  </div>
-                  <div className="text-right flex flex-col items-end">
-                    <span className="font-extrabold text-blue-900">${Number(s.total).toLocaleString()}</span>
-                    <div className="flex items-center gap-1 mt-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setServicioSeleccionado(s); setModalVerMasOpen(true); }}
-                        className="p-1 bg-white hover:bg-slate-100 text-blue-600 rounded border border-slate-200"
-                        title="Ver más"
-                      >
-                        <Eye size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); abrirModalEditar(s); }}
-                        className="p-1 bg-white hover:bg-slate-100 text-blue-700 rounded border border-slate-200"
-                        title="Editar"
-                      >
-                        <Edit3 size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); confirmarEliminarServicio(s); }}
-                        className="p-1 bg-white hover:bg-slate-100 text-rose-600 rounded border border-slate-200"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setModalDiaOpen(false)}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all text-xs border border-slate-200"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-      {/* MODAL VER DETALLE CITA FINALIZADA (DOMICILIO - AZUL OSCURO) */}
       {modalCitaDetalleOpen && citaSeleccionadaDetalle && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex justify-center items-center p-3 z-50">
           <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-xs w-full shadow-2xl">
@@ -1287,47 +1237,6 @@ const handleToggleQ2 = (e) => {
         </div>
       )}
 
-      {/* MODAL VER MÁS (MANUAL) */}
-      {modalVerMasOpen && servicioSeleccionado && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-yellow-200 rounded-xl p-4 max-w-xs w-full shadow-2xl">
-            <h3 className="text-sm font-bold text-slate-900 mb-2.5">Detalle de Transacción</h3>
-            <div className="space-y-1.5 text-[11px] text-slate-700 mb-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-              <p><strong className="text-slate-500">Cliente:</strong> {servicioSeleccionado.cliente}</p>
-              <p><strong className="text-slate-500">Servicio:</strong> {servicioSeleccionado.servicio}</p>
-              <p><strong className="text-slate-500">Fecha y Hora:</strong> {servicioSeleccionado.fecha} - {servicioSeleccionado.hora}</p>
-              <p><strong className="text-slate-500">Valor Total:</strong> <span className="text-yellow-800 font-bold">${Number(servicioSeleccionado.total).toLocaleString()} COP</span></p>
-              {servicioSeleccionado.ganancias !== undefined && (
-                <p><strong className="text-slate-500">Ganancias:</strong> <span className="text-emerald-600 font-bold">${Number(servicioSeleccionado.ganancias).toLocaleString()} COP</span></p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <button
-                onClick={() => abrirModalEditar(servicioSeleccionado)}
-                className="bg-amber-50 hover:bg-amber-100 text-yellow-900 font-bold py-1.5 rounded-lg transition-all text-[11px] border border-yellow-300 flex items-center justify-center gap-1"
-              >
-                <Edit3 size={13} /> Editar
-              </button>
-              <button
-                onClick={() => confirmarEliminarServicio(servicioSeleccionado)}
-                className="bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-1.5 rounded-lg transition-all text-[11px] border border-rose-200 flex items-center justify-center gap-1"
-              >
-                <Trash2 size={13} /> Eliminar
-              </button>
-            </div>
-
-            <button
-              onClick={() => setModalVerMasOpen(false)}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all text-[11px] border border-slate-200"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL ALERTA DE ELIMINACIÓN */}
       {modalEliminarOpen && servicioAEliminar && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex justify-center items-center p-3 z-50">
           <div className="bg-slate-900 border border-yellow-500/50 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center">
@@ -1357,11 +1266,21 @@ const handleToggleQ2 = (e) => {
         </div>
       )}
 
-      {/* MODAL AGREGAR SERVICIO MANUAL */}
       {modalAgregarOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
           <div className="bg-white border border-yellow-200 rounded-xl p-4 max-w-xs w-full shadow-2xl">
-            <h3 className="text-sm font-bold text-slate-900 mb-2.5">Registrar Nuevo Servicio</h3>
+            <div className="flex justify-between items-center mb-2.5">
+              <h3 className="text-sm font-bold text-slate-900">Registrar Nuevo Servicio</h3>
+              <button
+                type="button"
+                onClick={escucharComandoVoz}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all border border-blue-200 shadow-2xs cursor-pointer animate-pulse"
+                title="Rellenar usando comandos de voz"
+              >
+                <span>🎤 Dictar por Voz</span>
+              </button>
+            </div>
+
             <form onSubmit={handleGuardarServicio} className="space-y-2.5 text-[11px]">
               <div>
                 <label className="block font-medium text-slate-600 mb-0.5">Nombre del Cliente</label>
@@ -1464,7 +1383,6 @@ const handleToggleQ2 = (e) => {
         </div>
       )}
 
-      {/* MODAL EDITAR SERVICIO MANUAL */}
       {modalEditarOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
           <div className="bg-white border border-yellow-200 rounded-xl p-4 max-w-xs w-full shadow-2xl">
