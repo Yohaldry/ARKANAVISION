@@ -665,407 +665,411 @@ export default function PanelProfesionales() {
 
         {activeTab === 'agenda' && (
           <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
-            <div className="shrink-0 space-y-1.5">
-              <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
-                    <input 
-                      type="date" 
-                      value={fechaSeleccionada.toISOString().split('T')[0]} 
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
-                        }
-                      }}
-                      className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
-                    />
-                  </div>
+  {/* Cabecera con relieve y tonos azul eléctrico */}
+  <div className="shrink-0 space-y-1.5">
+    <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
+          <input 
+            type="date" 
+            value={fechaSeleccionada.toISOString().split('T')[0]} 
+            onChange={(e) => {
+              if (e.target.value) {
+                setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
+              }
+            }}
+            className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
+          />
+        </div>
 
-                  <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-                    <button 
-                      type="button"
-                      onClick={() => setVistaCalendario('diario')}
-                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                    >
-                      1 Día
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setVistaCalendario('3dias')}
-                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                    >
-                      3 Días
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setVistaCalendario('semanal')}
-                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                    >
-                      7 Días
-                    </button>
-                  </div>
-                </div>
-              </div>
+        <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+          <button 
+            type="button"
+            onClick={() => setVistaCalendario('diario')}
+            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+          >
+            1 Día
+          </button>
+          <button 
+            type="button"
+            onClick={() => setVistaCalendario('3dias')}
+            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+          >
+            3 Días
+          </button>
+          <button 
+            type="button"
+            onClick={() => setVistaCalendario('semanal')}
+            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+          >
+            7 Días
+          </button>
+        </div>
+      </div>
+    </div>
 
-              <div className="relative flex justify-end items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFechaSeleccionada(new Date())}
-                  className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
-                >
-                  📍 Hoy
-                </button>
+    <div className="relative flex justify-end items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setFechaSeleccionada(new Date())}
+        className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
+      >
+        📍 Hoy
+      </button>
 
-                <button 
-                  onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
-                  className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
-                </button>
+      <button 
+        onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
+        className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
+      >
+        <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
+      </button>
 
-                {menuAgendaAbierto && (
-                  <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
-                    <button 
-                      onClick={() => {
-                        setMenuAgendaAbierto(false);
-                        setModalNuevaCitaAbierto(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      ✨ Cita nueva
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setMenuAgendaAbierto(false);
-                        setModalBloqueoAbierto(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
-                    >
-                      🚫 Horario no disponible
-                    </button>
-                  </div>
-                )}
-              </div>
+      {menuAgendaAbierto && (
+        <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
+          <button 
+            onClick={() => {
+              setMenuAgendaAbierto(false);
+              setModalNuevaCitaAbierto(true);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            ✨ Cita nueva
+          </button>
+          <button 
+            onClick={() => {
+              setMenuAgendaAbierto(false);
+              setModalBloqueoAbierto(true);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
+          >
+            🚫 Horario no disponible
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* Contenedor principal del calendario con scroll */}
+  <div 
+    className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-[0_8px_20px_rgba(37,99,235,0.06),inset_0_1px_2px_rgba(255,255,255,0.8)] border border-blue-300 bg-white [perspective:1400px] mb-2"
+    onTouchStart={(e) => {
+      const touch = e.touches[0];
+      e.currentTarget.dataset.touchStartX = touch.clientX;
+    }}
+    onTouchMove={(e) => {
+      const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
+      const currentX = e.touches[0].clientX;
+      const diff = currentX - startX;
+      const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
+      const hojaFondo = e.currentTarget.querySelector('.libro-pagina-fondo');
+
+      if (hojaActual) {
+        const rotacion = (diff / window.innerWidth) * 20;
+        hojaActual.style.transform = `translateX(${diff * 0.5}px) rotateY(${rotacion}deg)`;
+        hojaActual.style.transition = 'none';
+      }
+
+      if (hojaFondo) {
+        hojaFondo.style.opacity = Math.min(1, Math.abs(diff) / 80);
+      }
+    }}
+    onTouchEnd={(e) => {
+      const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
+      const endX = e.changedTouches[0].clientX;
+      const diff = startX - endX;
+      const minSwipeDistance = 50;
+      const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
+
+      if (Math.abs(diff) > minSwipeDistance) {
+        if (hojaActual) {
+          hojaActual.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
+          hojaActual.style.transform = `translateX(${diff > 0 ? '-100%' : '100%'}) rotateY(${diff > 0 ? '-15deg' : '15deg'})`;
+          hojaActual.style.opacity = '0';
+        }
+
+        setTimeout(() => {
+          const nuevaFecha = new Date(fechaSeleccionada);
+          let diasASaltar = 7;
+          if (vistaCalendario === 'diario') diasASaltar = 1;
+          if (vistaCalendario === '3dias') diasASaltar = 3;
+
+          if (diff > 0) {
+            nuevaFecha.setDate(nuevaFecha.getDate() + diasASaltar);
+          } else {
+            nuevaFecha.setDate(nuevaFecha.getDate() - diasASaltar);
+          }
+          setFechaSeleccionada(nuevaFecha);
+        }, 300);
+      } else {
+        if (hojaActual) {
+          hojaActual.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+          hojaActual.style.transform = 'translateX(0px) rotateY(0deg)';
+          hojaActual.style.opacity = '1';
+        }
+      }
+    }}
+  >
+    <div className="libro-pagina-fondo absolute inset-0 bg-white p-1 opacity-0 transition-opacity duration-150 pointer-events-none">
+      <div className="grid sticky top-0 z-30 bg-gradient-to-b from-blue-100 to-blue-200 border-b border-blue-300 text-center text-[9px] font-black uppercase text-blue-900 shadow-sm" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+        <div className="text-left pl-2 py-2 text-blue-800 font-bold text-[8px] border-r border-blue-300/60 sticky left-0 z-30 bg-blue-100">Hora</div>
+        {diasVisibles.map((d, i) => {
+          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+          return (
+            <div key={i} className={`py-2 px-0.5 border-r border-blue-300/60 last:border-r-0 truncate ${esHoy ? 'bg-blue-600 text-white font-black' : 'text-blue-800'}`}>
+              {d.nombre.toUpperCase()} {d.num}
             </div>
+          );
+        })}
+      </div>
+    </div>
 
-            <div 
-              className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-[0_8px_20px_rgba(37,99,235,0.06),inset_0_1px_2px_rgba(255,255,255,0.8)] border border-blue-300 bg-white [perspective:1400px] mb-2"
-              onTouchStart={(e) => {
-                const touch = e.touches[0];
-                e.currentTarget.dataset.touchStartX = touch.clientX;
-              }}
-              onTouchMove={(e) => {
-                const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
-                const currentX = e.touches[0].clientX;
-                const diff = currentX - startX;
-                const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
-                const hojaFondo = e.currentTarget.querySelector('.libro-pagina-fondo');
+    <div className="libro-pagina-actual bg-white relative w-full text-blue-950 [transform-style:preserve-3d] origin-left shadow-sm rounded-2xl overflow-hidden">
+      {/* Cabecera de días fija con z-30 */}
+      <div className="grid sticky top-0 z-30 bg-gradient-to-b from-blue-100 to-blue-200 border-b border-blue-300 text-center text-[9px] font-black uppercase text-blue-900 shadow-[0_2px_4px_rgba(0,0,0,0.04)]" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+        <div className="text-left pl-2 py-2 text-blue-800 font-bold text-[8px] border-r border-blue-300/60 bg-blue-100 sticky left-0 z-30">Hora</div>
+        {diasVisibles.map((d, i) => {
+          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+          const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
-                if (hojaActual) {
-                  const rotacion = (diff / window.innerWidth) * 20;
-                  hojaActual.style.transform = `translateX(${diff * 0.5}px) rotateY(${rotacion}deg)`;
-                  hojaActual.style.transition = 'none';
-                }
+          let estiloDia = 'text-blue-900';
+          if (esHoy) {
+            estiloDia = 'bg-blue-600 text-white font-black border-b-2 border-blue-800 shadow-inner';
+          } else if (esSeleccionado) {
+            estiloDia = 'bg-blue-200/70 text-blue-950 font-black shadow-inner';
+          }
 
-                if (hojaFondo) {
-                  hojaFondo.style.opacity = Math.min(1, Math.abs(diff) / 80);
-                }
-              }}
-              onTouchEnd={(e) => {
-                const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
-                const endX = e.changedTouches[0].clientX;
-                const diff = startX - endX;
-                const minSwipeDistance = 50;
-                const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
-
-                if (Math.abs(diff) > minSwipeDistance) {
-                  if (hojaActual) {
-                    hojaActual.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
-                    hojaActual.style.transform = `translateX(${diff > 0 ? '-100%' : '100%'}) rotateY(${diff > 0 ? '-15deg' : '15deg'})`;
-                    hojaActual.style.opacity = '0';
-                  }
-
-                  setTimeout(() => {
-                    const nuevaFecha = new Date(fechaSeleccionada);
-                    let diasASaltar = 7;
-                    if (vistaCalendario === 'diario') diasASaltar = 1;
-                    if (vistaCalendario === '3dias') diasASaltar = 3;
-
-                    if (diff > 0) {
-                      nuevaFecha.setDate(nuevaFecha.getDate() + diasASaltar);
-                    } else {
-                      nuevaFecha.setDate(nuevaFecha.getDate() - diasASaltar);
-                    }
-                    setFechaSeleccionada(nuevaFecha);
-                  }, 300);
-                } else {
-                  if (hojaActual) {
-                    hojaActual.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-                    hojaActual.style.transform = 'translateX(0px) rotateY(0deg)';
-                    hojaActual.style.opacity = '1';
-                  }
-                }
-              }}
-            >
-              <div className="libro-pagina-fondo absolute inset-0 bg-white p-1 opacity-0 transition-opacity duration-150 pointer-events-none">
-                <div className="grid sticky top-0 z-20 bg-gradient-to-b from-blue-100 to-blue-200 border-b border-blue-300 text-center text-[9px] font-black uppercase text-blue-900 shadow-sm" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                  <div className="text-left pl-2 py-2 text-blue-800 font-bold text-[8px] border-r border-blue-300/60">Hora</div>
-                  {diasVisibles.map((d, i) => {
-                    const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-                    return (
-                      <div key={i} className={`py-2 px-0.5 border-r border-blue-300/60 last:border-r-0 truncate ${esHoy ? 'bg-blue-600 text-white font-black' : 'text-blue-800'}`}>
-                        {d.nombre.toUpperCase()} {d.num}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="libro-pagina-actual bg-white relative w-full text-blue-950 [transform-style:preserve-3d] origin-left shadow-sm rounded-2xl overflow-hidden">
-                <div className="grid sticky top-0 z-20 bg-gradient-to-b from-blue-100 to-blue-200 border-b border-blue-300 text-center text-[9px] font-black uppercase text-blue-900 shadow-[0_2px_4px_rgba(0,0,0,0.04)]" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                  <div className="text-left pl-2 py-2 text-blue-800 font-bold text-[8px] border-r border-blue-300/60 bg-blue-100">Hora</div>
-                  {diasVisibles.map((d, i) => {
-                    const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-                    const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
-
-                    let estiloDia = 'text-blue-900';
-                    if (esHoy) {
-                      estiloDia = 'bg-blue-600 text-white font-black border-b-2 border-blue-800 shadow-inner';
-                    } else if (esSeleccionado) {
-                      estiloDia = 'bg-blue-200/70 text-blue-950 font-black shadow-inner';
-                    }
-
-                    return (
-                      <div key={i} className={`py-2 px-0.5 border-r border-blue-300/60 last:border-r-0 truncate transition-colors ${estiloDia}`}>
-                        {d.nombre.toUpperCase()} {d.num} {esHoy && '📍'}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
-                  {dragOverInfo.horaTexto && (
-                    <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-lg shadow-[0_4px_12px_rgba(37,99,235,0.4)] border border-blue-400 backdrop-blur-sm"
-                         style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
-                      📍 Mover a: <span className="underline">{dragOverInfo.horaTexto}</span>
-                    </div>
-                  )}
-
-                  {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
-                    <div 
-                      className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
-                      style={{ 
-                        top: `${currentTimeMinutes}%`,
-                        left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
-                        width: `${100 / (diasVisibles.length + 1)}%`
-                      }}
-                    >
-                      <div className="w-[40px] bg-blue-600 text-white text-[7px] font-black text-center py-0.5 rounded-r shadow-md">HOY</div>
-                      <div className="flex-1 border-t-2 border-blue-600 shadow-[0_1px_3px_rgba(37,99,235,0.4)]"></div>
-                    </div>
-                  )}
-
-                  {horasCalendario.map((itemHora, idx) => {
-                    const [fH, fM] = itemHora.val24.split(':').map(Number);
-                    const minutosFilaInicio = fH * 60 + fM;
-                    const minutosFilaFin = minutosFilaInicio + 60;
-
-                    const esHorarioLaboral = fH >= 9 && fH <= 21;
-
-                    const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
-                      if (!horaStr) return 0;
-                      let clean = horaStr.toString().toUpperCase().trim();
-                      
-                      let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
-                      let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
-
-                      let timePart = clean.replace(/[^0-9:]/g, '').trim();
-                      let parts = timePart.split(':');
-                      let hours = parseInt(parts[0], 10) || 0;
-                      let minutes = parseInt(parts[1], 10) || 0;
-                      
-                      if (esBloqueo) {
-                        if (isPM && hours < 12) hours += 12;
-                        if (isAM && hours === 12) hours = 0;
-                      } else {
-                        if (isPM && hours < 12) {
-                          hours += 12;
-                        } else if (isAM && hours === 12) {
-                          hours = 0;
-                        } else if (!isPM && !isAM && hours >= 1 && hours <= 7) {
-                          hours += 12;
-                        }
-                      }
-
-                      if (!esBloqueo && isAM && (hours === 1 || hours === 2)) {
-                        hours += 12;
-                      }
-                      
-                      return hours * 60 + minutes;
-                    };
-
-                    const minutosAHoraTexto = (totalMinutos) => {
-                      const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
-                      const h24 = Math.floor(minutosNorm / 60);
-                      const min = minutosNorm % 60;
-                      const ampm = h24 >= 12 ? 'PM' : 'AM';
-                      const h12 = h24 % 12 || 12;
-                      return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
-                    };
-
-                    return (
-                      <div key={idx} className="grid items-stretch min-h-[50px] border-b border-blue-300/45 text-[9px] relative" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                        <div className={`border-r border-blue-300/65 p-0.5 font-bold text-[7px] flex items-center justify-center text-center transition-colors shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] ${esHorarioLaboral ? 'bg-blue-100/50 text-blue-900' : 'bg-blue-100/20 text-blue-700'}`}>
-                          {itemHora.label}
-                        </div>
-
-                        {diasVisibles.map((dia, dIdx) => {
-                          const fechaStr = dia.fechaObj.toISOString().split('T')[0];
-
-                          const citasEnEstaHora = citasFirestore.filter(c => {
-                            if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
-                            const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
-                            return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
-                          });
-
-                          const bloqueosEnEstaHora = citasFirestore.filter(c => {
-                            if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
-                            const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
-                            return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
-                          });
-
-                          const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
-
-                          return (
-                            <div 
-                              key={dIdx} 
-                              className={`border-r border-blue-300/35 last:border-r-0 p-1 relative flex flex-row gap-1 items-stretch overflow-visible transition-colors ${
-                                dragOverInfo.diaStr === fechaStr ? 'bg-blue-200/50' : (esHorarioLaboral ? 'bg-blue-50/20 hover:bg-blue-100/30' : 'bg-white hover:bg-blue-50/40')
-                              }`}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const offsetY = e.clientY - rect.top;
-                                const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                                const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                                const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                                const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
-
-                                setDragOverInfo({
-                                  diaStr: fechaStr,
-                                  horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
-                                  y: e.clientY
-                                });
-                              }}
-                              onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
-                                const citaId = e.dataTransfer.getData("text/plain");
-                                if (!citaId) return;
-                                const citaArrastrada = citasFirestore.find(c => (c.id || c.uid) === citaId);
-                                if (!citaArrastrada || citaArrastrada.esBloqueo) return;
-
-                                const estadoCita = (citaArrastrada.estado || '').toLowerCase();
-                                if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
-
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const offsetY = e.clientY - rect.top;
-                                const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                                const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                                const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                                const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
-                                actualizarCitaArrastrada(citaArrastrada, fechaStr, nuevaHoraFormateada);
-                              }}
-                            >
-                              {elementosEnEstaHora.length > 0 ? (
-                                elementosEnEstaHora.map((itemCita, cIdx) => {
-                                  const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
-                                  const citaKey = itemCita.id || itemCita.uid;
-                                  
-                                  const estadoCita = (itemCita.estado || '').toLowerCase();
-                                  const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
-
-                                  let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-                                  if (itemCita.esBloqueo && itemCita.horaFin) {
-                                    const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
-                                    if (minFin > minutosItemInicio) {
-                                      duracionMin = minFin - minutosItemInicio;
-                                    } else if (minFin < minutosItemInicio) {
-                                      duracionMin = (1440 - minutosItemInicio) + minFin;
-                                    }
-                                  }
-
-                                  const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-                                  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-                                  const alturaTotalPixeles = (duracionMin / 60) * 50;
-
-                                  const totalCol = elementosEnEstaHora.length;
-                                  const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
-                                  const leftPercent = totalCol > 1 ? `${(cIdx * (100 / totalCol))}%` : '0px';
-
-                                  return (
-                                    <div 
-                                      key={cIdx}
-                                      draggable={!itemCita.esBloqueo && !esFinalizada}
-                                      onDragStart={(e) => {
-                                        if (esFinalizada) {
-                                          e.preventDefault();
-                                          return;
-                                        }
-                                        e.dataTransfer.setData("text/plain", citaKey);
-                                      }}
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        abrirModalCita(itemCita); 
-                                      }} 
-                                      style={{ 
-                                        top: `${topPercent}%`, 
-                                        height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 38)}px` : `${Math.max((duracionMin / 60) * 100, 38)}%`, 
-                                        minHeight: '38px', 
-                                        zIndex: itemCita.esBloqueo ? 30 : 40,
-                                        width: `calc(${widthPercent} - 4px)`,
-                                        left: `calc(${leftPercent} + 2px)`
-                                      }}
-                                      className={`absolute p-1.5 border transition-all duration-200 shadow-[0_3px_8px_rgba(37,99,235,0.1),inset_0_1px_0_rgba(255,255,255,0.7)] flex flex-col justify-between overflow-hidden rounded-lg ${
-                                        itemCita.esBloqueo 
-                                          ? 'bg-gradient-to-b from-rose-100 to-rose-200 text-rose-900 border-rose-300 font-bold cursor-pointer hover:shadow-[0_4px_12px_rgba(244,63,94,0.2)] select-none' 
-                                          : esFinalizada
-                                            ? 'bg-slate-200 text-slate-500 border-slate-300 font-normal cursor-pointer select-none shadow-none opacity-80'
-                                            : `cursor-grab active:cursor-grabbing hover:shadow-[0_6px_16px_rgba(37,99,235,0.15)] hover:scale-[1.02] ${itemCita.color || 'bg-gradient-to-b from-blue-100 to-blue-200 border-blue-400 text-blue-950'}`
-                                      }`}
-                                    >
-                                      <div className="flex justify-between items-center pointer-events-none">
-                                        <span className="font-black truncate text-[8px] block drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
-                                          {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
-                                        </span>
-                                        <span className="text-[7px] font-bold opacity-80">{itemCita.hora} {itemCita.horaFin ? `- ${itemCita.horaFin}` : ''}</span>
-                                      </div>
-
-                                      {!itemCita.esBloqueo && (
-                                        <span className="text-[7px] truncate font-bold block pointer-events-none opacity-90">
-                                          {itemCita.servicio} ({duracionMin}m)
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <div className="text-center text-blue-800/30 text-[9px] h-full flex items-center justify-center"></div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+          return (
+            <div key={i} className={`py-2 px-0.5 border-r border-blue-300/60 last:border-r-0 truncate transition-colors ${estiloDia}`}>
+              {d.nombre.toUpperCase()} {d.num} {esHoy && '📍'}
             </div>
+          );
+        })}
+      </div>
+
+      <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+        {dragOverInfo.horaTexto && (
+          <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-lg shadow-[0_4px_12px_rgba(37,99,235,0.4)] border border-blue-400 backdrop-blur-sm"
+               style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
+            📍 Mover a: <span className="underline">{dragOverInfo.horaTexto}</span>
           </div>
+        )}
+
+        {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
+          <div 
+            className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
+            style={{ 
+              top: `${currentTimeMinutes}%`,
+              left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
+              width: `${100 / (diasVisibles.length + 1)}%`
+            }}
+          >
+            <div className="w-[40px] bg-blue-600 text-white text-[7px] font-black text-center py-0.5 rounded-r shadow-md">HOY</div>
+            <div className="flex-1 border-t-2 border-blue-600 shadow-[0_1px_3px_rgba(37,99,235,0.4)]"></div>
+          </div>
+        )}
+
+        {horasCalendario.map((itemHora, idx) => {
+          const [fH, fM] = itemHora.val24.split(':').map(Number);
+          const minutosFilaInicio = fH * 60 + fM;
+          const minutosFilaFin = minutosFilaInicio + 60;
+
+          const esHorarioLaboral = fH >= 9 && fH <= 21;
+
+          const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
+            if (!horaStr) return 0;
+            let clean = horaStr.toString().toUpperCase().trim();
+            
+            let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
+            let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
+
+            let timePart = clean.replace(/[^0-9:]/g, '').trim();
+            let parts = timePart.split(':');
+            let hours = parseInt(parts[0], 10) || 0;
+            let minutes = parseInt(parts[1], 10) || 0;
+            
+            if (esBloqueo) {
+              if (isPM && hours < 12) hours += 12;
+              if (isAM && hours === 12) hours = 0;
+            } else {
+              if (isPM && hours < 12) {
+                hours += 12;
+              } else if (isAM && hours === 12) {
+                hours = 0;
+              } else if (!isPM && !isAM && hours >= 1 && hours <= 7) {
+                hours += 12;
+              }
+            }
+
+            if (!esBloqueo && isAM && (hours === 1 || hours === 2)) {
+              hours += 12;
+            }
+            
+            return hours * 60 + minutes;
+          };
+
+          const minutosAHoraTexto = (totalMinutos) => {
+            const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
+            const h24 = Math.floor(minutosNorm / 60);
+            const min = minutosNorm % 60;
+            const ampm = h24 >= 12 ? 'PM' : 'AM';
+            const h12 = h24 % 12 || 12;
+            return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
+          };
+
+          return (
+            <div key={idx} className="grid items-stretch min-h-[50px] border-b border-blue-300/45 text-[9px] relative" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+              {/* Columna de la hora fija a la izquierda (sticky left-0) */}
+              <div className={`border-r border-blue-300/65 p-0.5 font-bold text-[7px] flex items-center justify-center text-center transition-colors shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] sticky left-0 z-20 ${esHorarioLaboral ? 'bg-blue-100/90 text-blue-900' : 'bg-blue-100/70 text-blue-700'}`}>
+                {itemHora.label}
+              </div>
+
+              {diasVisibles.map((dia, dIdx) => {
+                const fechaStr = dia.fechaObj.toISOString().split('T')[0];
+
+                const citasEnEstaHora = citasFirestore.filter(c => {
+                  if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
+                  const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
+                  return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
+                });
+
+                const bloqueosEnEstaHora = citasFirestore.filter(c => {
+                  if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
+                  const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
+                  return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
+                });
+
+                const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
+
+                return (
+                  <div 
+                    key={dIdx} 
+                    className={`border-r border-blue-300/35 last:border-r-0 p-1 relative flex flex-row gap-1 items-stretch overflow-visible transition-colors ${
+                      dragOverInfo.diaStr === fechaStr ? 'bg-blue-200/50' : (esHorarioLaboral ? 'bg-blue-50/20 hover:bg-blue-100/30' : 'bg-white hover:bg-blue-50/40')
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const offsetY = e.clientY - rect.top;
+                      const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                      const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                      const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                      const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
+
+                      setDragOverInfo({
+                        diaStr: fechaStr,
+                        horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
+                        y: e.clientY
+                      });
+                    }}
+                    onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
+                      const citaId = e.dataTransfer.getData("text/plain");
+                      if (!citaId) return;
+                      const citaArrastrada = citasFirestore.find(c => (c.id || c.uid) === citaId);
+                      if (!citaArrastrada || citaArrastrada.esBloqueo) return;
+
+                      const estadoCita = (citaArrastrada.estado || '').toLowerCase();
+                      if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
+
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const offsetY = e.clientY - rect.top;
+                      const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                      const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                      const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                      const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
+                      actualizarCitaArrastrada(citaArrastrada, fechaStr, nuevaHoraFormateada);
+                    }}
+                  >
+                    {elementosEnEstaHora.length > 0 ? (
+                      elementosEnEstaHora.map((itemCita, cIdx) => {
+                        const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
+                        const citaKey = itemCita.id || itemCita.uid;
+                        
+                        const estadoCita = (itemCita.estado || '').toLowerCase();
+                        const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
+
+                        let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+                        if (itemCita.esBloqueo && itemCita.horaFin) {
+                          const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
+                          if (minFin > minutosItemInicio) {
+                            duracionMin = minFin - minutosItemInicio;
+                          } else if (minFin < minutosItemInicio) {
+                            duracionMin = (1440 - minutosItemInicio) + minFin;
+                          }
+                        }
+
+                        const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+                        const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                        const alturaTotalPixeles = (duracionMin / 60) * 50;
+
+                        const totalCol = elementosEnEstaHora.length;
+                        const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
+                        const leftPercent = totalCol > 1 ? `${(cIdx * (100 / totalCol))}%` : '0px';
+
+                        return (
+                          <div 
+                            key={cIdx}
+                            draggable={!itemCita.esBloqueo && !esFinalizada}
+                            onDragStart={(e) => {
+                              if (esFinalizada) {
+                                e.preventDefault();
+                                return;
+                              }
+                              e.dataTransfer.setData("text/plain", citaKey);
+                            }}
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              abrirModalCita(itemCita); 
+                            }} 
+                            style={{ 
+                              top: `${topPercent}%`, 
+                              height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 38)}px` : `${Math.max((duracionMin / 60) * 100, 38)}%`, 
+                              minHeight: '38px', 
+                              zIndex: itemCita.esBloqueo ? 30 : 40,
+                              width: `calc(${widthPercent} - 4px)`,
+                              left: `calc(${leftPercent} + 2px)`
+                            }}
+                            className={`absolute p-1.5 border transition-all duration-200 shadow-[0_3px_8px_rgba(37,99,235,0.1),inset_0_1px_0_rgba(255,255,255,0.7)] flex flex-col justify-between overflow-hidden rounded-lg ${
+                              itemCita.esBloqueo 
+                                ? 'bg-gradient-to-b from-rose-100 to-rose-200 text-rose-900 border-rose-300 font-bold cursor-pointer hover:shadow-[0_4px_12px_rgba(244,63,94,0.2)] select-none' 
+                                : esFinalizada
+                                  ? 'bg-slate-200 text-slate-500 border-slate-300 font-normal cursor-pointer select-none shadow-none opacity-80'
+                                  : `cursor-grab active:cursor-grabbing hover:shadow-[0_6px_16px_rgba(37,99,235,0.15)] hover:scale-[1.02] ${itemCita.color || 'bg-gradient-to-b from-blue-100 to-blue-200 border-blue-400 text-blue-950'}`
+                            }`}
+                          >
+                            <div className="flex justify-between items-center pointer-events-none">
+                              <span className="font-black truncate text-[8px] block drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
+                                {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
+                              </span>
+                              <span className="text-[7px] font-bold opacity-80">{itemCita.hora} {itemCita.horaFin ? `- ${itemCita.horaFin}` : ''}</span>
+                            </div>
+
+                            {!itemCita.esBloqueo && (
+                              <span className="text-[7px] truncate font-bold block pointer-events-none opacity-90">
+                                {itemCita.servicio} ({duracionMin}m)
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center text-blue-800/30 text-[9px] h-full flex items-center justify-center"></div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+</div>
         )}
 
         {modalBloqueoAbierto && (
