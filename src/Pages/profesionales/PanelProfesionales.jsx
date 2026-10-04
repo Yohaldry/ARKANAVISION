@@ -66,7 +66,7 @@ export default function PanelProfesionales() {
   const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('1:00 a. m.');
   const [nuevoMotivoBloqueo, setNuevoMotivoBloqueo] = useState('');
   const [nuevoServicioCita, setNuevoServicioCita] = useState('');
-
+const [pestanaActiva, setPestanaActiva] = useState('externos');
   const [menuAgendaAbierto, setMenuAgendaAbierto] = useState(false);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
   const [modalNuevaCitaAbierto, setModalNuevaCitaAbierto] = useState(false);
@@ -1442,7 +1442,9 @@ export default function PanelProfesionales() {
         )}
 
         {activeTab === 'servicios' && (
-          <div className="space-y-3">
+
+<div className="space-y-3">
+            {/* Cabecera y Botones de Nuevo Servicio/Paquete */}
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-xs font-black uppercase text-slate-100">Mis Servicios y Paquetes</h3>
@@ -1453,7 +1455,14 @@ export default function PanelProfesionales() {
                   type="button"
                   onClick={() => {
                     setServicioEditando(null);
-                    setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio', color: '#eab308' });
+                    setFormServicio({ 
+                      nombre: '', 
+                      descripcion: '', 
+                      precio: '', 
+                      duracion: pestanaActiva === 'internos' ? 'interno' : '45 min', 
+                      categoria: 'servicio', 
+                      color: '#eab308' 
+                    });
                     setShowServicioModal(true);
                   }}
                   className="bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
@@ -1464,7 +1473,14 @@ export default function PanelProfesionales() {
                   type="button"
                   onClick={() => {
                     setServicioEditando(null);
-                    setFormServicio({ nombre: '', descripcion: '', precio: '', duracion: '60 min', categoria: 'paquete', color: '#3b82f6' });
+                    setFormServicio({ 
+                      nombre: '', 
+                      descripcion: '', 
+                      precio: '', 
+                      duracion: pestanaActiva === 'internos' ? 'interno' : '60 min', 
+                      categoria: 'paquete', 
+                      color: '#3b82f6' 
+                    });
                     setShowServicioModal(true);
                   }}
                   className="bg-neutral-800 hover:bg-neutral-700 text-slate-200 border border-neutral-700 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
@@ -1474,71 +1490,105 @@ export default function PanelProfesionales() {
               </div>
             </div>
 
+            {/* Selector de Pestañas: Servicios Externos vs Servicios Internos */}
+            <div className="flex border-b border-neutral-800 gap-4">
+              <button
+                type="button"
+                onClick={() => setPestanaActiva('externos')}
+                className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
+                  pestanaActiva === 'externos' 
+                    ? 'border-yellow-500 text-yellow-400' 
+                    : 'border-transparent text-neutral-400 hover:text-slate-200'
+                }`}
+              >
+                Servicios Externos
+              </button>
+              <button
+                type="button"
+                onClick={() => setPestanaActiva('internos')}
+                className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
+                  pestanaActiva === 'internos' 
+                    ? 'border-yellow-500 text-yellow-400' 
+                    : 'border-transparent text-neutral-400 hover:text-slate-200'
+                }`}
+              >
+                Servicios Internos
+              </button>
+            </div>
+
+            {/* Listado filtrado según la pestaña activa */}
             <div className="space-y-2">
-              {serviciosFirebase.length === 0 ? (
+              {serviciosFirebase.filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno').length === 0 ? (
                 <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl text-center text-neutral-400 text-[10px]">
-                  No tienes servicios ni paquetes creados. Agrega tu primer elemento personalizado.
+                  {pestanaActiva === 'internos' 
+                    ? 'No tienes servicios internos creados.' 
+                    : 'No tienes servicios externos creados.'}
                 </div>
               ) : (
-                serviciosFirebase.map(serv => {
-                  const esPaquete = serv.categoria === 'paquete';
-                  const colorServicio = serv.color || (esPaquete ? '#3b82f6' : '#eab308');
+                serviciosFirebase
+                  .filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno')
+                  .map(serv => {
+                    const esPaquete = serv.categoria === 'paquete';
+                    const colorServicio = serv.color || (esPaquete ? '#3b82f6' : '#eab308');
 
-                  return (
-                    <div key={serv.id} className="bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
-                      <div className="flex items-start gap-2.5">
-                        <div 
-                          className="w-3 h-3 rounded-full mt-1 shrink-0 border border-white/20 shadow-xs" 
-                          style={{ backgroundColor: colorServicio }} 
-                          title={`Color: ${colorServicio}`}
-                        />
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'}`}>
-                              {esPaquete ? 'Paquete' : 'Servicio'}
-                            </span>
-                            <p className="text-[11px] font-bold text-white">{serv.nombre}</p>
-                            <span className="text-[8px] bg-neutral-800 border border-neutral-700 text-neutral-300 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                    return (
+                      <div key={serv.id} className="bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <div 
+                            className="w-3 h-3 rounded-full mt-1 shrink-0 border border-white/20 shadow-xs" 
+                            style={{ backgroundColor: colorServicio }} 
+                            title={`Color: ${colorServicio}`}
+                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'}`}>
+                                {esPaquete ? 'Paquete' : 'Servicio'}
+                              </span>
+                              <p className="text-[11px] font-bold text-white">{serv.nombre}</p>
+                              {pestanaActiva !== 'internos' && (
+                                <span className="text-[8px] bg-neutral-800 border border-neutral-700 text-neutral-300 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                              )}
+                            </div>
+                            <p className="text-[9px] text-neutral-400 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
                           </div>
-                          <p className="text-[9px] text-neutral-400 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                          <p className="text-[11px] font-bold text-yellow-400">{serv.precio}</p>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setServicioEditando(serv);
+                                setFormServicio({ 
+                                  nombre: serv.nombre, 
+                                  descripcion: serv.descripcion || '', 
+                                  precio: serv.precio, 
+                                  duracion: pestanaActiva === 'internos' ? 'interno' : (serv.duracion || '45 min'),
+                                  categoria: serv.categoria || 'servicio',
+                                  color: serv.color || (serv.categoria === 'paquete' ? '#3b82f6' : '#eab308')
+                                });
+                                setShowServicioModal(true);
+                              }}
+                              className="p-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-yellow-400 cursor-pointer transition-colors"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => eliminarServicioFirestore(serv.id)}
+                              className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-400 hover:bg-rose-900/60 cursor-pointer transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                        <p className="text-[11px] font-bold text-yellow-400">{serv.precio}</p>
-                        <div className="flex items-center gap-1">
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setServicioEditando(serv);
-                              setFormServicio({ 
-                                nombre: serv.nombre, 
-                                descripcion: serv.descripcion || '', 
-                                precio: serv.precio, 
-                                duracion: serv.duracion || '45 min',
-                                categoria: serv.categoria || 'servicio',
-                                color: serv.color || (serv.categoria === 'paquete' ? '#3b82f6' : '#eab308')
-                              });
-                              setShowServicioModal(true);
-                            }}
-                            className="p-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-yellow-400 cursor-pointer transition-colors"
-                          >
-                            <Edit3 className="w-3 h-3" />
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => eliminarServicioFirestore(serv.id)}
-                            className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-400 hover:bg-rose-900/60 cursor-pointer transition-colors"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                    );
+                  })
               )}
             </div>
 
+            {/* Modal de Crear / Editar */}
             {showServicioModal && (
               <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
                 <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95 text-slate-100">
@@ -1555,7 +1605,17 @@ export default function PanelProfesionales() {
                     </button>
                   </div>
 
-                  <form onSubmit={handleGuardarServicio} className="space-y-3 text-[10px]">
+                  <form onSubmit={(e) => {
+                    // Forzamos que si estamos en la pestaña internos, la duración se guarde como 'interno'
+                    if (pestanaActiva === 'internos') {
+                      e.preventDefault();
+                      // Aseguramos el valor antes de enviar mediante una copia o modificando el estado
+                      const formFinal = { ...formServicio, duracion: 'interno' };
+                      // NOTA: Si manejas handleGuardarServicio directamente, puedes pasar el objeto o asegurar que formServicio.duracion sea 'interno'
+                    }
+                    handleGuardarServicio(e);
+                  }} className="space-y-3 text-[10px]">
+                    
                     <div className="space-y-1">
                       <label className="font-bold text-neutral-400 uppercase text-[9px]">Tipo</label>
                       <select 
@@ -1620,7 +1680,8 @@ export default function PanelProfesionales() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* El campo de precio se muestra completo, y duración solo si estamos en externos */}
+                    <div className={pestanaActiva === 'internos' ? "space-y-1" : "grid grid-cols-2 gap-2"}>
                       <div className="space-y-1">
                         <label className="font-bold text-neutral-400 uppercase text-[9px]">Precio *</label>
                         <input 
@@ -1632,16 +1693,18 @@ export default function PanelProfesionales() {
                           className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-neutral-400 uppercase text-[9px]">Duración</label>
-                        <input 
-                          type="text" 
-                          placeholder="Ej: 45 min" 
-                          value={formServicio.duracion} 
-                          onChange={e => setFormServicio({...formServicio, duracion: e.target.value})}
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
-                        />
-                      </div>
+                      {pestanaActiva !== 'internos' && (
+                        <div className="space-y-1">
+                          <label className="font-bold text-neutral-400 uppercase text-[9px]">Duración</label>
+                          <input 
+                            type="text" 
+                            placeholder="Ej: 45 min" 
+                            value={formServicio.duracion} 
+                            onChange={e => setFormServicio({...formServicio, duracion: e.target.value})}
+                            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2 pt-3 border-t border-neutral-800">
@@ -1654,6 +1717,11 @@ export default function PanelProfesionales() {
                       </button>
                       <button 
                         type="submit" 
+                        onClick={() => {
+                          if (pestanaActiva === 'internos') {
+                            setFormServicio(prev => ({ ...prev, duracion: 'interno' }));
+                          }
+                        }}
                         className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-2 rounded-xl text-[10px] uppercase transition-colors cursor-pointer shadow-sm"
                       >
                         Guardar

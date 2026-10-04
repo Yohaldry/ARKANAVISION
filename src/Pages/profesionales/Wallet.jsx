@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff, Mic, Square } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff } from 'lucide-react';
 import { db, auth } from '../../components/firebase'; 
 import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
@@ -22,14 +22,11 @@ const Wallet = () => {
   const [fechaFin, setFechaFin] = useState(hoyStr);
   const [quincenaActivaModal, setQuincenaActivaModal] = useState(null);
   const [servicios, setServicios] = useState([]);
+  const [serviciosFirebase, setServiciosFirebase] = useState([]); // Catálogo de servicios internos
   const [citasFinalizadas, setCitasFinalizadas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingCitas, setLoadingCitas] = useState(false);
   const [guardando, setGuardando] = useState(false);
-
-  // Estados para el reconocimiento de voz interactivo
-  const [estaEscuchando, setEstaEscuchando] = useState(false);
-  const recognitionRef = useRef(null);
 
   const [porcentajeBarbero, setPorcentajeBarbero] = useState(35);
   const [alertaExito, setAlertaExito] = useState(false);
@@ -65,7 +62,8 @@ const Wallet = () => {
     total: '',
     porcentajeBarberForm: '35',
     fecha: hoyStr,
-    hora: new Date().toTimeString().slice(0, 5)
+    hora: new Date().toTimeString().slice(0, 5),
+    serviciosSeleccionados: []
   });
 
   const [mostrarQ1, setMostrarQ1] = useState(false);
@@ -107,139 +105,6 @@ const Wallet = () => {
   const porcentajeEditNum = parseFloat(formEdicion.porcentajeBarberForm) || 0;
   const gananciaEditCalculadaEnVivo = (valorEditTotalNum * porcentajeEditNum) / 100;
 
-  // Lógica del dictado por voz ultra inteligente y flexible
-  const toggleEscuchaVoz = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      alert("Tu navegador no soporta el reconocimiento de voz. Usa Google Chrome.");
-      return;
-    }
-
-    if (estaEscuchando) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setEstaEscuchando(false);
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = 'es-CO';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      setEstaEscuchando(true);
-      setMensajeExito('🎙️ Escuchando... Di algo como: "Corte fade para Carlos por 45 mil con 35%"');
-      setAlertaExito(true);
-    };
-
-    recognition.onresult = (event) => {
-      let textoVoz = event.results[0][0].transcript.toLowerCase().trim();
-      console.log("Texto reconocido:", textoVoz);
-
-      let totalExtraido = '';
-      const matchMil = textoVoz.match(/(\d+|un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien)\s*(?:mil|lucas)/);
-      
-      if (matchMil) {
-        const numerosTexto = {
-          'un': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9,
-          'diez': 10, 'quince': 15, 'veinte': 20, 'treinta': 30, 'cuarenta': 40, 'cincuenta': 50,
-          'sesenta': 60, 'setenta': 70, 'ochenta': 80, 'noventa': 90, 'cien': 100
-        };
-        let baseNum = parseInt(matchMil[1], 10);
-        if (isNaN(baseNum)) baseNum = numerosTexto[matchMil[1]] || 0;
-        totalExtraido = String(baseNum * 1000);
-      } else {
-        const matchesNums = textoVoz.match(/\b\d+\b/g);
-        if (matchesNums) {
-          const numerosValidos = matchesNums.map(n => parseInt(n, 10)).filter(n => n > 100);
-          if (numerosValidos.length > 0) {
-            totalExtraido = String(Math.max(...numerosValidos));
-          }
-        }
-      }
-
-      const matchPorcentaje = textoVoz.match(/(?:con|al|porcentaje)\s+(\d{1,3})/);
-      const porcentajeExtraido = matchPorcentaje ? matchPorcentaje[1] : '35';
-
-      let clienteExtraido = '';
-      const matchCliente = textoVoz.match(/(?:para|a nombre de|cliente)\s+([a-záéíóúñ\s]+?)(?=\s+por|\s+con|\s+de|\s+el servicio|$)/i);
-      if (matchCliente) {
-        clienteExtraido = matchCliente[1].trim();
-      } else {
-        const palabras = textoVoz.split(' ');
-        if (palabras.length > 1 && !palabras[0].includes('corte') && !palabras[0].includes('barba')) {
-          clienteExtraido = `${palabras[0]} ${palabras[1] || ''}`.trim();
-        }
-      }
-      if (clienteExtraido) {
-        clienteExtraido = clienteExtraido.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      }
-
-      let servicioExtraido = '';
-      let textoLimpioServicio = textoVoz;
-      
-      if (clienteExtraido) {
-        textoLimpioServicio = textoLimpioServicio.replace(new RegExp(`(para|a nombre de|cliente)\\s+${clienteExtraido.toLowerCase()}`, 'i'), '');
-      }
-      textoLimpioServicio = textoLimpioServicio.replace(/(por|con|al)\s+[\d\w\s%]+/g, '').trim();
-      
-      if (textoLimpioServicio.length > 2) {
-        servicioExtraido = textoLimpioServicio.charAt(0).toUpperCase() + textoLimpioServicio.slice(1);
-      } else {
-        servicioExtraido = textoVoz.includes('barba') ? 'Corte + Barba' : 'Corte General';
-      }
-
-      setNuevoServicio(prev => ({
-        ...prev,
-        cliente: clienteExtraido || prev.cliente,
-        total: totalExtraido || prev.total,
-        porcentajeBarberForm: porcentajeExtraido,
-        servicio: servicioExtraido || prev.servicio
-      }));
-
-      setMensajeExito('¡Datos detectados por voz con éxito!');
-      setTimeout(() => setAlertaExito(false), 3000);
-    };
-
-    recognition.onerror = () => {
-      setMensajeExito('No se pudo reconocer el audio. Inténtalo de nuevo.');
-      setEstaEscuchando(false);
-      setTimeout(() => setAlertaExito(false), 3000);
-    };
-
-    recognition.onend = () => {
-      setEstaEscuchando(false);
-    };
-
-    recognition.start();
-  };
-
-  const filtrarCorreosFresha = (listaCorreos = [], emailProfesionalFresha = '') => {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-
-    const correosFiltrados = listaCorreos.filter(correo => {
-      const asunto = (correo.subject || '').toLowerCase();
-      const remitente = (correo.sender || '').toLowerCase();
-      
-      const esNuevaCita = asunto.includes("nueva cita");
-      const esFresha = remitente.includes("fresha") || (emailProfesionalFresha && remitente.includes(emailProfesionalFresha.toLowerCase()));
-
-      if (esNuevaCita && esFresha && correo.date) {
-        const fechaCorreo = new Date(correo.date);
-        fechaCorreo.setHours(0, 0, 0, 0);
-        return fechaCorreo >= hoy;
-      }
-      return false;
-    });
-
-    return correosFiltrados;
-  };
-
   const obtenerServicios = async () => {
     try {
       setLoading(true);
@@ -260,6 +125,19 @@ const Wallet = () => {
       console.error("Error al conectar con la colección wallet:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const obtenerServiciosDisponibles = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'servicios'));
+      const data = querySnapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+      setServiciosFirebase(data);
+    } catch (error) {
+      console.error("Error al obtener servicios de Firebase:", error);
     }
   };
 
@@ -292,32 +170,7 @@ const Wallet = () => {
       if (user) {
         obtenerServicios();
         obtenerCitasFinalizadas();
-        
-        try {
-          const docRef = doc(db, 'profesionales', user.uid);
-          const docSnap = await getDoc(docRef);
-          
-          let emailFreshaDelProfesional = '';
-          if (docSnap.exists()) {
-            const dataProf = docSnap.data();
-            emailFreshaDelProfesional = dataProf.emailFresha || '';
-          }
-
-          const listaCorreosReales = [
-            { 
-              subject: "Nueva Cita", 
-              sender: emailFreshaDelProfesional || "notifications@fresha.com", 
-              date: new Date().toISOString(),
-              body: "Corte Superior con Yohaldry. Datos del cliente: Carlos Pérez."
-            }
-          ];
-
-          filtrarCorreosFresha(listaCorreosReales, emailFreshaDelProfesional);
-
-        } catch (error) {
-          console.error("Error al obtener el emailFresha del profesional:", error);
-        }
-
+        obtenerServiciosDisponibles();
       } else {
         setLoading(false);
         setLoadingCitas(false);
@@ -374,7 +227,8 @@ const Wallet = () => {
         total: '', 
         porcentajeBarberForm: '35',
         fecha: hoyStr, 
-        hora: new Date().toTimeString().slice(0, 5) 
+        hora: new Date().toTimeString().slice(0, 5),
+        serviciosSeleccionados: []
       });
       setModalAgregarOpen(false);
       setMensajeExito('¡Guardado con éxito!');
@@ -393,22 +247,8 @@ const Wallet = () => {
       await deleteDoc(doc(db, 'wallet', servicioAEliminar.id));
       setServicios(servicios.filter(item => item.id !== servicioAEliminar.id));
       setModalEliminarOpen(false);
-      setServicioAEliminar(false);
+      setServicioAEliminar(null);
       setModalVerMasOpen(false);
-
-      if (diaSeleccionadoDetalle) {
-        const nuevosServiciosDia = diaSeleccionadoDetalle.servicios.filter(s => s.id !== servicioAEliminar.id);
-        if (nuevosServiciosDia.length === 0) {
-          setModalDiaOpen(false);
-        } else {
-          setDiaSeleccionadoDetalle({
-            ...diaSeleccionadoDetalle,
-            servicios: nuevosServiciosDia,
-            totalCaja: nuevosServiciosDia.reduce((acc, s) => acc + (Number(s.total) || 0), 0),
-            totalGanancia: nuevosServiciosDia.reduce((acc, s) => acc + (Number(s.ganancias) || 0), 0)
-          });
-        }
-      }
 
       setMensajeExito('¡Registro eliminado!');
       setAlertaExito(true);
@@ -1141,7 +981,10 @@ const Wallet = () => {
                             <Edit2 size={13} />
                           </button>
                           <button 
-                            onClick={() => setServicioAEliminar(srv)}
+                            onClick={() => {
+                              setServicioAEliminar(srv);
+                              setModalEliminarOpen(true);
+                            }}
                             title="Eliminar servicio"
                             className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200 cursor-pointer"
                           >
@@ -1287,30 +1130,9 @@ const Wallet = () => {
 
       {modalAgregarOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-xs w-full shadow-2xl">
+          <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-sm w-full shadow-2xl">
             <div className="flex justify-between items-center mb-2.5">
               <h3 className="text-sm font-bold text-slate-900">Registrar Nuevo Servicio</h3>
-              
-              <button
-                type="button"
-                onClick={toggleEscuchaVoz}
-                className={`px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
-                  estaEscuchando 
-                    ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse' 
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                }`}
-                title={estaEscuchando ? "Detener grabación" : "Iniciar dictado por voz"}
-              >
-                {estaEscuchando ? (
-                  <>
-                    <Square size={13} fill="currentColor" /> Detener
-                  </>
-                ) : (
-                  <>
-                    <Mic size={13} /> Dictar Voz
-                  </>
-                )}
-              </button>
             </div>
 
             <form onSubmit={handleGuardarServicio} className="space-y-2.5 text-[11px]">
@@ -1327,14 +1149,83 @@ const Wallet = () => {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-600 mb-0.5">Descripción del Servicio</label>
-                <input
-                  type="text"
-                  value={nuevoServicio.servicio}
-                  onChange={(e) => setNuevoServicio({ ...nuevoServicio, servicio: e.target.value })}
-                  placeholder="Ej. Corte Fade + Barba"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
-                />
+                <label className="block font-medium text-slate-600 mb-0.5">Servicios Internos</label>
+                <select
+                  onChange={(e) => {
+                    const servicioId = e.target.value;
+                    if (!servicioId) return;
+                    const listaServicios = Array.isArray(serviciosFirebase) ? serviciosFirebase : [];
+                    const servicioEncontrado = listaServicios.find(s => s.id === servicioId);
+                    
+                    if (servicioEncontrado) {
+                      const yaSeleccionado = (nuevoServicio.serviciosSeleccionados || []).some(s => s.id === servicioId);
+                      if (!yaSeleccionado) {
+                        const nuevosSeleccionados = [...(nuevoServicio.serviciosSeleccionados || []), servicioEncontrado];
+                        
+                        const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
+                          const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                          return acc + precioLimpiado;
+                        }, 0);
+
+                        const nombresConcatenados = nuevosSeleccionados.map(s => s.nombre || s.servicio).join(' + ');
+
+                        setNuevoServicio({
+                          ...nuevoServicio,
+                          serviciosSeleccionados: nuevosSeleccionados,
+                          servicio: nombresConcatenados,
+                          total: nuevoTotal
+                        });
+                      }
+                    }
+                    e.target.value = ""; 
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 mb-2 cursor-pointer"
+                >
+                  <option value="">Selecciona un servicio...</option>
+                  {Array.isArray(serviciosFirebase) && 
+                    serviciosFirebase
+                      .filter(serv => {
+                        const duracion = serv.duracion ? String(serv.duracion).toLowerCase().trim() : '';
+                        return duracion === 'interno';
+                      })
+                      .map(serv => (
+                        <option key={serv.id} value={serv.id}>
+                          {serv.nombre || serv.servicio} (${serv.precio || serv.total})
+                        </option>
+                      ))
+                  }
+                </select>
+
+                {nuevoServicio.serviciosSeleccionados && nuevoServicio.serviciosSeleccionados.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-1">
+                    {nuevoServicio.serviciosSeleccionados.map((s, index) => (
+                      <span key={s.id || index} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded-md font-medium text-[10px]">
+                        {s.nombre || s.servicio} (${s.precio || s.total})
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nuevosSeleccionados = nuevoServicio.serviciosSeleccionados.filter((_, i) => i !== index);
+                            const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
+                              const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                              return acc + precioLimpiado;
+                            }, 0);
+                            const nombresConcatenados = nuevosSeleccionados.map(item => item.nombre || item.servicio).join(' + ');
+
+                            setNuevoServicio({
+                              ...nuevoServicio,
+                              serviciosSeleccionados: nuevosSeleccionados,
+                              servicio: nombresConcatenados,
+                              total: nuevoTotal
+                            });
+                          }}
+                          className="hover:text-rose-600 font-bold ml-1 cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -1346,7 +1237,7 @@ const Wallet = () => {
                     value={nuevoServicio.total}
                     onChange={(e) => setNuevoServicio({ ...nuevoServicio, total: e.target.value })}
                     placeholder="Ej. 45000"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold text-blue-600"
                   />
                 </div>
                 <div>
@@ -1397,10 +1288,7 @@ const Wallet = () => {
               <div className="flex gap-2 pt-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (estaEscuchando && recognitionRef.current) recognitionRef.current.stop();
-                    setModalAgregarOpen(false);
-                  }}
+                  onClick={() => setModalAgregarOpen(false)}
                   className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200 cursor-pointer"
                 >
                   Cancelar
