@@ -85,6 +85,40 @@ export default function PanelProfesionales() {
     hora: '12:00 a. m.'
   });
 
+  const actualizarBloqueoArrastrado = async (bloqueo, nuevaFechaStr, nuevaHoraInicio, nuevaHoraFin) => {
+  try {
+    const bloqueoId = bloqueo.id || bloqueo.uid;
+    if (!bloqueoId) return;
+
+    // Calculamos la duración exacta que tenía el bloqueo para respetarla
+    const minInicio = convertirHoraAMinutos(nuevaHoraInicio, true);
+    const minFin = convertirHoraAMinutos(nuevaHoraFin, true);
+    let duracionTotal = minFin - minInicio;
+    if (duracionTotal <= 0) duracionTotal += 1440; // Por si cruza la medianoche
+
+    const bloqueoRef = doc(db, "citas", bloqueoId);
+    
+    // Actualizamos tanto fechaStr como fecha para asegurar que coincida con tu filtro
+    const datosActualizados = {
+      fechaStr: nuevaFechaStr,
+      fecha: nuevaFechaStr,
+      hora: nuevaHoraInicio,
+      horaFin: nuevaHoraFin,
+      duracionTotal: duracionTotal
+    };
+
+    await updateDoc(bloqueoRef, datosActualizados);
+
+    // Refrescamos el estado local inmediatamente para que se fije en la nueva celda
+    setCitasFirestore(prev => 
+      prev.map(c => ((c.id || c.uid) === bloqueoId ? { ...c, ...datosActualizados } : c))
+    );
+  } catch (error) {
+    console.error("Error al actualizar el bloqueo arrastrado:", error);
+    alert("Hubo un error al mover el bloqueo. Inténtalo de nuevo.");
+  }
+};
+
   const handleCerrarSesion = () => {
     if (document.getElementById('modal-salir-arkana')) return;
 
@@ -665,6 +699,7 @@ export default function PanelProfesionales() {
 
         {activeTab === 'agenda' && (
           <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
+  
   {/* Cabecera con relieve y tonos azul eléctrico */}
   <div className="shrink-0 space-y-1.5">
     <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
@@ -969,11 +1004,14 @@ export default function PanelProfesionales() {
                       setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
                       const citaId = e.dataTransfer.getData("text/plain");
                       if (!citaId) return;
-                      const citaArrastrada = citasFirestore.find(c => (c.id || c.uid) === citaId);
-                      if (!citaArrastrada || citaArrastrada.esBloqueo) return;
+                      const elementoArrastrado = citasFirestore.find(c => (c.id || c.uid) === citaId);
+                      if (!elementoArrastrado) return;
 
-                      const estadoCita = (citaArrastrada.estado || '').toLowerCase();
-                      if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
+                      // Si es una cita, verificar que no esté finalizada
+                      if (!elementoArrastrado.esBloqueo) {
+                        const estadoCita = (elementoArrastrado.estado || '').toLowerCase();
+                        if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
+                      }
 
                       const rect = e.currentTarget.getBoundingClientRect();
                       const offsetY = e.clientY - rect.top;
@@ -982,7 +1020,21 @@ export default function PanelProfesionales() {
                       const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
 
                       const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
-                      actualizarCitaArrastrada(citaArrastrada, fechaStr, nuevaHoraFormateada);
+                      
+                      // Si es un bloqueo y tiene horaFin, calculamos la nueva hora fin manteniendo la duración
+                      if (elementoArrastrado.esBloqueo && elementoArrastrado.horaFin) {
+                        const minInicioAntiguo = convertirHoraAMinutos(elementoArrastrado.hora, true);
+                        const minFinAntiguo = convertirHoraAMinutos(elementoArrastrado.horaFin, true);
+                        let duracionBloqueo = minFinAntiguo - minInicioAntiguo;
+                        if (duracionBloqueo < 0) duracionBloqueo += 1440;
+
+                        const nuevoMinFin = totalMinutosNuevos + duracionBloqueo;
+                        const nuevaHoraFinFormateada = minutosAHoraTexto(nuevoMinFin);
+
+                        actualizarBloqueoArrastrado(elementoArrastrado, fechaStr, nuevaHoraFormateada, nuevaHoraFinFormateada);
+                      } else {
+                        actualizarCitaArrastrada(elementoArrastrado, fechaStr, nuevaHoraFormateada);
+                      }
                     }}
                   >
                     {elementosEnEstaHora.length > 0 ? (
@@ -1014,7 +1066,7 @@ export default function PanelProfesionales() {
                         return (
                           <div 
                             key={cIdx}
-                            draggable={!itemCita.esBloqueo && !esFinalizada}
+                            draggable={!esFinalizada}
                             onDragStart={(e) => {
                               if (esFinalizada) {
                                 e.preventDefault();
@@ -1036,7 +1088,7 @@ export default function PanelProfesionales() {
                             }}
                             className={`absolute p-1.5 border transition-all duration-200 shadow-[0_3px_8px_rgba(37,99,235,0.1),inset_0_1px_0_rgba(255,255,255,0.7)] flex flex-col justify-between overflow-hidden rounded-lg ${
                               itemCita.esBloqueo 
-                                ? 'bg-gradient-to-b from-rose-100 to-rose-200 text-rose-900 border-rose-300 font-bold cursor-pointer hover:shadow-[0_4px_12px_rgba(244,63,94,0.2)] select-none' 
+                                ? 'bg-gradient-to-b from-rose-100 to-rose-200 text-rose-900 border-rose-300 font-bold cursor-grab active:cursor-grabbing hover:shadow-[0_4px_12px_rgba(244,63,94,0.2)] select-none' 
                                 : esFinalizada
                                   ? 'bg-slate-200 text-slate-500 border-slate-300 font-normal cursor-pointer select-none shadow-none opacity-80'
                                   : `cursor-grab active:cursor-grabbing hover:shadow-[0_6px_16px_rgba(37,99,235,0.15)] hover:scale-[1.02] ${itemCita.color || 'bg-gradient-to-b from-blue-100 to-blue-200 border-blue-400 text-blue-950'}`

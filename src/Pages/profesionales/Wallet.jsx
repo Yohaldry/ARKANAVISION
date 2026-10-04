@@ -413,10 +413,10 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
       )}
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-3 px-1">
+   <div className="flex justify-between items-center mb-3 px-1">
         <div>
           <h1 className="text-base sm:text-xl font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
-            <WalletIcon className={vistaTab === 'manual' ? 'text-yellow-600' : 'text-blue-600'} size={20} /> 
+            <WalletIcon className="text-blue-600" size={20} /> 
             Billetera y Gestión
           </h1>
           <p className="text-slate-500 text-[10px] sm:text-xs">Control de porcentajes y servicios a domicilio.</p>
@@ -425,7 +425,7 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
         {vistaTab === 'manual' && (
           <button
             onClick={() => setModalAgregarOpen(true)}
-            className="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs"
           >
             <Plus size={15} /> Registrar
           </button>
@@ -434,27 +434,27 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
       {/* PESTAÑAS PRINCIPALES */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <button
-          onClick={() => setVistaTab('manual')}
-          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
-            vistaTab === 'manual'
-              ? 'bg-yellow-500 text-slate-950 border-yellow-600 shadow-sm'
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-          }`}
-        >
-          <Percent size={14} /> Gestión Manual (%)
-        </button>
-        <button
-          onClick={() => setVistaTab('domicilios')}
-          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
-            vistaTab === 'domicilios'
-              ? 'bg-blue-900 text-white border-blue-950 shadow-md'
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-          }`}
-        >
-          <Home size={14} /> Domicilios 100% ({citasFinalizadas.length})
-        </button>
-      </div>
+  <button
+    onClick={() => setVistaTab('manual')}
+    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+      vistaTab === 'manual'
+        ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
+        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+    }`}
+  >
+    <Percent size={14} /> Gestión Manual (%)
+  </button>
+  <button
+    onClick={() => setVistaTab('domicilios')}
+    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+      vistaTab === 'domicilios'
+        ? 'bg-blue-900 text-white border-blue-950 shadow-md'
+        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+    }`}
+  >
+    <Home size={14} /> Domicilios 100% ({citasFinalizadas.length})
+  </button>
+</div>
 
       {/* QUINCENAS (SOLO EN VISTA MANUAL) */}
    {vistaTab === 'manual' && (() => {
@@ -493,7 +493,6 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
               return dS === d && mS === mesActual && aS === anioActual;
             });
 
-            // Tomamos primero el campo 'ganancias' (que es el que usas en Firestore), y como respaldo total
             const totalDia = serviciosDia.reduce((acc, curr) => {
               const val = Number(curr.ganancias) !== undefined && !isNaN(Number(curr.ganancias)) 
                 ? Number(curr.ganancias) 
@@ -539,94 +538,93 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
               {/* 1ra Quincena */}
               <div 
                 onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
-                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-yellow-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-amber-100/70 border-yellow-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
               >
                 <div className="flex justify-between items-center mb-1 relative z-10">
-                  <span className="text-[10px] font-bold tracking-wider uppercase text-yellow-800 flex items-center gap-1">
-                    <Layers size={11} /> 1ra Quincena (1-15)
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+                    <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
                   </span>
-                  {esPrimeraQuincenaActiva && <span className="bg-yellow-400 text-slate-900 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md">ACTUAL</span>}
+                  {esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
                 </div>
                 
                 <div className="h-7 w-full my-1 relative z-10 flex items-center">
                   <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ca8a04" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#ca8a04" stopOpacity="0.0" />
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
                     <path d={q1Grafico.areaD} fill="url(#gradQ1)" />
-                    <path d={q1Grafico.pathD} fill="none" stroke="#ca8a04" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                     {q1Grafico.puntos.map((pt, i) => (
-                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-yellow-700 ring-2 ring-yellow-200' : 'fill-yellow-600/20'} />
+                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
                     ))}
                   </svg>
                 </div>
 
                 <div className="flex items-baseline justify-between relative z-10">
                   <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
-                  <span className="text-sm font-extrabold text-yellow-800">${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-sm font-extrabold text-blue-950">${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
 
               {/* 2da Quincena */}
               <div 
                 onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
-                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-yellow-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-amber-100/70 border-yellow-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
               >
                 <div className="flex justify-between items-center mb-1 relative z-10">
-                  <span className="text-[10px] font-bold tracking-wider uppercase text-yellow-800 flex items-center gap-1">
-                    <Layers size={11} /> 2da Quincena (16-{ultimoDiaMes})
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+                    <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
                   </span>
-                  {!esPrimeraQuincenaActiva && <span className="bg-yellow-400 text-slate-900 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md">ACTUAL</span>}
+                  {!esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
                 </div>
 
                 <div className="h-7 w-full my-1 relative z-10 flex items-center">
                   <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ca8a04" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#ca8a04" stopOpacity="0.0" />
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
                     <path d={q2Grafico.areaD} fill="url(#gradQ2)" />
-                    <path d={q2Grafico.pathD} fill="none" stroke="#ca8a04" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                     {q2Grafico.puntos.map((pt, i) => (
-                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-yellow-700 ring-2 ring-yellow-200' : 'fill-yellow-600/20'} />
+                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
                     ))}
                   </svg>
                 </div>
 
                 <div className="flex items-baseline justify-between relative z-10">
                   <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
-                  <span className="text-sm font-extrabold text-yellow-800">${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-sm font-extrabold text-blue-950">${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
             </div>
 
             {/* MODAL DE RENDIMIENTO FINANCIERO */}
-            {/* MODAL DE RENDIMIENTO FINANCIERO */}
             {quincenaActivaModal && (() => {
               const modalGrafico = generarPathYCoordenadas(quincenaActivaModal.datos, 300, 100);
               return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-                  <div className="bg-slate-900 border border-yellow-500/40 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-slate-100 flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
+                  <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[90vh]">
                     
                     {/* Header del Modal */}
-                    <div className="flex justify-between items-center px-5 py-4 border-b border-slate-800 bg-slate-950/50 flex-shrink-0">
+                    <div className="flex justify-between items-center px-5 py-4 border-b border-blue-100 bg-blue-50/50 flex-shrink-0">
                       <div>
-                        <span className="text-xs font-bold tracking-wider text-yellow-500 uppercase flex items-center gap-1.5">
+                        <span className="text-xs font-bold tracking-wider text-blue-600 uppercase flex items-center gap-1.5">
                           <Layers size={14} /> Análisis de Rendimiento
                         </span>
-                        <h3 className="text-lg font-black text-white">{quincenaActivaModal.titulo}</h3>
+                        <h3 className="text-lg font-black text-blue-950">{quincenaActivaModal.titulo}</h3>
                       </div>
                       <button 
                         onClick={() => {
                           setQuincenaActivaModal(null);
                           setDiaSeleccionadoModal(null);
                         }}
-                        className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-colors font-bold text-sm"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors font-bold text-sm"
                       >
                         ✕
                       </button>
@@ -636,20 +634,20 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                     <div className="p-5 overflow-y-auto space-y-5 flex-grow">
                       
                       {/* Resumen Total */}
-                      <div className="flex justify-between items-center bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
+                      <div className="flex justify-between items-center bg-blue-50/80 p-3.5 rounded-xl border border-blue-100">
                         <div>
-                          <p className="text-xs text-slate-400">Total Producido</p>
-                          <p className="text-xl font-extrabold text-yellow-400">${quincenaActivaModal.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                          <p className="text-xs text-slate-500 font-medium">Total Producido</p>
+                          <p className="text-xl font-extrabold text-blue-600">${quincenaActivaModal.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-slate-400">Total Servicios</p>
-                          <p className="text-lg font-bold text-slate-200">{quincenaActivaModal.serv} serv.</p>
+                          <p className="text-xs text-slate-500 font-medium">Total Servicios</p>
+                          <p className="text-lg font-bold text-slate-800">{quincenaActivaModal.serv} serv.</p>
                         </div>
                       </div>
 
                       {/* Gráfica Profesional Ampliada */}
-                      <div className="bg-slate-950 p-4 rounded-xl border border-yellow-500/30 relative">
-                        <div className="flex justify-between text-[10px] text-slate-400 mb-2 font-mono">
+                      <div className="bg-slate-950 p-4 rounded-xl border border-blue-500/30 relative">
+                        <div className="flex justify-between text-[10px] text-cyan-400 mb-2 font-mono">
                           <span>MÁX: ${modalGrafico.max.toLocaleString()}</span>
                           <span>GRÁFICO DIARIO (TENDENCIA)</span>
                         </div>
@@ -658,19 +656,19 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                           <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
                             <defs>
                               <linearGradient id="modalGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#eab308" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#eab308" stopOpacity="0.0" />
+                                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
                               </linearGradient>
                             </defs>
                             <path d={modalGrafico.areaD} fill="url(#modalGrad)" />
-                            <path d={modalGrafico.pathD} fill="none" stroke="#eab308" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={modalGrafico.pathD} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                             {modalGrafico.puntos.map((pt, i) => (
                               <g key={i}>
                                 <circle 
                                   cx={pt.x} 
                                   cy={pt.y} 
                                   r={pt.monto > 0 ? 5 : 2} 
-                                  className={pt.monto > 0 ? 'fill-yellow-400 ring-4 ring-yellow-500/20' : 'fill-slate-600'} 
+                                  className={pt.monto > 0 ? 'fill-cyan-400 ring-4 ring-cyan-500/20' : 'fill-slate-600'} 
                                 />
                               </g>
                             ))}
@@ -678,11 +676,11 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                         </div>
                       </div>
 
-                      {/* Detalle Día por Fila (Haciendo clic en cada día abre el detalle) */}
+                      {/* Detalle Día por Fila */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Desglose Día por Día</h4>
-                          <span className="text-[10px] text-yellow-500 font-medium">Haz clic en un día para ver detalles</span>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Desglose Día por Día</h4>
+                          <span className="text-[10px] text-blue-600 font-medium">Haz clic en un día para ver detalles</span>
                         </div>
                         <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                           {quincenaActivaModal.datos.map((item, idx) => (
@@ -691,17 +689,17 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                               onClick={() => setDiaSeleccionadoModal(item.dia)}
                               className={`flex justify-between items-center px-3 py-2.5 rounded-lg text-xs cursor-pointer transition-all border ${
                                 item.monto > 0 
-                                  ? 'bg-slate-800/90 border-yellow-500/30 hover:border-yellow-400 hover:bg-slate-800 text-white font-medium shadow-sm' 
-                                  : 'bg-slate-950/40 border-transparent text-slate-500 hover:bg-slate-800/40'
+                                  ? 'bg-blue-50/60 border-blue-200 hover:border-blue-400 hover:bg-blue-100/60 text-slate-900 font-medium shadow-sm' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
                               }`}
                             >
                               <span className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${item.monto > 0 ? 'bg-yellow-400' : 'bg-slate-700'}`}></span>
+                                <span className={`w-2 h-2 rounded-full ${item.monto > 0 ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
                                 Día {item.dia}
                               </span>
                               <div className="flex items-center gap-3">
-                                <span className="text-[11px] opacity-75">{item.serviciosCount} serv.</span>
-                                <span className={`font-bold ${item.monto > 0 ? 'text-yellow-400' : 'text-slate-500'}`}>
+                                <span className="text-[11px] text-slate-500">{item.serviciosCount} serv.</span>
+                                <span className={`font-bold ${item.monto > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
                                   ${item.monto.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                 </span>
                               </div>
@@ -713,13 +711,13 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                     </div>
 
                     {/* Footer del Modal Principal */}
-                    <div className="p-4 border-t border-slate-800 bg-slate-950/50 text-right flex-shrink-0">
+                    <div className="p-4 border-t border-blue-100 bg-blue-50/50 text-right flex-shrink-0">
                       <button 
                         onClick={() => {
                           setQuincenaActivaModal(null);
                           setDiaSeleccionadoModal(null);
                         }}
-                        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
                       >
                         Cerrar Análisis
                       </button>
@@ -733,7 +731,6 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                     const anioModal = fechaContextoModal.getFullYear();
                     const mesModal = fechaContextoModal.getMonth();
 
-                    // Filtramos los servicios exactos que corresponden a este día
                     const serviciosDelDia = servicios.filter(s => {
                       const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
                       if (!rawFecha) return false;
@@ -767,20 +764,20 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                     }, 0);
 
                     return (
-                      <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
-                        <div className="bg-slate-900 border border-yellow-500/60 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-100 flex flex-col max-h-[85vh]">
+                      <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn">
+                        <div className="bg-white border border-blue-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[85vh]">
                           
                           {/* Header del Sub-Modal */}
-                          <div className="flex justify-between items-center px-5 py-4 border-b border-slate-800 bg-slate-950/80">
+                          <div className="flex justify-between items-center px-5 py-4 border-b border-blue-100 bg-blue-600 text-white">
                             <div>
-                              <span className="text-[10px] font-bold tracking-wider text-yellow-400 uppercase">
+                              <span className="text-[10px] font-bold tracking-wider text-blue-100 uppercase">
                                 Detalle de Caja
                               </span>
                               <h3 className="text-base font-black text-white">Servicios del Día {diaSeleccionadoModal}</h3>
                             </div>
                             <button 
                               onClick={() => setDiaSeleccionadoModal(null)}
-                              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-colors font-bold text-sm"
+                              className="w-8 h-8 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center text-white transition-colors font-bold text-sm"
                             >
                               ✕
                             </button>
@@ -788,13 +785,13 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
                           {/* Lista de Servicios */}
                           <div className="p-5 overflow-y-auto space-y-3 flex-grow">
-                            <div className="flex justify-between items-center bg-slate-800/50 px-4 py-2.5 rounded-xl border border-slate-700/40 text-xs">
-                              <span className="text-slate-300">Total servicios: <strong className="text-white">{serviciosDelDia.length}</strong></span>
-                              <span className="text-slate-300">Ganancias: <strong className="text-yellow-400">${totalGananciasDia.toLocaleString()}</strong></span>
+                            <div className="flex justify-between items-center bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-100 text-xs">
+                              <span className="text-slate-600">Total servicios: <strong className="text-slate-900">{serviciosDelDia.length}</strong></span>
+                              <span className="text-slate-600">Ganancias: <strong className="text-blue-600">${totalGananciasDia.toLocaleString()}</strong></span>
                             </div>
 
                             {serviciosDelDia.length === 0 ? (
-                              <div className="text-center py-10 text-slate-500 text-xs">
+                              <div className="text-center py-10 text-slate-400 text-xs">
                                 No hay servicios registrados para este día.
                               </div>
                             ) : (
@@ -802,18 +799,18 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                                 const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
                                 const totalServicio = Number(srv.total) || 0;
                                 return (
-                                  <div key={i} className="bg-slate-950/60 border border-slate-800 p-3.5 rounded-xl space-y-2 hover:border-yellow-500/30 transition-all">
+                                  <div key={i} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-2 hover:border-blue-400 transition-all">
                                     <div className="flex justify-between items-start">
                                       <div>
-                                        <span className="text-xs font-bold text-yellow-400 block">{srv.servicio || 'Servicio sin nombre'}</span>
-                                        <span className="text-xs text-slate-300 font-medium">Cliente: {srv.cliente || 'General'}</span>
+                                        <span className="text-xs font-bold text-blue-900 block">{srv.servicio || 'Servicio sin nombre'}</span>
+                                        <span className="text-xs text-slate-600 font-medium">Cliente: {srv.cliente || 'General'}</span>
                                       </div>
                                       <div className="text-right">
-                                        <span className="text-xs font-extrabold text-green-400 block">+${gananciaServicio.toLocaleString()}</span>
-                                        <span className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</span>
+                                        <span className="text-xs font-extrabold text-blue-600 block">+${gananciaServicio.toLocaleString()}</span>
+                                        <span className="text-[10px] text-slate-400">Total: ${totalServicio.toLocaleString()}</span>
                                       </div>
                                     </div>
-                                    <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-800/80 pt-2 font-mono">
+                                    <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-200 pt-2 font-mono">
                                       <span>Hora: {srv.hora || 'N/A'}</span>
                                       {srv.porcentajeValor && <span>Comisión: {srv.porcentajeValor}%</span>}
                                     </div>
@@ -824,10 +821,10 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                           </div>
 
                           {/* Footer Sub-Modal */}
-                          <div className="p-3.5 border-t border-slate-800 bg-slate-950/80 text-right">
+                          <div className="p-3.5 border-t border-slate-100 bg-slate-50 text-right">
                             <button 
                               onClick={() => setDiaSeleccionadoModal(null)}
-                              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all"
+                              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all"
                             >
                               Volver al Resumen
                             </button>
@@ -846,52 +843,46 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
       })()}
 
       {/* FILTROS TIEMPO */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-3 scrollbar-none">
-        {[
-          { id: 'dia', label: 'Hoy' },
-          { id: 'especifico', label: 'Día' },
-          { id: 'rango', label: 'Rango' },
-          { id: 'semana', label: 'Semana' },
-          { id: 'quincena', label: 'Quincena' },
-          { id: 'mes', label: 'Mes' },
-          { id: 'anio', label: 'Año' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setFiltroTiempo(tab.id)}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${
-              filtroTiempo === tab.id
-                ? (vistaTab === 'manual' ? 'bg-yellow-500 text-slate-950 shadow-sm' : 'bg-blue-900 text-white shadow-sm')
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+     <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-3 scrollbar-none">
+  {[
+    { id: 'dia', label: 'Hoy' },
+    { id: 'especifico', label: 'Día' },
+    { id: 'rango', label: 'Rango' },
+    { id: 'semana', label: 'Semana' },
+    { id: 'quincena', label: 'Quincena' },
+    { id: 'mes', label: 'Mes' },
+    { id: 'anio', label: 'Año' },
+  ].map((tab) => (
+    <button
+      key={tab.id}
+      onClick={() => setFiltroTiempo(tab.id)}
+      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${
+        filtroTiempo === tab.id
+          ? 'bg-blue-600 text-white shadow-sm'
+          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+      }`}
+    >
+      {tab.label}
+    </button>
+  ))}
+</div>
 
-      {filtroTiempo === 'especifico' && (
-        <div className={`p-2.5 rounded-xl mb-3 flex items-center justify-between gap-2 text-[11px] border ${
-          vistaTab === 'manual' ? 'bg-amber-50 border-yellow-200 text-yellow-900' : 'bg-blue-50 border-blue-200 text-blue-950'
-        }`}>
+{filtroTiempo === 'especifico' && (
+        <div className="p-2.5 rounded-xl mb-3 flex items-center justify-between gap-2 text-[11px] border bg-blue-50 border-blue-200 text-blue-950">
           <span className="font-semibold flex items-center gap-1">
-            <Calendar size={13} /> Día a consultar:
+            <Calendar size={13} className="text-blue-600" /> Día a consultar:
           </span>
           <input
             type="date"
             value={fechaEspecifica}
             onChange={(e) => setFechaEspecifica(e.target.value)}
-            className={`bg-white rounded-lg px-2 py-1 text-slate-800 focus:outline-none font-medium border ${
-              vistaTab === 'manual' ? 'border-yellow-300' : 'border-blue-300'
-            }`}
+            className="bg-white rounded-lg px-2 py-1 text-slate-800 focus:outline-none font-medium border border-blue-300"
           />
         </div>
       )}
 
       {filtroTiempo === 'rango' && (
-        <div className={`p-2.5 rounded-xl mb-3 grid grid-cols-2 gap-2 text-[11px] border ${
-          vistaTab === 'manual' ? 'bg-amber-50 border-yellow-200 text-yellow-900' : 'bg-blue-50 border-blue-200 text-blue-950'
-        }`}>
+        <div className="p-2.5 rounded-xl mb-3 grid grid-cols-2 gap-2 text-[11px] border bg-blue-50 border-blue-200 text-blue-950">
           <div>
             <label className="block font-semibold mb-1">Desde:</label>
             <input
@@ -915,18 +906,18 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
       {/* TARJETA PRINCIPAL SEGÚN PESTAÑA ACTIVA */}
       {vistaTab === 'manual' ? (
-        <div className="bg-white border border-yellow-200 p-3.5 rounded-xl mb-3 shadow-sm relative">
+        <div className="bg-white border border-blue-200 p-3.5 rounded-xl mb-3 shadow-sm relative">
           <div className="flex justify-between items-center gap-2 mb-2">
             <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-              <Calendar size={12} className="text-yellow-600" /> Mi Ganancia Manual • <span className="text-slate-800 capitalize">{obtenerTextoFechaRecuadro()}</span>
+              <Calendar size={12} className="text-blue-600" /> Mi Ganancia Manual • <span className="text-slate-800 capitalize">{obtenerTextoFechaRecuadro()}</span>
             </span>
           </div>
 
           <div className="flex items-baseline gap-1.5">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-yellow-800">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-900">
               ${gananciaBarbero.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </h2>
-            <span className="text-yellow-700 font-bold text-xs">COP</span>
+            <span className="text-blue-700 font-bold text-xs">COP</span>
           </div>
 
           <div className="mt-1.5 text-[10px] text-slate-500 flex items-center gap-1 font-medium">
@@ -958,19 +949,19 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
       {/* RESUMEN AGRUPADO */}
       {vistaTab === 'manual' ? (
-       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm text-slate-100">
-  <div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-    <h3 className="text-xs font-bold text-white flex items-center gap-1">
-      <Calendar size={14} className="text-yellow-500" /> Historial de Servicios Manuales
+      <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
+  <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
+    <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+      <Calendar size={14} className="text-blue-600" /> Historial de Servicios Manuales
     </h3>
-    <span className="text-[10px] bg-slate-800 text-yellow-400 px-2 py-0.5 rounded-full font-semibold border border-yellow-500/30">
+    <span className="text-[10px] bg-blue-100 text-blue-900 px-2.5 py-0.5 rounded-full font-extrabold border border-blue-200">
       {serviciosFiltrados.length} servicios registrados
     </span>
   </div>
 
-  <div className="divide-y divide-slate-800 max-h-[60vh] overflow-y-auto">
+  <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto">
     {loading ? (
-      <div className="py-6 text-center text-slate-400 text-xs">Cargando datos...</div>
+      <div className="py-6 text-center text-blue-500 text-xs font-medium">Cargando datos...</div>
     ) : serviciosFiltrados && serviciosFiltrados.length > 0 ? (
       [...serviciosFiltrados]
         .sort((a, b) => {
@@ -985,18 +976,18 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
           return (
             <div 
               key={srv.id || index}
-              className="p-3 flex items-center justify-between hover:bg-slate-800/40 transition-colors group"
+              className="p-3 flex items-center justify-between hover:bg-blue-50/40 transition-colors group"
             >
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-slate-800 text-yellow-400 rounded-lg flex-shrink-0 border border-yellow-500/20">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0 border border-blue-200">
                   <Calendar size={16} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white">{srv.servicio || 'Servicio sin nombre'}</p>
-                  <p className="text-[10px] text-slate-300 font-medium">
-                    Cliente: <span className="text-yellow-400 font-semibold">{srv.cliente || 'General'}</span>
+                  <p className="text-xs font-bold text-blue-950">{srv.servicio || 'Servicio sin nombre'}</p>
+                  <p className="text-[10px] text-slate-600 font-medium">
+                    Cliente: <span className="text-blue-700 font-semibold">{srv.cliente || 'General'}</span>
                   </p>
-                  <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+                  <p className="text-[9px] text-blue-500 font-mono mt-0.5">
                     {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
                   </p>
                 </div>
@@ -1004,28 +995,28 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
               <div className="flex items-center gap-3">
                 <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-extrabold text-yellow-400">+${gananciaServicio.toLocaleString()} COP</p>
-                  <p className="text-[10px] text-slate-400">Total: ${totalServicio.toLocaleString()}</p>
+                  <p className="text-xs font-extrabold text-blue-600">+${gananciaServicio.toLocaleString()} COP</p>
+                  <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
                   {srv.porcentajeValor && (
-                    <span className="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.2 rounded font-medium border border-yellow-500/20">
+                    <span className="inline-block mt-0.5 text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium border border-blue-200">
                       {srv.porcentajeValor}%
                     </span>
                   )}
                 </div>
 
                 {/* Botones de Acción (Editar / Eliminar) */}
-                <div className="flex items-center gap-1.5 border-l border-slate-800 pl-2.5">
+                <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
                   <button 
                     onClick={() => abrirModalEditar(srv)}
                     title="Editar servicio"
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-yellow-400 transition-colors"
+                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200"
                   >
                     <Edit2 size={13} />
                   </button>
                   <button 
                     onClick={() => setServicioAEliminar(srv)}
                     title="Eliminar servicio"
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-400 transition-colors border border-transparent hover:border-rose-500/30"
+                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -1035,43 +1026,42 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
           );
         })
     ) : (
-      <div className="py-8 text-center text-slate-400 text-xs">
+      <div className="py-8 text-center text-slate-500 text-xs font-medium">
         No hay servicios manuales registrados en este período.
       </div>
     )}
   </div>
 
-  {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (ESTILO ARKANA) */}
+  {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
   {servicioAEliminar && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-slate-900 border border-yellow-500/40 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl text-slate-100 p-5 space-y-4 text-center">
-        <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/30 backdrop-blur-xs p-4 animate-fadeIn">
+      <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-4 text-center">
+        <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
           <Trash2 size={22} />
         </div>
         
         <div>
-          <h4 className="text-sm font-black text-white uppercase tracking-wider mb-1">¿Eliminar Servicio?</h4>
-          <p className="text-xs text-slate-400">
-            Estás a punto de eliminar el registro de <strong className="text-yellow-400">{servicioAEliminar.servicio}</strong> para el cliente <strong className="text-slate-200">{servicioAEliminar.cliente || 'General'}</strong>. Esta acción no se puede deshacer.
+          <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-1">¿Eliminar Servicio?</h4>
+          <p className="text-xs text-slate-600">
+            Estás a punto de eliminar el registro de <strong className="text-blue-700">{servicioAEliminar.servicio}</strong> para el cliente <strong className="text-slate-900">{servicioAEliminar.cliente || 'General'}</strong>. Esta acción no se puede deshacer.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 pt-2">
           <button
             onClick={() => setServicioAEliminar(null)}
-            className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all border border-slate-700"
+            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all border border-slate-200"
           >
             Cancelar
           </button>
           <button
             onClick={() => {
-              // Aquí ejecutas tu función para eliminar pasando el id o el objeto
               if (typeof eliminarServicio === 'function') {
                 eliminarServicio(servicioAEliminar.id || servicioAEliminar._id);
               }
               setServicioAEliminar(null);
             }}
-            className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-rose-900/40"
+            className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-600/20"
           >
             Sí, Eliminar
           </button>
@@ -1154,13 +1144,13 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
       {/* MODAL DETALLE DE DÍA SELECCIONADO (MANUAL) */}
       {modalDiaOpen && diaSeleccionadoDetalle && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-yellow-200 rounded-xl p-4 max-w-sm w-full shadow-2xl">
+          <div className="bg-white border border-blue-200 rounded-xl p-4 max-w-sm w-full shadow-2xl">
             <div className="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Detalle del Día</h3>
-                <p className="text-[11px] text-yellow-800 font-semibold">{diaSeleccionadoDetalle.fecha}</p>
+                <p className="text-[11px] text-blue-700 font-semibold">{diaSeleccionadoDetalle.fecha}</p>
               </div>
-              <span className="text-[10px] bg-amber-100 text-yellow-900 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded-full">
                 Total: ${diaSeleccionadoDetalle.totalCaja.toLocaleString()}
               </span>
             </div>
@@ -1178,7 +1168,7 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                     )}
                   </div>
                   <div className="text-right flex flex-col items-end">
-                    <span className="font-extrabold text-yellow-800">${Number(s.total).toLocaleString()}</span>
+                    <span className="font-extrabold text-blue-900">${Number(s.total).toLocaleString()}</span>
                     <div className="flex items-center gap-1 mt-1">
                       <button
                         onClick={(e) => { e.stopPropagation(); setServicioSeleccionado(s); setModalVerMasOpen(true); }}
@@ -1189,7 +1179,7 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); abrirModalEditar(s); }}
-                        className="p-1 bg-white hover:bg-slate-100 text-amber-700 rounded border border-slate-200"
+                        className="p-1 bg-white hover:bg-slate-100 text-blue-700 rounded border border-slate-200"
                         title="Editar"
                       >
                         <Edit3 size={12} />
@@ -1216,7 +1206,6 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
           </div>
         </div>
       )}
-
       {/* MODAL VER DETALLE CITA FINALIZADA (DOMICILIO - AZUL OSCURO) */}
       {modalCitaDetalleOpen && citaSeleccionadaDetalle && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex justify-center items-center p-3 z-50">
