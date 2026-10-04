@@ -140,9 +140,7 @@ const Wallet = () => {
       let textoVoz = event.results[0][0].transcript.toLowerCase().trim();
       console.log("Texto reconocido:", textoVoz);
 
-      // 1. Extracción inteligente de Precio (Ej: "45 mil", "45000", "50 lucas", "por 30 mil")
       let totalExtraido = '';
-      // Buscar patrones con "mil" (ej. "45 mil", "ventiún mil", etc.)
       const matchMil = textoVoz.match(/(\d+|un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien)\s*(?:mil|lucas)/);
       
       if (matchMil) {
@@ -155,7 +153,6 @@ const Wallet = () => {
         if (isNaN(baseNum)) baseNum = numerosTexto[matchMil[1]] || 0;
         totalExtraido = String(baseNum * 1000);
       } else {
-        // Buscar cualquier número aislado que sea mayor a 100 (asumiendo valor en pesos)
         const matchesNums = textoVoz.match(/\b\d+\b/g);
         if (matchesNums) {
           const numerosValidos = matchesNums.map(n => parseInt(n, 10)).filter(n => n > 100);
@@ -165,17 +162,14 @@ const Wallet = () => {
         }
       }
 
-      // 2. Extracción de Porcentaje (Ej: "con 35%", "al 40", "porcentaje 35")
       const matchPorcentaje = textoVoz.match(/(?:con|al|porcentaje)\s+(\d{1,3})/);
       const porcentajeExtraido = matchPorcentaje ? matchPorcentaje[1] : '35';
 
-      // 3. Extracción Inteligente del Cliente (Busca después de "para", "a nombre de", "cliente")
       let clienteExtraido = '';
       const matchCliente = textoVoz.match(/(?:para|a nombre de|cliente)\s+([a-záéíóúñ\s]+?)(?=\s+por|\s+con|\s+de|\s+el servicio|$)/i);
       if (matchCliente) {
         clienteExtraido = matchCliente[1].trim();
       } else {
-        // Si no hay preposición clara, intentamos tomar las primeras 2 o 3 palabras si no empiezan con el servicio
         const palabras = textoVoz.split(' ');
         if (palabras.length > 1 && !palabras[0].includes('corte') && !palabras[0].includes('barba')) {
           clienteExtraido = `${palabras[0]} ${palabras[1] || ''}`.trim();
@@ -185,15 +179,12 @@ const Wallet = () => {
         clienteExtraido = clienteExtraido.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       }
 
-      // 4. Extracción Inteligente de CUALQUIER Servicio
-      // Todo lo que esté antes de "para [cliente]" o "por [precio]" se considerará el nombre del servicio
       let servicioExtraido = '';
       let textoLimpioServicio = textoVoz;
       
       if (clienteExtraido) {
         textoLimpioServicio = textoLimpioServicio.replace(new RegExp(`(para|a nombre de|cliente)\\s+${clienteExtraido.toLowerCase()}`, 'i'), '');
       }
-      // Remover precio y porcentaje de la frase para aislar el servicio
       textoLimpioServicio = textoLimpioServicio.replace(/(por|con|al)\s+[\d\w\s%]+/g, '').trim();
       
       if (textoLimpioServicio.length > 2) {
@@ -1300,7 +1291,6 @@ const Wallet = () => {
             <div className="flex justify-between items-center mb-2.5">
               <h3 className="text-sm font-bold text-slate-900">Registrar Nuevo Servicio</h3>
               
-              {/* Botón de dictado por voz interactivo (Verde / Rojo con Stop) */}
               <button
                 type="button"
                 onClick={toggleEscuchaVoz}
