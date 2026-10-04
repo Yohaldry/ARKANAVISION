@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2 } from 'lucide-react';
+import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff } from 'lucide-react';
 import { db, auth } from '../../components/firebase'; 
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
@@ -68,6 +68,37 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
     fecha: hoyStr,
     hora: new Date().toTimeString().slice(0, 5)
   });
+
+const [mostrarQ1, setMostrarQ1] = useState(false);
+const [mostrarQ2, setMostrarQ2] = useState(false);
+const [timerQ1, setTimerQ1] = useState(null);
+const [timerQ2, setTimerQ2] = useState(null);
+
+const handleToggleQ1 = (e) => {
+  e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
+  if (mostrarQ1) {
+    setMostrarQ1(false);
+    if (timerQ1) clearTimeout(timerQ1);
+  } else {
+    setMostrarQ1(true);
+    if (timerQ1) clearTimeout(timerQ1);
+    const id = setTimeout(() => setMostrarQ1(false), 10000);
+    setTimerQ1(id);
+  }
+};
+
+const handleToggleQ2 = (e) => {
+  e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
+  if (mostrarQ2) {
+    setMostrarQ2(false);
+    if (timerQ2) clearTimeout(timerQ2);
+  } else {
+    setMostrarQ2(true);
+    if (timerQ2) clearTimeout(timerQ2);
+    const id = setTimeout(() => setMostrarQ2(false), 10000);
+    setTimerQ2(id);
+  }
+};
 
   const valorTotalNum = parseFloat(nuevoServicio.total) || 0;
   const porcentajeNum = parseFloat(nuevoServicio.porcentajeBarberForm) || 0;
@@ -534,75 +565,98 @@ const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
         return (
           <>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {/* 1ra Quincena */}
-              <div 
-                onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
-                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
-              >
-                <div className="flex justify-between items-center mb-1 relative z-10">
-                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
-                    <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
-                  </span>
-                  {esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
-                </div>
-                
-                <div className="h-7 w-full my-1 relative z-10 flex items-center">
-                  <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
-                    <defs>
-                      <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <path d={q1Grafico.areaD} fill="url(#gradQ1)" />
-                    <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    {q1Grafico.puntos.map((pt, i) => (
-                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
-                    ))}
-                  </svg>
-                </div>
+           {/* Botón general o cabecera para controlar los montos con estilo azul eléctrico Arkana */}
+   <div className="grid grid-cols-2 gap-2 mb-3">
+  {/* 1ra Quincena */}
+  <div 
+    onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
+    className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+  >
+    <div className="flex justify-between items-center mb-1 relative z-10">
+      <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+        <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
+      </span>
+      {esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
+    </div>
+    
+    <div className="h-7 w-full my-1 relative z-10 flex items-center">
+      <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
+        <defs>
+          <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path d={q1Grafico.areaD} fill="url(#gradQ1)" />
+        <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        {q1Grafico.puntos.map((pt, i) => (
+          <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
+        ))}
+      </svg>
+    </div>
 
-                <div className="flex items-baseline justify-between relative z-10">
-                  <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
-                  <span className="text-sm font-extrabold text-blue-950">${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                </div>
-              </div>
+    <div className="flex items-center justify-between relative z-10">
+      <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-extrabold text-blue-950">
+          {mostrarQ1 ? `$${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
+        </span>
+        <button 
+          onClick={handleToggleQ1}
+          className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
+          title={mostrarQ1 ? "Ocultar monto" : "Ver monto"}
+        >
+          {mostrarQ1 ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  </div>
 
-              {/* 2da Quincena */}
-              <div 
-                onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
-                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
-              >
-                <div className="flex justify-between items-center mb-1 relative z-10">
-                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
-                    <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
-                  </span>
-                  {!esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
-                </div>
+  {/* 2da Quincena */}
+  <div 
+    onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
+    className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+  >
+    <div className="flex justify-between items-center mb-1 relative z-10">
+      <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+        <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
+      </span>
+      {!esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
+    </div>
 
-                <div className="h-7 w-full my-1 relative z-10 flex items-center">
-                  <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
-                    <defs>
-                      <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <path d={q2Grafico.areaD} fill="url(#gradQ2)" />
-                    <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    {q2Grafico.puntos.map((pt, i) => (
-                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
-                    ))}
-                  </svg>
-                </div>
+    <div className="h-7 w-full my-1 relative z-10 flex items-center">
+      <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
+        <defs>
+          <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path d={q2Grafico.areaD} fill="url(#gradQ2)" />
+        <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        {q2Grafico.puntos.map((pt, i) => (
+          <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
+        ))}
+      </svg>
+    </div>
 
-                <div className="flex items-baseline justify-between relative z-10">
-                  <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
-                  <span className="text-sm font-extrabold text-blue-950">${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                </div>
-              </div>
-            </div>
+    <div className="flex items-center justify-between relative z-10">
+      <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-extrabold text-blue-950">
+          {mostrarQ2 ? `$${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
+        </span>
+        <button 
+          onClick={handleToggleQ2}
+          className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
+          title={mostrarQ2 ? "Ocultar monto" : "Ver monto"}
+        >
+          {mostrarQ2 ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
             {/* MODAL DE RENDIMIENTO FINANCIERO */}
             {quincenaActivaModal && (() => {
