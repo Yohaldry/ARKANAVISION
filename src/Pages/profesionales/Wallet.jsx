@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff, Mic, Square } from 'lucide-react';
 import { db, auth } from '../../components/firebase'; 
 import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const Wallet = () => {
-  const [vistaTab, setVistaTab] = useState('domicilios'); // Iniciamos en domicilios para verificar rápido
+  const [vistaTab, setVistaTab] = useState('domicilios');
 
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   
@@ -27,6 +27,10 @@ const Wallet = () => {
   const [loadingCitas, setLoadingCitas] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  // Estados para el reconocimiento de voz interactivo
+  const [estaEscuchando, setEstaEscuchando] = useState(false);
+  const recognitionRef = useRef(null);
+
   const [porcentajeBarbero, setPorcentajeBarbero] = useState(35);
   const [alertaExito, setAlertaExito] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('¡Guardado con éxito!');
@@ -35,19 +39,15 @@ const Wallet = () => {
   const [modalVerMasOpen, setModalVerMasOpen] = useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
 
-  // Modal detalle del día (Manual)
   const [modalDiaOpen, setModalDiaOpen] = useState(false);
   const [diaSeleccionadoDetalle, setDiaSeleccionadoDetalle] = useState(null);
 
-  // Modal detalle de cita finalizada (Domicilio)
   const [modalCitaDetalleOpen, setModalCitaDetalleOpen] = useState(false);
   const [citaSeleccionadaDetalle, setCitaSeleccionadaDetalle] = useState(null);
 
-  // Alerta de Eliminación
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
   const [servicioAEliminar, setServicioAEliminar] = useState(null);
 
-  // Edición de Servicio Manual
   const [modalEditarOpen, setModalEditarOpen] = useState(false);
   const [formEdicion, setFormEdicion] = useState({
     id: '',
@@ -59,7 +59,6 @@ const Wallet = () => {
     hora: ''
   });
 
-  // Formulario Agregar Manual
   const [nuevoServicio, setNuevoServicio] = useState({
     cliente: '',
     servicio: '',
@@ -75,7 +74,7 @@ const Wallet = () => {
   const [timerQ2, setTimerQ2] = useState(null);
 
   const handleToggleQ1 = (e) => {
-    e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
+    e.stopPropagation();
     if (mostrarQ1) {
       setMostrarQ1(false);
       if (timerQ1) clearTimeout(timerQ1);
@@ -88,7 +87,7 @@ const Wallet = () => {
   };
 
   const handleToggleQ2 = (e) => {
-    e.stopPropagation(); // Evita que se abra el modal al hacer clic en el ojito
+    e.stopPropagation();
     if (mostrarQ2) {
       setMostrarQ2(false);
       if (timerQ2) clearTimeout(timerQ2);
@@ -108,8 +107,8 @@ const Wallet = () => {
   const porcentajeEditNum = parseFloat(formEdicion.porcentajeBarberForm) || 0;
   const gananciaEditCalculadaEnVivo = (valorEditTotalNum * porcentajeEditNum) / 100;
 
-  // Función para dictar por voz y rellenar el formulario de registro automáticamente
-  const escucharComandoVoz = () => {
+  // Lógica del dictado por voz con alternancia (toggle)
+  const toggleEscuchaVoz = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -117,13 +116,25 @@ const Wallet = () => {
       return;
     }
 
+    if (estaEscuchando) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setEstaEscuchando(false);
+      return;
+    }
+
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = 'es-CO';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    setMensajeExito('🎙️ Escuchando... Di algo como: "Corte para Carlos Pérez por 45000 con 35%"');
-    setAlertaExito(true);
+    recognition.onstart = () => {
+      setEstaEscuchando(true);
+      setMensajeExito('🎙️ Escuchando... Di algo como: "Corte para Carlos Pérez por 45000 con 35%"');
+      setAlertaExito(true);
+    };
 
     recognition.onresult = (event) => {
       const textoVoz = event.results[0][0].transcript.toLowerCase();
@@ -157,13 +168,17 @@ const Wallet = () => {
 
     recognition.onerror = () => {
       setMensajeExito('No se pudo reconocer el audio. Inténtalo de nuevo.');
+      setEstaEscuchando(false);
       setTimeout(() => setAlertaExito(false), 3000);
+    };
+
+    recognition.onend = () => {
+      setEstaEscuchando(false);
     };
 
     recognition.start();
   };
 
-  // Función para filtrar y mapear correos de Fresha usando el emailFresha del profesional[cite: 7]
   const filtrarCorreosFresha = (listaCorreos = [], emailProfesionalFresha = '') => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -183,7 +198,6 @@ const Wallet = () => {
       return false;
     });
 
-    console.log("aqui estan", correosFiltrados);
     return correosFiltrados;
   };
 
@@ -250,14 +264,12 @@ const Wallet = () => {
             emailFreshaDelProfesional = dataProf.emailFresha || '';
           }
 
-          console.log("Email Fresha del profesional:", emailFreshaDelProfesional);
-
           const listaCorreosReales = [
             { 
               subject: "Nueva Cita", 
               sender: emailFreshaDelProfesional || "notifications@fresha.com", 
               date: new Date().toISOString(),
-              body: "Corte Superior con Yohaldry. Datos del cliente: Carlos Pérez. Teléfono: *******1234"
+              body: "Corte Superior con Yohaldry. Datos del cliente: Carlos Pérez."
             }
           ];
 
@@ -334,11 +346,6 @@ const Wallet = () => {
     } finally {
       setGuardando(false);
     }
-  };
-
-  const confirmarEliminarServicio = (item) => {
-    setServicioAEliminar(item);
-    setModalEliminarOpen(true);
   };
 
   const ejecutarEliminacion = async () => {
@@ -464,23 +471,6 @@ const Wallet = () => {
   const citasFiltradas = filtrarServiciosPorTiempo(citasFinalizadas);
   const totalDomicilios100 = citasFiltradas.reduce((acc, item) => acc + parsearPrecioCita(item), 0);
 
-  const obtenerDiasAgrupados = () => {
-    const diasMap = {};
-    serviciosFiltrados.forEach(item => {
-      if (!diasMap[item.fecha]) {
-        diasMap[item.fecha] = { fecha: item.fecha, totalCaja: 0, totalGanancia: 0, servicios: [] };
-      }
-      const t = Number(item.total) || 0;
-      const g = item.ganancias !== undefined ? Number(item.ganancias) : (t * (Number(porcentajeBarbero) || 0) / 100);
-      
-      diasMap[item.fecha].totalCaja += t;
-      diasMap[item.fecha].totalGanancia += g;
-      diasMap[item.fecha].servicios.push(item);
-    });
-
-    return Object.values(diasMap).sort((a, b) => b.fecha.localeCompare(a.fecha));
-  };
-
   const obtenerDiasAgrupadosDomicilios = () => {
     const diasMap = {};
     citasFiltradas.forEach(item => {
@@ -496,7 +486,6 @@ const Wallet = () => {
     return Object.values(diasMap).sort((a, b) => b.fecha.localeCompare(a.fecha));
   };
 
-  const diasAgrupados = obtenerDiasAgrupados();
   const diasAgrupadosDomicilios = obtenerDiasAgrupadosDomicilios();
 
   const obtenerTextoFechaRecuadro = () => {
@@ -517,9 +506,9 @@ const Wallet = () => {
       
       {alertaExito && (
         <div className="fixed top-3 right-3 z-50 animate-bounce">
-          <div className="bg-white border border-amber-300 text-slate-800 px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 text-xs">
-            <CheckCircle2 size={16} className="text-yellow-600" />
-            <p className="font-bold text-yellow-700 text-[11px]">{mensajeExito}</p>
+          <div className="bg-white border border-blue-300 text-slate-800 px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 text-xs">
+            <CheckCircle2 size={16} className="text-blue-600" />
+            <p className="font-bold text-blue-700 text-[11px]">{mensajeExito}</p>
           </div>
         </div>
       )}
@@ -536,7 +525,7 @@ const Wallet = () => {
         {vistaTab === 'manual' && (
           <button
             onClick={() => setModalAgregarOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs cursor-pointer"
           >
             <Plus size={15} /> Registrar
           </button>
@@ -546,7 +535,7 @@ const Wallet = () => {
       <div className="grid grid-cols-2 gap-2 mb-3">
         <button
           onClick={() => setVistaTab('manual')}
-          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border cursor-pointer ${
             vistaTab === 'manual'
               ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -556,7 +545,7 @@ const Wallet = () => {
         </button>
         <button
           onClick={() => setVistaTab('domicilios')}
-          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border cursor-pointer ${
             vistaTab === 'domicilios'
               ? 'bg-blue-900 text-white border-blue-950 shadow-md'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -569,17 +558,12 @@ const Wallet = () => {
       {vistaTab === 'manual' && (() => {
         const obtenerDatosDiario = (diaInicio, diaFin) => {
           const dias = [];
-          const fechaActualContexto = new Date();
-          const anioActual = fechaActualContexto.getFullYear();
-          const mesActual = fechaActualContexto.getMonth();
-
           for (let d = diaInicio; d <= diaFin; d++) {
             const serviciosDia = servicios.filter(s => {
               const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
               if (!rawFecha) return false;
               
               let dS = 0, mS = -1, aS = 0;
-
               if (typeof rawFecha === 'string') {
                 const limpia = rawFecha.split('T')[0];
                 if (limpia.includes('-')) {
@@ -603,7 +587,7 @@ const Wallet = () => {
             });
 
             const totalDia = serviciosDia.reduce((acc, curr) => {
-              const val = Number(curr.ganancias) !== undefined && !isNaN(Number(curr.ganancias)) 
+              const val = (curr.ganancias !== undefined && !isNaN(Number(curr.ganancias))) 
                 ? Number(curr.ganancias) 
                 : (Number(curr.total) || Number(curr.precio) || Number(curr.valor) || 0);
               return acc + val;
@@ -750,7 +734,7 @@ const Wallet = () => {
                           setQuincenaActivaModal(null);
                           setDiaSeleccionadoModal(null);
                         }}
-                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors font-bold text-sm"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors font-bold text-sm cursor-pointer"
                       >
                         ✕
                       </button>
@@ -836,7 +820,7 @@ const Wallet = () => {
                           setQuincenaActivaModal(null);
                           setDiaSeleccionadoModal(null);
                         }}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
                       >
                         Cerrar Análisis
                       </button>
@@ -844,10 +828,6 @@ const Wallet = () => {
                   </div>
 
                   {diaSeleccionadoModal !== null && (() => {
-                    const fechaContextoModal = new Date();
-                    const anioModal = fechaContextoModal.getFullYear();
-                    const mesModal = fechaContextoModal.getMonth();
-
                     const serviciosDelDia = servicios.filter(s => {
                       const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
                       if (!rawFecha) return false;
@@ -870,11 +850,11 @@ const Wallet = () => {
                           dS = fechaObj.getDate();
                         }
                       }
-                      return dS === diaSeleccionadoModal && mS === mesModal && aS === anioModal;
+                      return dS === diaSeleccionadoModal && mS === mesActual && aS === anioActual;
                     });
 
                     const totalGananciasDia = serviciosDelDia.reduce((acc, curr) => {
-                      const val = Number(curr.ganancias) !== undefined && !isNaN(Number(curr.ganancias)) 
+                      const val = (curr.ganancias !== undefined && !isNaN(Number(curr.ganancias))) 
                         ? Number(curr.ganancias) 
                         : (Number(curr.total) || 0);
                       return acc + val;
@@ -892,7 +872,7 @@ const Wallet = () => {
                             </div>
                             <button 
                               onClick={() => setDiaSeleccionadoModal(null)}
-                              className="w-8 h-8 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center text-white transition-colors font-bold text-sm"
+                              className="w-8 h-8 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center text-white transition-colors font-bold text-sm cursor-pointer"
                             >
                               ✕
                             </button>
@@ -937,7 +917,7 @@ const Wallet = () => {
                           <div className="p-3.5 border-t border-slate-100 bg-slate-50 text-right">
                             <button 
                               onClick={() => setDiaSeleccionadoModal(null)}
-                              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all"
+                              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
                             >
                               Volver al Resumen
                             </button>
@@ -967,7 +947,7 @@ const Wallet = () => {
           <button
             key={tab.id}
             onClick={() => setFiltroTiempo(tab.id)}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
               filtroTiempo === tab.id
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -1117,14 +1097,14 @@ const Wallet = () => {
                           <button 
                             onClick={() => abrirModalEditar(srv)}
                             title="Editar servicio"
-                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200"
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200 cursor-pointer"
                           >
                             <Edit2 size={13} />
                           </button>
                           <button 
                             onClick={() => setServicioAEliminar(srv)}
                             title="Eliminar servicio"
-                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200"
+                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200 cursor-pointer"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -1192,7 +1172,7 @@ const Wallet = () => {
                           </p>
                           <button
                             onClick={() => { setCitaSeleccionadaDetalle(cita); setModalCitaDetalleOpen(true); }}
-                            className="px-2.5 py-1 bg-blue-900 hover:bg-blue-800 text-white rounded-lg shadow-2xs text-[10px] flex items-center gap-1 font-medium transition-all"
+                            className="px-2.5 py-1 bg-blue-900 hover:bg-blue-800 text-white rounded-lg shadow-2xs text-[10px] flex items-center gap-1 font-medium transition-all cursor-pointer"
                           >
                             <Eye size={11} /> Ver más
                           </button>
@@ -1229,7 +1209,7 @@ const Wallet = () => {
 
             <button
               onClick={() => setModalCitaDetalleOpen(false)}
-              className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 rounded-xl transition-all text-xs shadow-sm"
+              className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 rounded-xl transition-all text-xs shadow-sm cursor-pointer"
             >
               Cerrar
             </button>
@@ -1239,25 +1219,25 @@ const Wallet = () => {
 
       {modalEliminarOpen && servicioAEliminar && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-slate-900 border border-yellow-500/50 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center">
-            <div className="w-12 h-12 bg-amber-500/10 border border-yellow-500/30 rounded-full flex items-center justify-center mx-auto mb-3 text-yellow-500">
+          <div className="bg-slate-900 border border-rose-500/50 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center">
+            <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/30 rounded-full flex items-center justify-center mx-auto mb-3 text-rose-500">
               <AlertTriangle size={24} />
             </div>
             <h3 className="text-sm font-bold text-white mb-1">¿Eliminar registro?</h3>
             <p className="text-[11px] text-slate-400 mb-4">
-              Estás a punto de eliminar el servicio de <strong className="text-yellow-400">{servicioAEliminar.cliente}</strong> por <strong className="text-yellow-400">${Number(servicioAEliminar.total).toLocaleString()}</strong>.
+              Estás a punto de eliminar el servicio de <strong className="text-rose-400">{servicioAEliminar.cliente}</strong> por <strong className="text-rose-400">${Number(servicioAEliminar.total).toLocaleString()}</strong>.
             </p>
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setModalEliminarOpen(false)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 rounded-xl text-xs border border-slate-700 transition-all"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 rounded-xl text-xs border border-slate-700 transition-all cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={ejecutarEliminacion}
-                className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-bold py-2 rounded-xl text-xs shadow-lg transition-all"
+                className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold py-2 rounded-xl text-xs shadow-lg transition-all cursor-pointer"
               >
                 Sí, eliminar
               </button>
@@ -1267,17 +1247,31 @@ const Wallet = () => {
       )}
 
       {modalAgregarOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-yellow-200 rounded-xl p-4 max-w-xs w-full shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
+          <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-xs w-full shadow-2xl">
             <div className="flex justify-between items-center mb-2.5">
               <h3 className="text-sm font-bold text-slate-900">Registrar Nuevo Servicio</h3>
+              
+              {/* Botón de dictado por voz interactivo (Verde / Rojo con Stop) */}
               <button
                 type="button"
-                onClick={escucharComandoVoz}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all border border-blue-200 shadow-2xs cursor-pointer animate-pulse"
-                title="Rellenar usando comandos de voz"
+                onClick={toggleEscuchaVoz}
+                className={`px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                  estaEscuchando 
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse' 
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }`}
+                title={estaEscuchando ? "Detener grabación" : "Iniciar dictado por voz"}
               >
-                <span>🎤 Dictar por Voz</span>
+                {estaEscuchando ? (
+                  <>
+                    <Square size={13} fill="currentColor" /> Detener
+                  </>
+                ) : (
+                  <>
+                    <Mic size={13} /> Dictar Voz
+                  </>
+                )}
               </button>
             </div>
 
@@ -1290,7 +1284,7 @@ const Wallet = () => {
                   value={nuevoServicio.cliente}
                   onChange={(e) => setNuevoServicio({ ...nuevoServicio, cliente: e.target.value })}
                   placeholder="Ej. Carlos Pérez"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -1301,7 +1295,7 @@ const Wallet = () => {
                   value={nuevoServicio.servicio}
                   onChange={(e) => setNuevoServicio({ ...nuevoServicio, servicio: e.target.value })}
                   placeholder="Ej. Corte Fade + Barba"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -1314,7 +1308,7 @@ const Wallet = () => {
                     value={nuevoServicio.total}
                     onChange={(e) => setNuevoServicio({ ...nuevoServicio, total: e.target.value })}
                     placeholder="Ej. 45000"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
@@ -1326,7 +1320,7 @@ const Wallet = () => {
                     required
                     value={nuevoServicio.porcentajeBarberForm}
                     onChange={(e) => setNuevoServicio({ ...nuevoServicio, porcentajeBarberForm: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500 font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold"
                   />
                 </div>
               </div>
@@ -1337,7 +1331,7 @@ const Wallet = () => {
                   type="text"
                   disabled
                   value={`$${gananciaCalculadaEnVivo.toLocaleString(undefined, { maximumFractionDigits: 0 })} COP`}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-yellow-800 font-extrabold cursor-not-allowed"
+                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-blue-800 font-extrabold cursor-not-allowed"
                 />
               </div>
 
@@ -1348,7 +1342,7 @@ const Wallet = () => {
                     type="date"
                     value={nuevoServicio.fecha}
                     onChange={(e) => setNuevoServicio({ ...nuevoServicio, fecha: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
@@ -1357,7 +1351,7 @@ const Wallet = () => {
                     type="time"
                     value={nuevoServicio.hora}
                     onChange={(e) => setNuevoServicio({ ...nuevoServicio, hora: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -1365,15 +1359,18 @@ const Wallet = () => {
               <div className="flex gap-2 pt-1.5">
                 <button
                   type="button"
-                  onClick={() => setModalAgregarOpen(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200"
+                  onClick={() => {
+                    if (estaEscuchando && recognitionRef.current) recognitionRef.current.stop();
+                    setModalAgregarOpen(false);
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-slate-950 font-bold py-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center cursor-pointer"
                 >
                   {guardando ? 'Guardando...' : 'Guardar'}
                 </button>
@@ -1384,8 +1381,8 @@ const Wallet = () => {
       )}
 
       {modalEditarOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-yellow-200 rounded-xl p-4 max-w-xs w-full shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
+          <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-xs w-full shadow-2xl">
             <h3 className="text-sm font-bold text-slate-900 mb-2.5">Editar Servicio</h3>
             <form onSubmit={handleActualizarServicio} className="space-y-2.5 text-[11px]">
               <div>
@@ -1395,7 +1392,7 @@ const Wallet = () => {
                   required
                   value={formEdicion.cliente}
                   onChange={(e) => setFormEdicion({ ...formEdicion, cliente: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -1405,7 +1402,7 @@ const Wallet = () => {
                   type="text"
                   value={formEdicion.servicio}
                   onChange={(e) => setFormEdicion({ ...formEdicion, servicio: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -1417,7 +1414,7 @@ const Wallet = () => {
                     required
                     value={formEdicion.total}
                     onChange={(e) => setFormEdicion({ ...formEdicion, total: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
@@ -1429,7 +1426,7 @@ const Wallet = () => {
                     required
                     value={formEdicion.porcentajeBarberForm}
                     onChange={(e) => setFormEdicion({ ...formEdicion, porcentajeBarberForm: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500 font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold"
                   />
                 </div>
               </div>
@@ -1440,7 +1437,7 @@ const Wallet = () => {
                   type="text"
                   disabled
                   value={`$${gananciaEditCalculadaEnVivo.toLocaleString(undefined, { maximumFractionDigits: 0 })} COP`}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-yellow-800 font-extrabold cursor-not-allowed"
+                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-blue-800 font-extrabold cursor-not-allowed"
                 />
               </div>
 
@@ -1451,7 +1448,7 @@ const Wallet = () => {
                     type="date"
                     value={formEdicion.fecha}
                     onChange={(e) => setFormEdicion({ ...formEdicion, fecha: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
@@ -1460,7 +1457,7 @@ const Wallet = () => {
                     type="time"
                     value={formEdicion.hora}
                     onChange={(e) => setFormEdicion({ ...formEdicion, hora: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-yellow-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -1469,14 +1466,14 @@ const Wallet = () => {
                 <button
                   type="button"
                   onClick={() => setModalEditarOpen(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200"
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-slate-950 font-bold py-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center cursor-pointer"
                 >
                   {guardando ? 'Actualizando...' : 'Actualizar'}
                 </button>
