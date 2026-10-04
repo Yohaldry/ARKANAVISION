@@ -107,7 +107,7 @@ const Wallet = () => {
   const porcentajeEditNum = parseFloat(formEdicion.porcentajeBarberForm) || 0;
   const gananciaEditCalculadaEnVivo = (valorEditTotalNum * porcentajeEditNum) / 100;
 
-  // Lógica del dictado por voz con alternancia (toggle)
+  // Lógica del dictado por voz ultra inteligente y flexible
   const toggleEscuchaVoz = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -132,37 +132,85 @@ const Wallet = () => {
 
     recognition.onstart = () => {
       setEstaEscuchando(true);
-      setMensajeExito('🎙️ Escuchando... Di algo como: "Corte para Carlos Pérez por 45000 con 35%"');
+      setMensajeExito('🎙️ Escuchando... Di algo como: "Corte fade para Carlos por 45 mil con 35%"');
       setAlertaExito(true);
     };
 
     recognition.onresult = (event) => {
-      const textoVoz = event.results[0][0].transcript.toLowerCase();
+      let textoVoz = event.results[0][0].transcript.toLowerCase().trim();
+      console.log("Texto reconocido:", textoVoz);
 
-      const matchTotal = textoVoz.match(/(\d+)(?:\s*(?:mil|pesos))?/g);
+      // 1. Extracción inteligente de Precio (Ej: "45 mil", "45000", "50 lucas", "por 30 mil")
       let totalExtraido = '';
-      if (matchTotal) {
-        const numeros = matchTotal.map(n => parseInt(n.replace(/\D/g, ''), 10));
-        const maxNum = Math.max(...numeros);
-        if (maxNum > 100) totalExtraido = String(maxNum);
+      // Buscar patrones con "mil" (ej. "45 mil", "ventiún mil", etc.)
+      const matchMil = textoVoz.match(/(\d+|un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien)\s*(?:mil|lucas)/);
+      
+      if (matchMil) {
+        const numerosTexto = {
+          'un': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9,
+          'diez': 10, 'quince': 15, 'veinte': 20, 'treinta': 30, 'cuarenta': 40, 'cincuenta': 50,
+          'sesenta': 60, 'setenta': 70, 'ochenta': 80, 'noventa': 90, 'cien': 100
+        };
+        let baseNum = parseInt(matchMil[1], 10);
+        if (isNaN(baseNum)) baseNum = numerosTexto[matchMil[1]] || 0;
+        totalExtraido = String(baseNum * 1000);
+      } else {
+        // Buscar cualquier número aislado que sea mayor a 100 (asumiendo valor en pesos)
+        const matchesNums = textoVoz.match(/\b\d+\b/g);
+        if (matchesNums) {
+          const numerosValidos = matchesNums.map(n => parseInt(n, 10)).filter(n => n > 100);
+          if (numerosValidos.length > 0) {
+            totalExtraido = String(Math.max(...numerosValidos));
+          }
+        }
       }
 
-      const matchPorcentaje = textoVoz.match(/(?:con|al)\s+(\d{1,3})/);
+      // 2. Extracción de Porcentaje (Ej: "con 35%", "al 40", "porcentaje 35")
+      const matchPorcentaje = textoVoz.match(/(?:con|al|porcentaje)\s+(\d{1,3})/);
       const porcentajeExtraido = matchPorcentaje ? matchPorcentaje[1] : '35';
 
-      const matchCliente = textoVoz.match(/(?:para|de)\s+([a-záéíóúñ\s]+?)(?=\s+por|\s+con|\s+de|$)/i);
-      let clienteExtraido = matchCliente ? matchCliente[1].trim() : '';
-      clienteExtraido = clienteExtraido.charAt(0).toUpperCase() + clienteExtraido.slice(1);
+      // 3. Extracción Inteligente del Cliente (Busca después de "para", "a nombre de", "cliente")
+      let clienteExtraido = '';
+      const matchCliente = textoVoz.match(/(?:para|a nombre de|cliente)\s+([a-záéíóúñ\s]+?)(?=\s+por|\s+con|\s+de|\s+el servicio|$)/i);
+      if (matchCliente) {
+        clienteExtraido = matchCliente[1].trim();
+      } else {
+        // Si no hay preposición clara, intentamos tomar las primeras 2 o 3 palabras si no empiezan con el servicio
+        const palabras = textoVoz.split(' ');
+        if (palabras.length > 1 && !palabras[0].includes('corte') && !palabras[0].includes('barba')) {
+          clienteExtraido = `${palabras[0]} ${palabras[1] || ''}`.trim();
+        }
+      }
+      if (clienteExtraido) {
+        clienteExtraido = clienteExtraido.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+
+      // 4. Extracción Inteligente de CUALQUIER Servicio
+      // Todo lo que esté antes de "para [cliente]" o "por [precio]" se considerará el nombre del servicio
+      let servicioExtraido = '';
+      let textoLimpioServicio = textoVoz;
+      
+      if (clienteExtraido) {
+        textoLimpioServicio = textoLimpioServicio.replace(new RegExp(`(para|a nombre de|cliente)\\s+${clienteExtraido.toLowerCase()}`, 'i'), '');
+      }
+      // Remover precio y porcentaje de la frase para aislar el servicio
+      textoLimpioServicio = textoLimpioServicio.replace(/(por|con|al)\s+[\d\w\s%]+/g, '').trim();
+      
+      if (textoLimpioServicio.length > 2) {
+        servicioExtraido = textoLimpioServicio.charAt(0).toUpperCase() + textoLimpioServicio.slice(1);
+      } else {
+        servicioExtraido = textoVoz.includes('barba') ? 'Corte + Barba' : 'Corte General';
+      }
 
       setNuevoServicio(prev => ({
         ...prev,
         cliente: clienteExtraido || prev.cliente,
         total: totalExtraido || prev.total,
         porcentajeBarberForm: porcentajeExtraido,
-        servicio: textoVoz.includes('barba') ? 'Corte + Barba' : 'Corte Superior'
+        servicio: servicioExtraido || prev.servicio
       }));
 
-      setMensajeExito('¡Datos rellenados por voz con éxito!');
+      setMensajeExito('¡Datos detectados por voz con éxito!');
       setTimeout(() => setAlertaExito(false), 3000);
     };
 
