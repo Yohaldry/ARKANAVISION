@@ -23,7 +23,6 @@ const BarberBookingView = ({ onBookingComplete }) => {
   const [detalleCita, setDetalleCita] = useState(null);
   const [form, setForm] = useState({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false });
 
-  // Generar automáticamente las 24 horas del día correctamente en formato de 12 horas (AM/PM)
   const generate24Hours = () => {
     const times = [];
     for (let i = 0; i < 24; i++) {
@@ -50,48 +49,53 @@ const BarberBookingView = ({ onBookingComplete }) => {
         if (!docSnap.exists()) return setError("No se encontró el perfil profesional.");
         const data = docSnap.data();
         let listaServicios = [];
+        
         servSnap.forEach(s => {
           const sData = s.data();
+          const duracionStr = String(sData.duracion || sData.duration || '').toLowerCase();
+          
+          if (duracionStr.includes('interno')) {
+            return;
+          }
+
+          let rawPrecio = sData.precioNum !== undefined ? sData.precioNum : (sData.precio !== undefined ? sData.precio : sData.price);
+          let calculatedPriceNum = 35000;
+          
+          if (typeof rawPrecio === 'number') {
+            calculatedPriceNum = rawPrecio;
+          } else if (typeof rawPrecio === 'string') {
+            const parsed = parseInt(rawPrecio.replace(/[^0-9]/g, ''), 10);
+            if (!isNaN(parsed)) calculatedPriceNum = parsed;
+          }
+          
           listaServicios.push({ 
             id: s.id, 
-            name: sData.nombre, 
+            name: sData.nombre || sData.name || 'Servicio', 
             descripcion: sData.descripcion || sData.description || '',
-            duration: parseInt(sData.duracion) || 45, 
-            priceNum: typeof sData.precio === 'number' ? sData.precio : parseInt(String(sData.precio || '35000').replace(/[^0-9]/g, '')) || 35000,
-            priceFormatted: sData.precioText || sData.precio || '$35.000 COP', 
+            priceNum: calculatedPriceNum,
+            priceFormatted: sData.precioText || (typeof sData.precio === 'string' && sData.precio.includes('$') ? sData.precio : `$${calculatedPriceNum.toLocaleString('es-CO')} COP`), 
             categoria: sData.categoria || 'servicio',
             color: sData.color || '#3b82f6'
           });
         });
      
-        
         setBarber({
           id: docSnap.id, name: data.nombre || "Profesional", email: data.email || "", location: data.ciudad || "Bogotá D.C.", rating: "4.9", reviewsCount: 28,
           image: data.foto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
           bio: data.descripcion || data.biografia || "Experto en visagismo y tendencias.", services: listaServicios,
           availableTimes: all24Hours
         });
-        setSelectedServices([listaServicios[0]]);
-      } catch (err) { setError("Error al conectar con la base de datos."); }
-      finally { setLoading(false); }
+        
+        setSelectedServices([]);
+      } catch (err) { 
+        console.error(err);
+        setError("Error al conectar con la base de datos."); 
+      } finally { 
+        setLoading(false); 
+      }
     };
     fetchAll();
   }, [barberoId]);
-
-  // Función robusta corregida para interpretar adecuadamente AM/PM en las horas
-  const timeToMinutes = (timeStr) => {
-    if (!timeStr) return 0;
-    const clean = timeStr.trim().toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ');
-    const isPM = clean.includes('PM');
-    const isAM = clean.includes('AM');
-    const timePart = clean.replace(/(AM|PM)/g, '').trim();
-    let [hours, minutes] = timePart.split(':').map(Number);
-    
-    if (isPM && hours < 12) hours += 12;
-    if (isAM && hours === 12) hours = 0;
-    
-    return hours * 60 + (minutes || 0);
-  };
 
 useEffect(() => {
     if (!barberoId || !selectedDate) return;
@@ -100,11 +104,9 @@ useEffect(() => {
       const bookedSet = new Set();
       const timesList = barber?.availableTimes || all24Hours;
 
-      // Función robusta que detecta AM/PM y maneja horas guardadas sin etiqueta
       const parseToMin = (str) => {
         if (!str) return null;
         let clean = str.toString().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
-        
         let isPM = clean.includes('pm') || clean.includes('p m');
         let isAM = clean.includes('am') || clean.includes('a m');
 
@@ -118,53 +120,35 @@ useEffect(() => {
         } else if (isAM) {
           if (hours === 12) hours = 0;
         } else {
-          // Si no tiene etiqueta AM/PM pero está en el rango de 1 a 7,
-          // se interpreta correctamente como horario de tarde (PM) para evitar confusiones.
-          if (hours >= 1 && hours <= 7) {
-            hours += 12;
-          }
+          if (hours >= 1 && hours <= 7) hours += 12;
         }
-        
         return hours * 60 + minutes;
       };
 
       snap.forEach(d => {
         const c = d.data();
-        
         if (c.fecha && c.fecha.trim() === selectedDate.trim()) {
           const estado = (c.estado || '').toLowerCase().trim();
-          const esCancelada = estado === 'cancelada' || estado === 'cancelado';
+          
+          // Verificamos si es un bloqueo o una cita activa (que no esté cancelada)
+          const esBloqueo = estado === 'bloqueo' || estado === 'bloqueado' || c.tipo === 'bloqueo';
+          const esCitaActiva = estado !== 'cancelada' && estado !== 'cancelado';
 
-          if (!esCancelada) {
+          if (esBloqueo || esCitaActiva) {
             const startMin = parseToMin(c.hora);
-            let duracionMinutos = 45;
-            
-            if (c.duracionTotal) {
-              duracionMinutos = parseInt(c.duracionTotal, 10) || 45;
-            }
-
+            let duracionMinutos = c.duracionTotal ? parseInt(c.duracionTotal, 10) || 45 : 45;
             const endMin = c.horaFin ? parseToMin(c.horaFin) : (startMin !== null ? startMin + duracionMinutos : null);
 
             if (startMin !== null) {
               timesList.forEach(t => {
                 const tMin = parseToMin(t);
-                
-                let estaEnRango = false;
-                if (endMin !== null && endMin > startMin) {
-                  estaEnRango = (tMin >= startMin && tMin < endMin);
-                } else {
-                  estaEnRango = (tMin === startMin);
-                }
-
-                if (estaEnRango) {
-                  bookedSet.add(t);
-                }
+                let estaEnRango = (endMin !== null && endMin > startMin) ? (tMin >= startMin && tMin < endMin) : (tMin === startMin);
+                if (estaEnRango) bookedSet.add(t);
               });
             }
           }
         }
       });
-
       setHorasOcupadas(Array.from(bookedSet));
     });
 
@@ -173,24 +157,21 @@ useEffect(() => {
 
   const toggleServiceSelection = (service) => {
     setSelectedServices(prev => {
-      const exists = prev.some(s => s.id === service.id);
+      const exists = prev.some(s => s.id === service.id || s.name === service.name);
       if (exists) {
-        if (prev.length === 1) return prev;
-        return prev.filter(s => s.id !== service.id);
+        return prev.filter(s => s.id !== service.id && s.name !== service.name);
       } else {
         return [...prev, service];
       }
     });
   };
 
-  const removeServiceTag = (id, e) => {
+  const removeServiceTag = (id, name, e) => {
     e.stopPropagation();
-    if (selectedServices.length === 1) return;
-    setSelectedServices(prev => prev.filter(s => s.id !== id));
+    setSelectedServices(prev => prev.filter(s => s.id !== id && s.name !== name));
   };
 
-  const totalPrecioNum = selectedServices.reduce((acc, curr) => acc + (curr.priceNum || 0), 0);
-  const totalDuracion = selectedServices.reduce((acc, curr) => acc + (curr.duration || 45), 0);
+  const totalPrecioNum = selectedServices.reduce((acc, curr) => acc + (Number(curr.priceNum) || 0), 0);
   const formatCOP = (num) => `$${num.toLocaleString('es-CO')} COP`;
 
   const handleChange = (e) => {
@@ -200,6 +181,7 @@ useEffect(() => {
 
   const handleBooking = async (e) => {
     e.preventDefault();
+    if (selectedServices.length === 0) return alert("Selecciona al menos un servicio o paquete.");
     if (!form.nombre || !form.apellido || !form.email || !form.telefono || !form.direccion) return alert("Completa los campos obligatorios (*).");
     try {
       const bookingData = {
@@ -213,7 +195,6 @@ useEffect(() => {
           precioNum: s.priceNum
         })),
         precioTotal: formatCOP(totalPrecioNum),
-        duracionTotal: `${totalDuracion} min`,
         clienteNombre: `${form.nombre} ${form.apellido}`,
         email: form.email,
         ...form, 
@@ -226,38 +207,12 @@ useEffect(() => {
       await addDoc(collection(db, "citas"), bookingData);
 
       const serviciosTexto = selectedServices.map(s => s.name).join(', ');
-
-   
-const templateParamsClient = {
-        to_name: bookingData.clienteNombre,
-        to_email: form.email, // Correo del cliente
-        barbero_nombre: barber.name,
-        fecha_cita: selectedDate,
-        hora_cita: selectedTime,
-        servicios: serviciosTexto,
-        total: bookingData.precioTotal,
-      };
-
-      const templateParamsBarber = {
-        to_name: barber.name,
-        to_email: barber.email || barber.correo || "yohaldryquintero1995@gmail.com", 
-        cliente_nombre: bookingData.clienteNombre,
-        cliente_telefono: form.telefono,
-        fecha_cita: selectedDate,
-        hora_cita: selectedTime,
-        direccion: form.direccion,
-        torre_apto: form.torreApto || 'N/A',
-        referencia: form.referencia || 'N/A',
-        servicios: serviciosTexto,
-        total: bookingData.precioTotal,
-      };
-
-      const SERVICE_ID = "service_z91pc3e"; 
-      const PUBLIC_KEY = "JkBxr3kN07cKntGLN"; 
+      const templateParamsClient = { to_name: bookingData.clienteNombre, to_email: form.email, barbero_nombre: barber.name, fecha_cita: selectedDate, hora_cita: selectedTime, servicios: serviciosTexto, total: bookingData.precioTotal };
+      const templateParamsBarber = { to_name: barber.name, to_email: barber.email || "yohaldryquintero1995@gmail.com", cliente_nombre: bookingData.clienteNombre, cliente_telefono: form.telefono, fecha_cita: selectedDate, hora_cita: selectedTime, direccion: form.direccion, torre_apto: form.torreApto || 'N/A', referencia: form.referencia || 'N/A', servicios: serviciosTexto, total: bookingData.precioTotal };
 
       await Promise.all([
-        emailjs.send(SERVICE_ID, 'template_qqht1ab', templateParamsClient, PUBLIC_KEY),
-        emailjs.send(SERVICE_ID, 'template_reteht9', templateParamsBarber, PUBLIC_KEY)
+        emailjs.send("service_z91pc3e", 'template_qqht1ab', templateParamsClient, "JkBxr3kN07cKntGLN"),
+        emailjs.send("service_z91pc3e", 'template_reteht9', templateParamsBarber, "JkBxr3kN07cKntGLN")
       ]);
 
       setDetalleCita(bookingData);
@@ -280,7 +235,6 @@ const templateParamsClient = {
       <div className="absolute inset-0 z-0">
         <img src={barber.image} alt={barber.name} className="w-full h-full object-cover object-top filter brightness-100 contrast-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-neutral-950/60 to-neutral-950/10" />
-        <div className="absolute inset-0 bg-neutral-950/20" />
       </div>
 
       <div className="relative z-10 px-5 pt-3 flex items-center justify-between">
@@ -303,7 +257,7 @@ const templateParamsClient = {
               {barber.bio}
             </p>
             {barber.bio && barber.bio.length > 80 && (
-              <button onClick={() => setShowFullBio(!showFullBio)} className="text-[10px] font-semibold text-indigo-400 hover:text-indigo-300 mt-1 cursor-pointer focus:outline-none">
+              <button onClick={() => setShowFullBio(!showFullBio)} className="text-[10px] font-semibold text-indigo-400 hover:text-indigo-300 mt-1 cursor-pointer">
                 {showFullBio ? 'Ver menos' : 'Ver más...'}
               </button>
             )}
@@ -312,7 +266,7 @@ const templateParamsClient = {
 
         <div className="space-y-1">
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setModalType('servicios')} className="bg-neutral-900/80 border border-neutral-800 hover:border-indigo-500/60 p-2 rounded-xl text-left transition-all flex flex-col justify-between group cursor-pointer">
+            <button onClick={() => setModalType('servicios')} className="bg-neutral-900/80 border border-neutral-800 hover:border-indigo-500/60 p-2 rounded-xl text-left transition-all flex flex-col justify-between cursor-pointer">
               <div className="flex items-center justify-between w-full mb-0.5">
                 <span className="text-[11px] font-bold text-indigo-300 uppercase flex items-center"><FiScissors className="mr-1.5" /> Servicios</span>
                 <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full font-semibold">Ver</span>
@@ -320,7 +274,7 @@ const templateParamsClient = {
               <p className="text-[10px] text-neutral-400 truncate">Cortes y barba</p>
             </button>
 
-            <button onClick={() => setModalType('paquetes')} className="bg-neutral-900/80 border border-neutral-800 hover:border-emerald-500/60 p-2 rounded-xl text-left transition-all flex flex-col justify-between group cursor-pointer">
+            <button onClick={() => setModalType('paquetes')} className="bg-neutral-900/80 border border-neutral-800 hover:border-emerald-500/60 p-2 rounded-xl text-left transition-all flex flex-col justify-between cursor-pointer">
               <div className="flex items-center justify-between w-full mb-0.5">
                 <span className="text-[11px] font-bold text-emerald-300 uppercase flex items-center"><FiPackage className="mr-1.5" /> Paquetes</span>
                 <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full font-semibold">Ver</span>
@@ -332,35 +286,24 @@ const templateParamsClient = {
           <div className="flex flex-wrap gap-1.5 pt-0.5 max-h-12 overflow-y-auto scrollbar-none">
             {selectedServices && selectedServices.length > 0 ? (
               selectedServices.map(s => {
-                const serviceColor = s.color || s.hex || s.colorHex || '#3b82f6';
-                
+                const serviceColor = s.color || '#3b82f6';
                 return (
                   <span 
                     key={s.id || s.name} 
-                    style={{
-                      backgroundColor: `${serviceColor}33`,
-                      borderColor: `${serviceColor}`,
-                      color: '#f8fafc'
-                    }}
+                    style={{ backgroundColor: `${serviceColor}33`, borderColor: `${serviceColor}`, color: '#f8fafc' }}
                     className="inline-flex items-center text-[10px] px-2.5 py-1 rounded-lg border font-medium shadow-sm"
                   >
                     <span className="w-2.5 h-2.5 rounded-full mr-1.5 inline-block shrink-0 shadow-sm" style={{ backgroundColor: serviceColor }}></span>
                     <span className="font-bold mr-1">{s.name}</span>
-                    <span className="opacity-75 mr-1.5">({s.priceFormatted || s.precio})</span>
-                    {selectedServices.length > 1 && (
-                      <button 
-                        type="button" 
-                        onClick={(e) => removeServiceTag(s.id, e)} 
-                        className="hover:text-red-400 opacity-75 hover:opacity-100 transition-opacity ml-1 cursor-pointer"
-                      >
-                        <FiX size={12} />
-                      </button>
-                    )}
+                    <span className="opacity-75 mr-1.5">({s.priceFormatted})</span>
+                    <button type="button" onClick={(e) => removeServiceTag(s.id, s.name, e)} className="hover:text-red-400 opacity-75 hover:opacity-100 transition-opacity ml-1 cursor-pointer">
+                      <FiX size={12} />
+                    </button>
                   </span>
                 );
               })
             ) : (
-              <span className="text-[10px] text-neutral-500 italic">No hay servicios o paquetes seleccionados</span>
+              <span className="text-[10px] text-neutral-400 italic bg-neutral-900/60 px-2.5 py-1 rounded-lg border border-neutral-800">Selecciona al menos un servicio o paquete arriba</span>
             )}
           </div>
         </div>
@@ -373,24 +316,20 @@ const templateParamsClient = {
 
           <div className="space-y-1">
             <span className="font-semibold uppercase tracking-wider text-[10px] text-neutral-300 flex items-center px-0.5"><FiClock className="mr-1 text-indigo-400" /> Hora</span>
-            <button 
-              type="button" 
-              onClick={() => setModalType('horas')} 
-              className="w-full bg-neutral-900/90 border border-neutral-800 hover:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-left flex items-center justify-between cursor-pointer transition-all"
-            >
-              <span className={selectedTime ? "text-emerald-400 font-bold truncate" : "text-neutral-400 truncate"}>
-                {selectedTime || "Seleccionar..."}
-              </span>
+            <button type="button" onClick={() => setModalType('horas')} className="w-full bg-neutral-900/90 border border-neutral-800 hover:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-left flex items-center justify-between cursor-pointer transition-all">
+              <span className={selectedTime ? "text-emerald-400 font-bold truncate" : "text-neutral-400 truncate"}>{selectedTime || "Seleccionar..."}</span>
               <FiArrowRight className="text-indigo-400 shrink-0 ml-1" />
             </button>
           </div>
         </div>
 
         <div className="pt-0.5">
-          <motion.button whileTap={{ scale: 0.98 }} disabled={!selectedTime} onClick={() => setModalType('form')} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-xl shadow-xl flex items-center justify-between cursor-pointer">
+          <motion.button whileTap={{ scale: 0.98 }} disabled={!selectedTime || selectedServices.length === 0} onClick={() => setModalType('form')} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-xl shadow-xl flex items-center justify-between cursor-pointer">
             <div className="flex flex-col text-left">
-              <span className="text-[9px] uppercase tracking-wider opacity-80 font-semibold">{selectedServices.length} {selectedServices.length === 1 ? 'servicio' : 'servicios'}</span>
-              <span className="text-sm font-extrabold">{formatCOP(totalPrecioNum)} <span className="text-[10px] font-normal opacity-80">({totalDuracion} min)</span></span>
+              <span className="text-[9px] uppercase tracking-wider opacity-80 font-semibold">
+                {selectedServices.length} {selectedServices.length === 1 ? 'servicio seleccionado' : 'servicios seleccionados'}
+              </span>
+              <span className="text-sm font-extrabold">{formatCOP(totalPrecioNum)}</span>
             </div>
             <div className="flex items-center space-x-1.5 bg-black/20 px-3 py-1.5 rounded-lg text-xs">
               <span className="uppercase tracking-wider">Continuar</span><FiArrowRight />
@@ -421,10 +360,7 @@ const templateParamsClient = {
 
                       if (isOccupied) {
                         return (
-                          <div
-                            key={time}
-                            className="bg-red-950/40 border border-red-900/60 text-red-400 py-2.5 px-2 rounded-xl text-[11px] font-bold text-center opacity-80 cursor-not-allowed select-none flex flex-col items-center justify-center"
-                          >
+                          <div key={time} className="bg-red-950/40 border border-red-900/60 text-red-400 py-2.5 px-2 rounded-xl text-[11px] font-bold text-center opacity-80 cursor-not-allowed select-none flex flex-col items-center justify-center">
                             <span className="line-through text-red-400">{time}</span>
                             <span className="text-[8px] text-red-400 uppercase tracking-wider mt-0.5">Ocupado</span>
                           </div>
@@ -432,26 +368,13 @@ const templateParamsClient = {
                       }
 
                       return (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTime(time);
-                            setModalType(null);
-                          }}
-                          className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer border flex flex-col items-center justify-center ${
-                            isSelected
-                              ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-900/40 scale-[1.02]'
-                              : 'bg-emerald-950/30 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-600'
-                          }`}
-                        >
+                        <button key={time} type="button" onClick={() => { setSelectedTime(time); setModalType(null); }} className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer border flex flex-col items-center justify-center ${isSelected ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-900/40 scale-[1.02]' : 'bg-emerald-950/30 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-600'}`}>
                           <span>{time}</span>
                           <span className="text-[8px] text-emerald-400 uppercase tracking-wider mt-0.5">Disponible</span>
                         </button>
                       );
                     })}
                   </div>
-
                   <button onClick={() => setModalType(null)} className="w-full mt-4 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer">Cerrar</button>
                 </>
               )}
@@ -467,7 +390,7 @@ const templateParamsClient = {
                   </div>
                   <div className="space-y-2.5 overflow-y-auto max-h-[50vh] pr-1">
                     {listaSoloServicios.map(s => {
-                      const isSelected = selectedServices.some(item => item.id === s.id);
+                      const isSelected = selectedServices.some(item => item.id === s.id || item.name === s.name);
                       return (
                         <div key={s.id} onClick={() => toggleServiceSelection(s)} className={`p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-950/30 border-indigo-500 text-white shadow-md shadow-indigo-950/50' : 'bg-neutral-900/80 border-neutral-800 text-neutral-300 hover:border-neutral-700'}`}>
                           <div className="flex items-start justify-between">
@@ -475,28 +398,19 @@ const templateParamsClient = {
                               {s.imagen || s.image ? (
                                 <img src={s.imagen || s.image} alt={s.name} className="w-10 h-10 rounded-full object-cover border border-neutral-700 shrink-0 mt-0.5" />
                               ) : (
-                                <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 text-indigo-400 font-bold shrink-0 mt-0.5">
-                                  <FiScissors size={18} />
-                                </div>
+                                <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 text-indigo-400 font-bold shrink-0 mt-0.5"><FiScissors size={18} /></div>
                               )}
                               <div>
                                 <span className="inline-block px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-400 border border-indigo-800/50 mb-0.5">Servicio</span>
                                 <h4 className="text-xs font-bold text-white">{s.name}</h4>
-                                {(s.descripcion || s.description) && (
-                                  <p className="text-[10px] text-neutral-400 font-light mt-1 line-clamp-2 leading-relaxed">
-                                    {s.descripcion || s.description}
-                                  </p>
-                                )}
+                                {s.descripcion && <p className="text-[10px] text-neutral-400 font-light mt-1 line-clamp-2 leading-relaxed">{s.descripcion}</p>}
                               </div>
                             </div>
                             <div className={`w-4 h-4 rounded-md flex items-center justify-center border transition-colors mt-1 shrink-0 ${isSelected ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-neutral-700 bg-neutral-900'}`}>
                               {isSelected && <FiCheck size={10} />}
                             </div>
                           </div>
-                          <div className="mt-2.5 pt-2 border-t border-neutral-800/80 flex items-center justify-between">
-                            <div className="flex items-center text-[10px] text-neutral-400">
-                              <FiClock className="mr-1" size={11} /> {s.duration} minutos
-                            </div>
+                          <div className="mt-2.5 pt-2 border-t border-neutral-800/80 flex items-center justify-end">
                             <span className="text-xs font-extrabold text-indigo-300">{s.priceFormatted}</span>
                           </div>
                         </div>
@@ -521,7 +435,7 @@ const templateParamsClient = {
                       <p className="text-center text-xs text-neutral-500 py-6">No hay paquetes disponibles por el momento.</p>
                     ) : (
                       listaSoloPaquetes.map(p => {
-                        const isSelected = selectedServices.some(item => item.id === p.id);
+                        const isSelected = selectedServices.some(item => item.id === p.id || item.name === p.name);
                         return (
                           <div key={p.id} onClick={() => toggleServiceSelection(p)} className={`p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-950/30 border-emerald-500 text-white shadow-md shadow-emerald-950/50' : 'bg-neutral-900/80 border-neutral-800 text-neutral-300 hover:border-neutral-700'}`}>
                             <div className="flex items-start justify-between">
@@ -529,28 +443,19 @@ const templateParamsClient = {
                                 {p.imagen || p.image ? (
                                   <img src={p.imagen || p.image} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-neutral-700 shrink-0 mt-0.5" />
                                 ) : (
-                                  <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 text-emerald-400 font-bold shrink-0 mt-0.5">
-                                    <FiPackage size={18} />
-                                  </div>
+                                  <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 text-emerald-400 font-bold shrink-0 mt-0.5"><FiPackage size={18} /></div>
                                 )}
                                 <div>
                                   <span className="inline-block px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-400 border border-emerald-800/50 mb-0.5">Paquete Especial</span>
                                   <h4 className="text-xs font-bold text-white">{p.name}</h4>
-                                  {(p.descripcion || p.description) && (
-                                    <p className="text-[10px] text-neutral-400 font-light mt-1 line-clamp-2 leading-relaxed">
-                                      {p.descripcion || p.description}
-                                    </p>
-                                  )}
+                                  {p.descripcion && <p className="text-[10px] text-neutral-400 font-light mt-1 line-clamp-2 leading-relaxed">{p.descripcion}</p>}
                                 </div>
                               </div>
                               <div className={`w-4 h-4 rounded-md flex items-center justify-center border transition-colors mt-1 shrink-0 ${isSelected ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-neutral-700 bg-neutral-900'}`}>
                                 {isSelected && <FiCheck size={10} />}
                               </div>
                             </div>
-                            <div className="mt-2.5 pt-2 border-t border-neutral-800/80 flex items-center justify-between">
-                              <div className="flex items-center text-[10px] text-neutral-400">
-                                <FiClock className="mr-1" size={11} /> {p.duration} minutos
-                              </div>
+                            <div className="mt-2.5 pt-2 border-t border-neutral-800/80 flex items-center justify-end">
                               <span className="text-xs font-extrabold text-emerald-300">{p.priceFormatted}</span>
                             </div>
                           </div>
