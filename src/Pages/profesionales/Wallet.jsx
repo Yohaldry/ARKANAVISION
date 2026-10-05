@@ -4,7 +4,7 @@ import { db, auth } from '../../components/firebase';
 import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const Wallet = () => {
-  const [vistaTab, setVistaTab] = useState('domicilios');
+  const [vistaTab, setVistaTab] = useState('manual');
 
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   
@@ -16,6 +16,7 @@ const Wallet = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const [activeTab, setActiveTab] = useState('manual');
   const hoyStr = obtenerFechaLocal();
   const [fechaEspecifica, setFechaEspecifica] = useState(hoyStr);
   const [fechaInicio, setFechaInicio] = useState(hoyStr);

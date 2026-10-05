@@ -45,7 +45,7 @@ export default function PanelProfesionales() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [dragOverInfo, setDragOverInfo] = useState({ diaStr: null, horaTexto: null, x: 0, y: 0 });
-  const [activeTab, setActiveTab] = useState('agenda');
+  const [activeTab, setActiveTab] = useState('facturacion');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -1443,295 +1443,321 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
 
         {activeTab === 'servicios' && (
 
-<div className="space-y-3">
-            {/* Cabecera y Botones de Nuevo Servicio/Paquete */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-100">Mis Servicios y Paquetes</h3>
-                <p className="text-[9px] text-neutral-400">Configura los servicios y paquetes que ofreces a tus clientes</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setServicioEditando(null);
-                    setFormServicio({ 
-                      nombre: '', 
-                      descripcion: '', 
-                      precio: '', 
-                      duracion: pestanaActiva === 'internos' ? 'interno' : '45 min', 
-                      categoria: 'servicio', 
-                      color: '#eab308' 
-                    });
-                    setShowServicioModal(true);
-                  }}
-                  className="bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
-                >
-                  <Plus className="w-3 h-3" /> Servicio
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setServicioEditando(null);
-                    setFormServicio({ 
-                      nombre: '', 
-                      descripcion: '', 
-                      precio: '', 
-                      duracion: pestanaActiva === 'internos' ? 'interno' : '60 min', 
-                      categoria: 'paquete', 
-                      color: '#3b82f6' 
-                    });
-                    setShowServicioModal(true);
-                  }}
-                  className="bg-neutral-800 hover:bg-neutral-700 text-slate-200 border border-neutral-700 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
-                >
-                  <Plus className="w-3 h-3" /> Paquete
-                </button>
-              </div>
-            </div>
+<div className="space-y-3 bg-white p-4 rounded-2xl shadow-sm text-slate-800">
+    {/* Cabecera y Botones de Nuevo Servicio/Paquete */}
+    <div className="flex justify-between items-center">
+      <div>
+        <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
+        <p className="text-[9px] text-slate-500">Configura los servicios y paquetes que ofreces a tus clientes</p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button 
+          type="button"
+          onClick={() => {
+            setServicioEditando(null);
+            setFormServicio({ 
+              nombre: '', 
+              descripcion: '', 
+              precio: '', 
+              duracion: pestanaActiva === 'internos' ? 'interno' : '45 min', 
+              categoria: 'servicio', 
+              color: pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9' 
+            });
+            setShowServicioModal(true);
+          }}
+          className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition shadow-sm ${
+            pestanaActiva === 'internos'
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border border-emerald-600/30 shadow-emerald-500/20'
+              : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white border border-sky-600/30 shadow-sky-500/20'
+          }`}
+        >
+          <Plus className="w-3 h-3 text-white" /> Servicio
+        </button>
+        <button 
+          type="button"
+          onClick={() => {
+            setServicioEditando(null);
+            setFormServicio({ 
+              nombre: '', 
+              descripcion: '', 
+              precio: '', 
+              duracion: pestanaActiva === 'internos' ? 'interno' : '60 min', 
+              categoria: 'paquete', 
+              color: pestanaActiva === 'internos' ? '#059669' : '#3b82f6' 
+            });
+            setShowServicioModal(true);
+          }}
+          className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+        >
+          <Plus className="w-3 h-3 text-slate-600" /> Paquete
+        </button>
+      </div>
+    </div>
 
-            {/* Selector de Pestañas: Servicios Externos vs Servicios Internos */}
-            <div className="flex border-b border-neutral-800 gap-4">
-              <button
-                type="button"
-                onClick={() => setPestanaActiva('externos')}
-                className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
-                  pestanaActiva === 'externos' 
-                    ? 'border-yellow-500 text-yellow-400' 
-                    : 'border-transparent text-neutral-400 hover:text-slate-200'
-                }`}
-              >
-                Servicios Externos
-              </button>
-              <button
-                type="button"
-                onClick={() => setPestanaActiva('internos')}
-                className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
-                  pestanaActiva === 'internos' 
-                    ? 'border-yellow-500 text-yellow-400' 
-                    : 'border-transparent text-neutral-400 hover:text-slate-200'
-                }`}
-              >
-                Servicios Internos
-              </button>
-            </div>
+    {/* Selector de Pestañas: Servicios Externos vs Servicios Internos */}
+    <div className="flex border-b border-slate-200 gap-4">
+      <button
+        type="button"
+        onClick={() => setPestanaActiva('externos')}
+        className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
+          pestanaActiva === 'externos' 
+            ? 'border-sky-500 text-sky-600' 
+            : 'border-transparent text-slate-400 hover:text-slate-700'
+        }`}
+      >
+        Servicios Externos
+      </button>
+      <button
+        type="button"
+        onClick={() => setPestanaActiva('internos')}
+        className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
+          pestanaActiva === 'internos' 
+            ? 'border-emerald-500 text-emerald-600' 
+            : 'border-transparent text-slate-400 hover:text-slate-700'
+        }`}
+      >
+        Servicios Internos
+      </button>
+    </div>
 
-            {/* Listado filtrado según la pestaña activa */}
-            <div className="space-y-2">
-              {serviciosFirebase.filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno').length === 0 ? (
-                <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl text-center text-neutral-400 text-[10px]">
-                  {pestanaActiva === 'internos' 
-                    ? 'No tienes servicios internos creados.' 
-                    : 'No tienes servicios externos creados.'}
+    {/* Listado filtrado según la pestaña activa */}
+    <div className="space-y-2">
+      {serviciosFirebase.filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno').length === 0 ? (
+        <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center text-slate-500 text-[10px]">
+          {pestanaActiva === 'internos' 
+            ? 'No tienes servicios internos creados.' 
+            : 'No tienes servicios externos creados.'}
+        </div>
+      ) : (
+        serviciosFirebase
+          .filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno')
+          .map(serv => {
+            const esPaquete = serv.categoria === 'paquete';
+            const esInterno = pestanaActiva === 'internos';
+            const colorServicio = serv.color || (esPaquete ? (esInterno ? '#059669' : '#3b82f6') : (esInterno ? '#10b981' : '#0ea5e9'));
+
+            return (
+              <div key={serv.id} className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3 relative overflow-hidden">
+                {/* Acento degradado lateral sutil */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${esInterno ? 'bg-gradient-to-b from-emerald-400 to-teal-600' : 'bg-gradient-to-b from-sky-400 to-blue-600'}`} />
+                
+                <div className="flex items-start gap-2.5 pl-1">
+                  <div 
+                    className="w-3 h-3 rounded-full mt-1 shrink-0 border border-slate-300 shadow-xs" 
+                    style={{ backgroundColor: colorServicio }} 
+                    title={`Color: ${colorServicio}`}
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${
+                        esInterno 
+                          ? (esPaquete ? 'bg-teal-50 border-teal-200 text-teal-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600')
+                          : (esPaquete ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-sky-50 border-sky-200 text-sky-600')
+                      }`}>
+                        {esPaquete ? 'Paquete' : 'Servicio'}
+                      </span>
+                      <p className="text-[11px] font-bold text-slate-800">{serv.nombre}</p>
+                      {pestanaActiva !== 'internos' && (
+                        <span className="text-[8px] bg-slate-200/70 border border-slate-300 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                      )}
+                    </div>
+                    <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
+                  </div>
                 </div>
-              ) : (
-                serviciosFirebase
-                  .filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno')
-                  .map(serv => {
-                    const esPaquete = serv.categoria === 'paquete';
-                    const colorServicio = serv.color || (esPaquete ? '#3b82f6' : '#eab308');
+                <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                  <p className={`text-[11px] font-bold bg-gradient-to-r bg-clip-text text-transparent ${esInterno ? 'from-emerald-600 to-teal-600' : 'from-sky-600 to-blue-600'}`}>{serv.precio}</p>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setServicioEditando(serv);
+                        setFormServicio({ 
+                          nombre: serv.nombre, 
+                          descripcion: serv.descripcion || '', 
+                          precio: serv.precio, 
+                          duracion: pestanaActiva === 'internos' ? 'interno' : (serv.duracion || '45 min'),
+                          categoria: serv.categoria || 'servicio',
+                          color: serv.color || (serv.categoria === 'paquete' ? (esInterno ? '#059669' : '#3b82f6') : (esInterno ? '#10b981' : '#0ea5e9'))
+                        });
+                        setShowServicioModal(true);
+                      }}
+                      className={`p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 cursor-pointer transition-colors shadow-xs ${
+                        esInterno ? 'hover:bg-emerald-50 hover:text-emerald-600' : 'hover:bg-sky-50 hover:text-sky-600'
+                      }`}
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => eliminarServicioFirestore(serv.id)}
+                      className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 cursor-pointer transition-colors shadow-xs"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+      )}
+    </div>
 
-                    return (
-                      <div key={serv.id} className="bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3">
-                        <div className="flex items-start gap-2.5">
-                          <div 
-                            className="w-3 h-3 rounded-full mt-1 shrink-0 border border-white/20 shadow-xs" 
-                            style={{ backgroundColor: colorServicio }} 
-                            title={`Color: ${colorServicio}`}
-                          />
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${esPaquete ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'}`}>
-                                {esPaquete ? 'Paquete' : 'Servicio'}
-                              </span>
-                              <p className="text-[11px] font-bold text-white">{serv.nombre}</p>
-                              {pestanaActiva !== 'internos' && (
-                                <span className="text-[8px] bg-neutral-800 border border-neutral-700 text-neutral-300 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
-                              )}
-                            </div>
-                            <p className="text-[9px] text-neutral-400 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
-                          </div>
-                        </div>
-                        <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                          <p className="text-[11px] font-bold text-yellow-400">{serv.precio}</p>
-                          <div className="flex items-center gap-1">
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                setServicioEditando(serv);
-                                setFormServicio({ 
-                                  nombre: serv.nombre, 
-                                  descripcion: serv.descripcion || '', 
-                                  precio: serv.precio, 
-                                  duracion: pestanaActiva === 'internos' ? 'interno' : (serv.duracion || '45 min'),
-                                  categoria: serv.categoria || 'servicio',
-                                  color: serv.color || (serv.categoria === 'paquete' ? '#3b82f6' : '#eab308')
-                                });
-                                setShowServicioModal(true);
-                              }}
-                              className="p-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-yellow-400 cursor-pointer transition-colors"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => eliminarServicioFirestore(serv.id)}
-                              className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-400 hover:bg-rose-900/60 cursor-pointer transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+    {/* Modal de Crear / Editar */}
+    {showServicioModal && (
+      <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95 text-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full inline-block ${pestanaActiva === 'internos' ? 'bg-emerald-500' : 'bg-sky-500'}`}></span>
+              {servicioEditando ? '✏️ Editar Servicio / Paquete' : '✨ Nuevo Servicio o Paquete'}
+            </h3>
+            <button 
+              type="button"
+              onClick={() => setShowServicioModal(false)} 
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 cursor-pointer transition"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={(e) => {
+            if (pestanaActiva === 'internos') {
+              e.preventDefault();
+              const formFinal = { ...formServicio, duracion: 'interno' };
+            }
+            handleGuardarServicio(e);
+          }} className="space-y-3 text-[10px]">
+            
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Tipo</label>
+              <select 
+                value={formServicio.categoria} 
+                onChange={e => setFormServicio({...formServicio, categoria: e.target.value})}
+                className={`w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-800 outline-none font-medium ${
+                  pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                }`}
+              >
+                <option value="servicio">Servicio</option>
+                <option value="paquete">Paquete</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
+              <input 
+                type="text" 
+                required
+                placeholder="Ej: Corte Fade + Barba VIP" 
+                value={formServicio.nombre} 
+                onChange={e => setFormServicio({...formServicio, nombre: e.target.value})}
+                className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none ${
+                  pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                }`} 
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción</label>
+              <textarea 
+                rows="2" 
+                placeholder="Detalles de lo que incluye..." 
+                value={formServicio.descripcion} 
+                onChange={e => setFormServicio({...formServicio, descripcion: e.target.value})}
+                className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none resize-none ${
+                  pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                }`} 
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">Color del Servicio</label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                  <input 
+                    type="color" 
+                    value={formServicio.color || (pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9')} 
+                    onChange={e => setFormServicio({...formServicio, color: e.target.value})}
+                    className="w-7 h-6 rounded border-0 bg-transparent cursor-pointer outline-none"
+                  />
+                  <span className="ml-2 text-xs font-mono uppercase text-slate-600">
+                    {formServicio.color || (pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                {(pestanaActiva === 'internos' 
+                  ? ['#10b981', '#34d399', '#059669', '#0d9488', '#14b8a6', '#22c55e', '#84cc16', '#6366f1', '#ec4899', '#64748b']
+                  : ['#0ea5e9', '#38bdf8', '#3b82f6', '#6366f1', '#06b6d4', '#10b981', '#8b5cf6', '#ec4899', '#f43f5e', '#64748b']
+                ).map((colorHex) => (
+                  <button
+                    key={colorHex}
+                    type="button"
+                    onClick={() => setFormServicio({ ...formServicio, color: colorHex })}
+                    className="w-5 h-5 rounded-full border border-slate-300 hover:scale-110 transition-transform cursor-pointer shadow-xs"
+                    style={{ backgroundColor: colorHex }}
+                    title={colorHex}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className={pestanaActiva === 'internos' ? "space-y-1" : "grid grid-cols-2 gap-2"}>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-500 uppercase text-[9px]">Precio *</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Ej: $45.000" 
+                  value={formServicio.precio} 
+                  onChange={e => setFormServicio({...formServicio, precio: e.target.value})}
+                  className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none ${
+                    pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                  }`} 
+                />
+              </div>
+              {pestanaActiva !== 'internos' && (
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">Duración</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ej: 45 min" 
+                    value={formServicio.duracion} 
+                    onChange={e => setFormServicio({...formServicio, duracion: e.target.value})}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none focus:border-sky-500" 
+                  />
+                </div>
               )}
             </div>
 
-            {/* Modal de Crear / Editar */}
-            {showServicioModal && (
-              <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95 text-slate-100">
-                  <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-                    <h3 className="text-xs font-black uppercase text-white">
-                      {servicioEditando ? '✏️ Editar Servicio / Paquete' : '✨ Nuevo Servicio o Paquete'}
-                    </h3>
-                    <button 
-                      type="button"
-                      onClick={() => setShowServicioModal(false)} 
-                      className="p-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white cursor-pointer"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <form onSubmit={(e) => {
-                    // Forzamos que si estamos en la pestaña internos, la duración se guarde como 'interno'
-                    if (pestanaActiva === 'internos') {
-                      e.preventDefault();
-                      // Aseguramos el valor antes de enviar mediante una copia o modificando el estado
-                      const formFinal = { ...formServicio, duracion: 'interno' };
-                      // NOTA: Si manejas handleGuardarServicio directamente, puedes pasar el objeto o asegurar que formServicio.duracion sea 'interno'
-                    }
-                    handleGuardarServicio(e);
-                  }} className="space-y-3 text-[10px]">
-                    
-                    <div className="space-y-1">
-                      <label className="font-bold text-neutral-400 uppercase text-[9px]">Tipo</label>
-                      <select 
-                        value={formServicio.categoria} 
-                        onChange={e => setFormServicio({...formServicio, categoria: e.target.value})}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2 text-slate-100 outline-none focus:border-yellow-500 font-medium"
-                      >
-                        <option value="servicio">Servicio</option>
-                        <option value="paquete">Paquete</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-neutral-400 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="Ej: Corte Fade + Barba VIP" 
-                        value={formServicio.nombre} 
-                        onChange={e => setFormServicio({...formServicio, nombre: e.target.value})}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-neutral-400 uppercase text-[9px]">Descripción</label>
-                      <textarea 
-                        rows="2" 
-                        placeholder="Detalles de lo que incluye..." 
-                        value={formServicio.descripcion} 
-                        onChange={e => setFormServicio({...formServicio, descripcion: e.target.value})}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500 resize-none" 
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-neutral-400 uppercase text-[9px]">Color del Servicio</label>
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-1 flex items-center bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5">
-                          <input 
-                            type="color" 
-                            value={formServicio.color || '#eab308'} 
-                            onChange={e => setFormServicio({...formServicio, color: e.target.value})}
-                            className="w-7 h-6 rounded border-0 bg-transparent cursor-pointer outline-none"
-                          />
-                          <span className="ml-2 text-xs font-mono uppercase text-neutral-300">
-                            {formServicio.color || '#eab308'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                        {['#eab308', '#f59e0b', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#10b981', '#06b6d4', '#f43f5e', '#64748b'].map((colorHex) => (
-                          <button
-                            key={colorHex}
-                            type="button"
-                            onClick={() => setFormServicio({ ...formServicio, color: colorHex })}
-                            className="w-5 h-5 rounded-full border border-white/20 hover:scale-110 transition-transform cursor-pointer"
-                            style={{ backgroundColor: colorHex }}
-                            title={colorHex}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* El campo de precio se muestra completo, y duración solo si estamos en externos */}
-                    <div className={pestanaActiva === 'internos' ? "space-y-1" : "grid grid-cols-2 gap-2"}>
-                      <div className="space-y-1">
-                        <label className="font-bold text-neutral-400 uppercase text-[9px]">Precio *</label>
-                        <input 
-                          type="text" 
-                          required
-                          placeholder="Ej: $45.000" 
-                          value={formServicio.precio} 
-                          onChange={e => setFormServicio({...formServicio, precio: e.target.value})}
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
-                        />
-                      </div>
-                      {pestanaActiva !== 'internos' && (
-                        <div className="space-y-1">
-                          <label className="font-bold text-neutral-400 uppercase text-[9px]">Duración</label>
-                          <input 
-                            type="text" 
-                            placeholder="Ej: 45 min" 
-                            value={formServicio.duracion} 
-                            onChange={e => setFormServicio({...formServicio, duracion: e.target.value})}
-                            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-2 px-3 text-[11px] text-slate-100 outline-none focus:border-yellow-500" 
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 pt-3 border-t border-neutral-800">
-                      <button 
-                        type="button" 
-                        onClick={() => setShowServicioModal(false)}
-                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer border border-neutral-700"
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                        type="submit" 
-                        onClick={() => {
-                          if (pestanaActiva === 'internos') {
-                            setFormServicio(prev => ({ ...prev, duracion: 'interno' }));
-                          }
-                        }}
-                        className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-2 rounded-xl text-[10px] uppercase transition-colors cursor-pointer shadow-sm"
-                      >
-                        Guardar
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-          </div>
+            <div className="flex gap-2 pt-3 border-t border-slate-100">
+              <button 
+                type="button" 
+                onClick={() => setShowServicioModal(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer border border-slate-200"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                onClick={() => {
+                  if (pestanaActiva === 'internos') {
+                    setFormServicio(prev => ({ ...prev, duracion: 'interno' }));
+                  }
+                }}
+                className={`flex-1 font-black py-2 rounded-xl text-[10px] uppercase transition-all cursor-pointer shadow-md ${
+                  pestanaActiva === 'internos'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-emerald-500/20'
+                    : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-sky-500/20'
+                }`}
+              >
+                Guardar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+  </div>
         )}
 
         {activeTab === 'facturacion' && (
