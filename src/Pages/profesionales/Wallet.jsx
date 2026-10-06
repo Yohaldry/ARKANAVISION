@@ -28,7 +28,7 @@ const Wallet = () => {
   const [loading, setLoading] = useState(true);
   const [loadingCitas, setLoadingCitas] = useState(false);
   const [guardando, setGuardando] = useState(false);
-
+const [isOpenServicios, setIsOpenServicios] = useState(false);
   const [porcentajeBarbero, setPorcentajeBarbero] = useState(35);
   const [alertaExito, setAlertaExito] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('¡Guardado con éxito!');
@@ -1151,51 +1151,83 @@ const Wallet = () => {
 
               <div>
                 <label className="block font-medium text-slate-600 mb-0.5">Servicios Internos</label>
-                <select
-                  onChange={(e) => {
-                    const servicioId = e.target.value;
-                    if (!servicioId) return;
-                    const listaServicios = Array.isArray(serviciosFirebase) ? serviciosFirebase : [];
-                    const servicioEncontrado = listaServicios.find(s => s.id === servicioId);
-                    
-                    if (servicioEncontrado) {
-                      const yaSeleccionado = (nuevoServicio.serviciosSeleccionados || []).some(s => s.id === servicioId);
-                      if (!yaSeleccionado) {
-                        const nuevosSeleccionados = [...(nuevoServicio.serviciosSeleccionados || []), servicioEncontrado];
-                        
-                        const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
-                          const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
-                          return acc + precioLimpiado;
-                        }, 0);
+            {/* Contenedor del selector personalizado con casillas coloreadas */}
+<div className="relative mb-2">
+  <div 
+    onClick={() => setIsOpenServicios(!isOpenServicios)}
+    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-sm transition-all duration-200"
+  >
+    <span className="text-sm text-slate-600 font-medium">Selecciona un servicio...</span>
+    <svg 
+      className={`w-4 h-4 text-slate-400 transition-transform duration-300 ease-out ${isOpenServicios ? 'rotate-180 text-blue-600' : ''}`} 
+      fill="none" 
+      stroke="currentColor" 
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
 
-                        const nombresConcatenados = nuevosSeleccionados.map(s => s.nombre || s.servicio).join(' + ');
+  {isOpenServicios && (
+    <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 p-1.5 space-y-1">
+      {Array.isArray(serviciosFirebase) && serviciosFirebase
+        .filter(serv => {
+          const duracion = serv.duracion ? String(serv.duracion).toLowerCase().trim() : '';
+          const esInterno = duracion === 'interno';
+          const idDelBarberoActual = auth.currentUser?.uid; 
+          const esDelBarbero = String(serv.barberoId || serv.barberId || serv.barberoid) === String(idDelBarberoActual);
+          return esInterno && esDelBarbero;
+        })
+        .map(serv => {
+          const colorServicio = serv.color || serv.colorHex || '#3b82f6';
 
-                        setNuevoServicio({
-                          ...nuevoServicio,
-                          serviciosSeleccionados: nuevosSeleccionados,
-                          servicio: nombresConcatenados,
-                          total: nuevoTotal
-                        });
-                      }
-                    }
-                    e.target.value = ""; 
-                  }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 mb-2 cursor-pointer"
-                >
-                  <option value="">Selecciona un servicio...</option>
-                  {Array.isArray(serviciosFirebase) && 
-                    serviciosFirebase
-                      .filter(serv => {
-                        const duracion = serv.duracion ? String(serv.duracion).toLowerCase().trim() : '';
-                        return duracion === 'interno';
-                      })
-                      .map(serv => (
-                        <option key={serv.id} value={serv.id}>
-                          {serv.nombre || serv.servicio} (${serv.precio || serv.total})
-                        </option>
-                      ))
-                  }
-                </select>
+          return (
+            <div
+              key={serv.id}
+              onClick={() => {
+                const servicioId = serv.id;
+                const yaSeleccionado = (nuevoServicio.serviciosSeleccionados || []).some(s => s.id === servicioId);
+                
+                if (!yaSeleccionado) {
+                  const nuevosSeleccionados = [...(nuevoServicio.serviciosSeleccionados || []), serv];
+                  
+                  const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
+                    const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                    return acc + precioLimpiado;
+                  }, 0);
+
+                  const nombresConcatenados = nuevosSeleccionados.map(s => s.nombre || s.servicio).join(' + ');
+
+                  setNuevoServicio({
+                    ...nuevoServicio,
+                    serviciosSeleccionados: nuevosSeleccionados,
+                    servicio: nombresConcatenados,
+                    total: nuevoTotal
+                  });
+                }
+                setIsOpenServicios(false);
+              }}
+              style={{ 
+                backgroundColor: `${colorServicio}15`, // Color con un 15% de opacidad para el fondo base
+                borderColor: `${colorServicio}40`    // Bordes sutiles basados en el color
+              }}
+              className="flex items-center justify-between px-3.5 py-2.5 rounded-lg border cursor-pointer active:scale-[0.98] transition-all duration-150 group hover:shadow-sm"
+            >
+              <span className="font-semibold text-slate-800 text-sm group-hover:translate-x-0.5 transition-transform">
+                {serv.nombre || serv.servicio}
+              </span>
+              <span 
+                className="font-bold text-xs px-2.5 py-1 rounded-md text-white shadow-sm"
+                style={{ backgroundColor: colorServicio }} // Badge del precio con el color sólido del servicio
+              >
+                ${serv.precio || serv.total}
+              </span>
+            </div>
+          );
+        })}
+    </div>
+  )}
+</div>
 
                 {nuevoServicio.serviciosSeleccionados && nuevoServicio.serviciosSeleccionados.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-1">
