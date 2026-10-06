@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff } from 'lucide-react';
 import { db, auth } from '../../components/firebase'; 
-import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where} from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const Wallet = () => {
   const [vistaTab, setVistaTab] = useState('manual');
@@ -167,43 +167,19 @@ const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', p
     }
   };
 
-useEffect(() => {
-  let unsubscribeServicios = null;
-
-  const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
-    if (user) {
-      // Configuramos el listener en tiempo real para los servicios del barbero actual
-      const q = query(
-        collection(db, "servicios"), 
-        where("barberoId", "==", user.uid)
-      );
-
-      unsubscribeServicios = onSnapshot(q, (snapshot) => {
-        const listaServicios = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setServiciosFirebase(listaServicios);
-      }, (error) => {
-        console.error("Error al escuchar servicios en tiempo real:", error);
-      });
-
-      // Llamas a tus otras funciones de carga si las sigues necesitando
-      obtenerCitasFinalizadas();
-      obtenerServiciosDisponibles();
-    } else {
-      if (unsubscribeServicios) unsubscribeServicios();
-      setServiciosFirebase([]);
-      setLoading(false);
-      setLoadingCitas(false);
-    }
-  });
-
-  return () => {
-    unsubscribeAuth();
-    if (unsubscribeServicios) unsubscribeServicios();
-  };
-}, []);
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        obtenerServicios();
+        obtenerCitasFinalizadas();
+        obtenerServiciosDisponibles();
+      } else {
+        setLoading(false);
+        setLoadingCitas(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const parsearPrecioCita = (cita) => {
     const valorBruto = cita.precioTotal || cita.precio || cita.total || cita.costo || cita.valor;
