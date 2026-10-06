@@ -1761,7 +1761,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
         )}
 
         {activeTab === 'facturacion' && (
-          <Wallet />
+          <Wallet setPestanaActiva={setPestanaActiva} setActiveTab={setActiveTab}/>
         )}
 
         {activeTab === 'estadisticas' && (

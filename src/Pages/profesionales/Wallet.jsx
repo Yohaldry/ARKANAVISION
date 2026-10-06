@@ -39,7 +39,8 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
 
   const [modalDiaOpen, setModalDiaOpen] = useState(false);
   const [diaSeleccionadoDetalle, setDiaSeleccionadoDetalle] = useState(null);
-
+const [modalServicioInternoOpen, setModalServicioInternoOpen] = useState(false);
+const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', precio: '', color: '#10b981' });
   const [modalCitaDetalleOpen, setModalCitaDetalleOpen] = useState(false);
   const [citaSeleccionadaDetalle, setCitaSeleccionadaDetalle] = useState(null);
 
@@ -1153,19 +1154,36 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
                 <label className="block font-medium text-slate-600 mb-0.5">Servicios Internos</label>
             {/* Contenedor del selector personalizado con casillas coloreadas y ordenadas por precio */}
 <div className="relative mb-2">
-  <div 
-    onClick={() => setIsOpenServicios(!isOpenServicios)}
-    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-sm transition-all duration-200"
-  >
-    <span className="text-sm text-slate-600 font-medium">Selecciona un servicio...</span>
-    <svg 
-      className={`w-4 h-4 text-slate-400 transition-transform duration-300 ease-out ${isOpenServicios ? 'rotate-180 text-blue-600' : ''}`} 
-      fill="none" 
-      stroke="currentColor" 
-      viewBox="0 0 24 24"
+  <div className="flex items-center gap-2">
+    <div 
+      onClick={() => setIsOpenServicios(!isOpenServicios)}
+      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-sm transition-all duration-200"
     >
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-    </svg>
+      <span className="text-sm text-slate-600 font-medium">Selecciona un servicio...</span>
+      <svg 
+        className={`w-4 h-4 text-slate-400 transition-transform duration-300 ease-out ${isOpenServicios ? 'rotate-180 text-blue-600' : ''}`} 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+
+    {/* Botón con el signo más (+) para cambiar a servicios internos */}
+{/* Botón con el signo más (+) para abrir el modal inferior de nuevo servicio interno */}
+<button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    setIsOpenServicios(false);
+    setModalServicioInternoOpen(true); // Abre el modal de abajo hacia arriba
+  }}
+  className="bg-emerald-600 hover:bg-emerald-700 text-white w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shadow-sm transition-all cursor-pointer shrink-0 z-20"
+  title="Registrar nuevo servicio interno"
+>
+  +
+</button>
   </div>
 
   {isOpenServicios && (
@@ -1447,6 +1465,122 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
           </div>
         </div>
       )}
+
+      {modalServicioInternoOpen && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-end flex-col z-50 animate-in fade-in duration-200">
+    {/* Contenedor con animación de deslizamiento de abajo hacia arriba */}
+    <div className="bg-white border-t border-slate-200 rounded-t-3xl p-5 w-full max-w-lg mx-auto shadow-2xl animate-in slide-in-from-bottom duration-300">
+      
+      {/* Barra superior indicadora de arrastre */}
+      <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-4"></div>
+
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-base font-bold text-slate-900">✨ Nuevo Servicio Interno</h3>
+        <button 
+          onClick={() => setModalServicioInternoOpen(false)}
+          className="text-slate-400 hover:text-slate-600 font-bold text-lg px-2 cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+  {modalServicioInternoOpen && (
+  <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-[9999] flex flex-col justify-end animate-in fade-in duration-200">
+    {/* Contenedor del panel deslizante */}
+    <div className="bg-white border-t border-slate-200 rounded-t-3xl p-5 w-full max-w-lg mx-auto shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto">
+      
+      {/* Barra superior indicadora */}
+      <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-4"></div>
+
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-base font-bold text-slate-900">✨ Nuevo Servicio Interno</h3>
+        <button 
+          type="button"
+          onClick={() => setModalServicioInternoOpen(false)}
+          className="text-slate-400 hover:text-slate-600 font-bold text-lg px-2 cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <form 
+        onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            await addDoc(collection(db, "servicios"), {
+              nombre: nuevoServicioInterno.nombre.toUpperCase(),
+              precio: String(nuevoServicioInterno.precio),
+              color: nuevoServicioInterno.color,
+              duracion: "interno",
+              categoria: "servicio",
+              barberoId: auth.currentUser?.uid || ""
+            });
+
+            setModalServicioInternoOpen(false);
+            setNuevoServicioInterno({ nombre: '', precio: '', color: '#3a87fe' });
+          } catch (error) {
+            console.error("Error al guardar el servicio interno en Firebase:", error);
+          }
+        }} 
+        className="space-y-3 text-xs pb-4"
+      >
+        <div>
+          <label className="block font-medium text-slate-600 mb-1">Nombre del Servicio</label>
+          <input
+            type="text"
+            required
+            value={nuevoServicioInterno.nombre}
+            onChange={(e) => setNuevoServicioInterno({ ...nuevoServicioInterno, nombre: e.target.value })}
+            placeholder="Ej. Corte Especial / Mantenimiento"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-emerald-500 text-sm"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block font-medium text-slate-600 mb-1">Precio (COP)</label>
+            <input
+              type="number"
+              required
+              value={nuevoServicioInterno.precio}
+              onChange={(e) => setNuevoServicioInterno({ ...nuevoServicioInterno, precio: e.target.value })}
+              placeholder="Ej. 20000"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-emerald-500 font-bold text-emerald-600 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-slate-600 mb-1">Color Distintivo</label>
+            <input
+              type="color"
+              value={nuevoServicioInterno.color}
+              onChange={(e) => setNuevoServicioInterno({ ...nuevoServicioInterno, color: e.target.value })}
+              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-1 py-1 cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-3">
+          <button
+            type="button"
+            onClick={() => setModalServicioInternoOpen(false)}
+            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-xl transition-all border border-slate-200 cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
+          >
+            Guardar Servicio
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+    </div>
+  </div>
+)}
 
     </div>
   );
