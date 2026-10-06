@@ -8,6 +8,7 @@ import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
 import Wallet from './Wallet'
+import Comunidad from './Comunidad';
 
 // Horario completo de las 24 horas del día
 const horasCalendario = [
@@ -1759,7 +1760,10 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
 )}
   </div>
         )}
+ {activeTab === 'comunidad' && (
+  <Comunidad />
 
+ )}
         {activeTab === 'facturacion' && (
           <Wallet setPestanaActiva={setPestanaActiva} setActiveTab={setActiveTab}/>
         )}
@@ -1927,50 +1931,66 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 flex items-center justify-around z-40 shadow-lg">
-        <button 
-          onClick={() => setActiveTab('agenda')}
-          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
-        >
-          <Calendar className="w-4 h-4" />
-          Agenda
-        </button>
-        <button 
-          onClick={() => setActiveTab('servicios')}
-          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
-        >
-          <Tag className="w-4 h-4" />
-          Servicios
-        </button>
-        <button 
-          onClick={() => setActiveTab('facturacion')}
-          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
-        >
-          <FileText className="w-4 h-4" />
-          Finanzas
-        </button>
-        <button 
-          onClick={() => setActiveTab('estadisticas')}
-          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
-        >
-          <Sparkles className="w-4 h-4" />
-          Stats
-        </button>
-        <button 
-          onClick={() => setActiveTab('perfil')}
-          className={`flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
-        >
-          <Edit3 className="w-4 h-4" />
-          Perfil
-        </button>
-        <button 
-          onClick={handleCerrarSesion}
-          className="flex flex-col items-center gap-1 text-[9px] font-bold uppercase transition-colors cursor-pointer text-red-600 hover:text-red-700"
-        >
-          <LogOut className="w-4 h-4 text-red-600" />
-          Salir
-        </button>
-      </nav>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 px-1 flex items-center justify-around z-40 shadow-lg">
+  <button 
+    onClick={() => setActiveTab('agenda')}
+    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+  >
+    <Calendar className="w-4 h-4 mb-1" />
+    <span className="text-[9px] uppercase">Agenda</span>
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setActiveTab('comunidad')}
+    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'comunidad' ? 'text-emerald-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+  >
+    <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+    <span className="text-[9px] uppercase">Comunidad</span>
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('servicios')}
+    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+  >
+    <Tag className="w-4 h-4 mb-1" />
+    <span className="text-[9px] uppercase">Servicios</span>
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('facturacion')}
+    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+  >
+    <FileText className="w-4 h-4 mb-1" />
+    <span className="text-[9px] uppercase">Finanzas</span>
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('estadisticas')}
+    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+  >
+    <Sparkles className="w-4 h-4 mb-1" />
+    <span className="text-[9px] uppercase">Stats</span>
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('perfil')}
+    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+  >
+    <Edit3 className="w-4 h-4 mb-1" />
+    <span className="text-[9px] uppercase">Perfil</span>
+  </button>
+
+  <button 
+    onClick={handleCerrarSesion}
+    className="flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer text-red-600 hover:text-red-700"
+  >
+    <LogOut className="w-4 h-4 mb-1 text-red-600" />
+    <span className="text-[9px] uppercase font-bold">Salir</span>
+  </button>
+</nav>
 
       {citaSeleccionada && (() => {
         const estadoActual = (citaSeleccionada.estado || '').toLowerCase();
