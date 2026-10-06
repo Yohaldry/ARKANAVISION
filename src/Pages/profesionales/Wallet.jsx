@@ -1151,7 +1151,7 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
 
               <div>
                 <label className="block font-medium text-slate-600 mb-0.5">Servicios Internos</label>
-            {/* Contenedor del selector personalizado con casillas coloreadas */}
+            {/* Contenedor del selector personalizado con casillas coloreadas y ordenadas por precio */}
 <div className="relative mb-2">
   <div 
     onClick={() => setIsOpenServicios(!isOpenServicios)}
@@ -1177,6 +1177,12 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
           const idDelBarberoActual = auth.currentUser?.uid; 
           const esDelBarbero = String(serv.barberoId || serv.barberId || serv.barberoid) === String(idDelBarberoActual);
           return esInterno && esDelBarbero;
+        })
+        .sort((a, b) => {
+          // Limpiamos y convertimos a número los precios para ordenar de menor a mayor
+          const precioA = parseFloat(String(a.precio || a.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+          const precioB = parseFloat(String(b.precio || b.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+          return precioA - precioB;
         })
         .map(serv => {
           const colorServicio = serv.color || serv.colorHex || '#3b82f6';
@@ -1208,8 +1214,8 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
                 setIsOpenServicios(false);
               }}
               style={{ 
-                backgroundColor: `${colorServicio}15`, // Color con un 15% de opacidad para el fondo base
-                borderColor: `${colorServicio}40`    // Bordes sutiles basados en el color
+                backgroundColor: `${colorServicio}15`, 
+                borderColor: `${colorServicio}40`    
               }}
               className="flex items-center justify-between px-3.5 py-2.5 rounded-lg border cursor-pointer active:scale-[0.98] transition-all duration-150 group hover:shadow-sm"
             >
@@ -1218,7 +1224,7 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
               </span>
               <span 
                 className="font-bold text-xs px-2.5 py-1 rounded-md text-white shadow-sm"
-                style={{ backgroundColor: colorServicio }} // Badge del precio con el color sólido del servicio
+                style={{ backgroundColor: colorServicio }}
               >
                 ${serv.precio || serv.total}
               </span>
