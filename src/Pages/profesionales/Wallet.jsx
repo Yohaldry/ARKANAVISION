@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Wallet as WalletIcon, Calendar, Eye, Edit3, Trash2, Clock, User, Scissors, CheckCircle2, Percent, Layers, ChevronRight, AlertTriangle, X, Home, Edit2, EyeOff } from 'lucide-react';
 import { db, auth } from '../../components/firebase'; 
-import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
 
 const Wallet = () => {
   const [vistaTab, setVistaTab] = useState('manual');
@@ -167,18 +167,41 @@ const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', p
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+    let unsubscribeServicios = null;
+
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        // Mantenemos tus llamadas originales
         obtenerServicios();
         obtenerCitasFinalizadas();
         obtenerServiciosDisponibles();
+
+        // Agregamos únicamente el listener en tiempo real para los servicios internos/firebase
+        const q = query(
+          collection(db, "servicios"), 
+          where("barberoId", "==", user.uid)
+        );
+
+        unsubscribeServicios = onSnapshot(q, (snapshot) => {
+          const listaServicios = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setServiciosFirebase(listaServicios);
+        });
+
       } else {
+        if (unsubscribeServicios) unsubscribeServicios();
         setLoading(false);
         setLoadingCitas(false);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+      if (unsubscribeServicios) unsubscribeServicios();
+    };
   }, []);
 
   const parsearPrecioCita = (cita) => {
