@@ -2004,13 +2004,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
     <span className="text-[9px] uppercase">Finanzas</span>
   </button>
 
-  <button 
-    onClick={() => setActiveTab('estadisticas')}
-    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'estadisticas' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-  >
-    <Sparkles className="w-4 h-4 mb-1" />
-    <span className="text-[9px] uppercase">Stats</span>
-  </button>
+
 
   <button 
     onClick={() => setActiveTab('perfil')}
