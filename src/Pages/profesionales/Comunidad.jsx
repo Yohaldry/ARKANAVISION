@@ -9,10 +9,10 @@ export default function Comunidad() {
   const [usuarioEmail, setUsuarioEmail] = useState('');
 
 // El link debe apuntar a la ruta donde vive tu PanelProfesionales, activando el flag de registro y el ref
+// El link debe apuntar a la ruta donde vive tu PanelProfesionales, activando el flag de registro y el ref
 const linkReferido = usuarioEmail 
   ? `${window.location.origin}/panelprofesionales?register=true&ref=${encodeURIComponent(usuarioEmail)}`
   : '';
-
   useEffect(() => {
     const cargarDatosComunidad = async () => {
       const user = auth.currentUser;

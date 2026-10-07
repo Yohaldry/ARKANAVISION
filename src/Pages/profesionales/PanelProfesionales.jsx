@@ -42,7 +42,7 @@ export default function PanelProfesionales() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nombreRegistro, setNombreRegistro] = useState('');
-
+const [refInvitador, setRefInvitador] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [dragOverInfo, setDragOverInfo] = useState({ diaStr: null, horaTexto: null, x: 0, y: 0 });
@@ -274,6 +274,21 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
     if (vistaCalendario === '3dias') return diasDelMes.slice(Math.max(0, idx - 1), Math.min(diasDelMes.length, Math.max(0, idx - 1) + 3));
     return diasDelMes.slice(Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)), Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)) + 7);
   };
+
+  useEffect(() => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const referidoParam = queryParams.get('ref');
+  const registerParam = queryParams.get('register');
+  
+  if (referidoParam) {
+    setRefInvitador(referidoParam);
+  }
+
+  // Esto fuerza a que se abra la pestaña de registro automáticamente
+  if (registerParam === 'true' || referidoParam) {
+    setIsRegistering(true);
+  }
+}, []);
 
   useEffect(() => {
     const calcTime = () => {
@@ -556,7 +571,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
 
   if (!authUser) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
+  <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
         <div className={`w-full max-w-sm border shadow-xl rounded-2xl p-5 space-y-4 transition-all duration-300 ease-in-out ${
           isRegistering 
             ? 'bg-slate-50 border-indigo-100 shadow-indigo-100/50' 
@@ -653,6 +668,28 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
               </div>
             )}
 
+            {/* Campo del Patrocinador / Referido */}
+            {isRegistering && (
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                  Patrocinador (Invitado por)
+                </label>
+                <input 
+                  type="email" 
+                  value={refInvitador || "yohaldryquintero1995@gmail.com"} 
+                  disabled={Boolean(new URLSearchParams(window.location.search).get('ref'))}
+                  onChange={e => setRefInvitador(e.target.value)}
+                  placeholder="yohaldryquintero1995@gmail.com"
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-600 outline-none cursor-not-allowed shadow-sm disabled:bg-slate-100 disabled:text-slate-500" 
+                />
+                <p className="text-[9px] text-slate-400 ml-1">
+                  {new URLSearchParams(window.location.search).get('ref')
+                    ? '* Vinculado automáticamente a la red de tu patrocinador.'
+                    : '* Se asignará por defecto si se deja libre.'}
+                </p>
+              </div>
+            )}
+
             <button 
               type="submit" 
               disabled={loginLoading} 
@@ -668,7 +705,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
 
           <button 
             type="button" 
-            onClick={() => { setIsRegistering(!isRegistering); setErrorMsgLogin(''); setSuccessMsg(''); }} 
+            onClick={() => { setIsRegistering(!isRegistering); setErrorMsgLogin(''); setSuccessMsgLogin(''); }} 
             className="w-full text-center text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer pt-1"
           >
             {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
