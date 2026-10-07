@@ -5,7 +5,7 @@ import {
   Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown, FileText, Check
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where  } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
 import Wallet from './Wallet'
 import Comunidad from './Comunidad';
@@ -50,7 +50,7 @@ const [refInvitador, setRefInvitador] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  
+
   const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   
@@ -77,6 +77,8 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
     horaFin: '7:00 a. m.', 
     motivo: 'No disponible' 
   });
+
+  const [porcentaje, setPorcentaje] = useState('');
 
   const [datosNuevaCita, setDatosNuevaCita] = useState({
     clienteNombre: '',
@@ -229,6 +231,8 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
     );
   };
 
+ 
+
   const handleLogout = async () => {
     try {
       setLoginLoading(false); 
@@ -318,6 +322,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
             setFoto(d.foto || '');
             setTelefono(d.telefono || '');
             setCorreoPerfil(d.correo || user.email || '');
+         setPorcentaje(d.porcentaje !== undefined && d.porcentaje !== null ? d.porcentaje : '');
             setZonasTrabajo(d.zonasTrabajo || []);
           } else {
             setCorreoPerfil(user.email || '');
@@ -1812,7 +1817,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
           </div>
         )}
 
-        {activeTab === 'perfil' && (
+     {activeTab === 'perfil' && (
           <div className="space-y-3">
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 shadow-xs">
               <h3 className="text-[11px] font-black uppercase text-indigo-950 flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5 text-indigo-600" /> Link de Reserva para Clientes</h3>
@@ -1823,7 +1828,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+         <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5">
                   <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Perfil Profesional
@@ -1844,7 +1849,11 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
                   {renderFieldView("Ciudad", ciudad)}
                   {renderFieldView("Experiencia", experiencia)}
                 </div>
-                {renderFieldView("Especialidad", especialidad)}
+                
+                <div className="grid grid-cols-2 gap-2">
+                  {renderFieldView("Especialidad", especialidad)}
+                  {renderFieldView("Porcentaje (%)", porcentaje !== undefined && porcentaje !== null && porcentaje !== '' ? `${porcentaje}%` : '0%')}
+                </div>
 
                 <div className={`p-2.5 rounded-xl border transition-all ${!zonasTrabajo || zonasTrabajo.length === 0 ? 'bg-red-50 border-red-300 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
                   <div className="flex items-center justify-between mb-1">
@@ -1863,8 +1872,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
                 </div>
               </div>
             </div>
-
-            {isModalOpen && (
+        {isModalOpen && (
               <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
                 <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
@@ -1880,7 +1888,16 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
                     e.preventDefault(); 
                     setLoading(true); 
                     await updateDoc(doc(db, 'profesionales', authUser.uid), { 
-                      nombre, descripcion, foto, telefono, correo: correoPerfil, zonasTrabajo, experiencia, ciudad, especialidad 
+                      nombre, 
+                      descripcion, 
+                      foto, 
+                      telefono, 
+                      correo: correoPerfil, 
+                      zonasTrabajo, 
+                      experiencia, 
+                      ciudad, 
+                      especialidad,
+                      porcentaje: porcentaje !== '' ? Number(porcentaje) : 0
                     }); 
                     setSuccessMsg('¡Perfil actualizado con éxito!'); 
                     setLoading(false); 
@@ -1915,8 +1932,13 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
                         <input type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+57 300 0000000" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
                       </div>
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-500 uppercase text-[9px]">Correo Electrónico</label>
-                        <input type="email" value={correoPerfil} onChange={e => setCorreoPerfil(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                        <label className="font-bold text-slate-500 uppercase text-[9px]">Correo Electrónico (No editable)</label>
+                        <input 
+                          type="email" 
+                          value={correoPerfil} 
+                          disabled 
+                          className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-500 cursor-not-allowed shadow-none outline-none select-none" 
+                        />
                       </div>
                     </div>
 
@@ -1931,9 +1953,15 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-500 uppercase text-[9px]">Especialidad</label>
-                      <input type="text" value={especialidad} onChange={e => setEspecialidad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-500 uppercase text-[9px]">Especialidad</label>
+                        <input type="text" value={especialidad} onChange={e => setEspecialidad(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-500 uppercase text-[9px]">Porcentaje (%)</label>
+                        <input type="number" value={porcentaje} onChange={e => setPorcentaje(e.target.value)} placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[12px] text-slate-900 outline-none focus:border-indigo-600" />
+                      </div>
                     </div>
 
                     <div className="space-y-1.5 pt-1">

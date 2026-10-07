@@ -36,7 +36,7 @@ const [isOpenServicios, setIsOpenServicios] = useState(false);
   const [modalAgregarOpen, setModalAgregarOpen] = useState(false);
   const [modalVerMasOpen, setModalVerMasOpen] = useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
-
+const [mostrarAlertaPerfil, setMostrarAlertaPerfil] = useState(false);
   const [modalDiaOpen, setModalDiaOpen] = useState(false);
   const [diaSeleccionadoDetalle, setDiaSeleccionadoDetalle] = useState(null);
 const [modalServicioInternoOpen, setModalServicioInternoOpen] = useState(false);
@@ -62,7 +62,7 @@ const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', p
     cliente: '',
     servicio: '',
     total: '',
-    porcentajeBarberForm: '35',
+    porcentajeBarberForm: '',
     fecha: hoyStr,
     hora: new Date().toTimeString().slice(0, 5),
     serviciosSeleccionados: []
@@ -166,43 +166,68 @@ const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', p
       setLoadingCitas(false);
     }
   };
-
 useEffect(() => {
-    let unsubscribeServicios = null;
+  let unsubscribeServicios = null;
+  let unsubscribeProfesional = null;
 
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        // Mantenemos tus llamadas originales
-        obtenerServicios();
-        obtenerCitasFinalizadas();
-        obtenerServiciosDisponibles();
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      console.log("Usuario autenticado UID:", user.uid);
 
-        // Agregamos únicamente el listener en tiempo real para los servicios internos/firebase
-        const q = query(
-          collection(db, "servicios"), 
-          where("barberoId", "==", user.uid)
-        );
+      obtenerServicios();
+      obtenerCitasFinalizadas();
+      obtenerServiciosDisponibles();
 
-        unsubscribeServicios = onSnapshot(q, (snapshot) => {
-          const listaServicios = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setServiciosFirebase(listaServicios);
-        });
+      // Listener para servicios
+      const qServicios = query(
+        collection(db, "servicios"), 
+        where("barberoId", "==", user.uid)
+      );
 
-      } else {
-        if (unsubscribeServicios) unsubscribeServicios();
-        setLoading(false);
-        setLoadingCitas(false);
-      }
-    });
+      unsubscribeServicios = onSnapshot(qServicios, (snapshot) => {
+        const listaServicios = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setServiciosFirebase(listaServicios);
+      });
 
-    return () => {
-      unsubscribe();
+      // Listener directo al documento del profesional usando su UID como ID de documento
+      const docRef = doc(db, "profesionales", user.uid);
+
+      unsubscribeProfesional = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const dataBarbero = docSnap.data();
+          console.log("Datos del profesional obtenidos directamente:", dataBarbero);
+          
+          const porcentajeFirestore = dataBarbero.porcentaje;
+          console.log("Valor del campo 'porcentaje':", porcentajeFirestore);
+
+          if (porcentajeFirestore !== undefined && porcentajeFirestore !== null) {
+            setNuevoServicio(prev => ({
+              ...prev,
+              porcentajeBarberForm: porcentajeFirestore
+            }));
+          }
+        } else {
+          console.warn("No existe un documento en 'profesionales' con el ID:", user.uid);
+        }
+      });
+
+    } else {
       if (unsubscribeServicios) unsubscribeServicios();
-    };
-  }, []);
+      if (unsubscribeProfesional) unsubscribeProfesional();
+      setLoading(false);
+      setLoadingCitas(false);
+    }
+  });
+
+  return () => {
+    unsubscribe();
+    if (unsubscribeServicios) unsubscribeServicios();
+    if (unsubscribeProfesional) unsubscribeProfesional();
+  };
+}, []);
 
   const parsearPrecioCita = (cita) => {
     const valorBruto = cita.precioTotal || cita.precio || cita.total || cita.costo || cita.valor;
@@ -252,7 +277,7 @@ useEffect(() => {
         cliente: '', 
         servicio: '', 
         total: '', 
-        porcentajeBarberForm: '35',
+        porcentajeBarberForm: porcentajeBarberoFirestore,
         fecha: hoyStr, 
         hora: new Date().toTimeString().slice(0, 5),
         serviciosSeleccionados: []
@@ -1155,7 +1180,7 @@ useEffect(() => {
         </div>
       )}
 
-      {modalAgregarOpen && (
+    {modalAgregarOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
           <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-sm w-full shadow-2xl">
             <div className="flex justify-between items-center mb-2.5">
@@ -1326,18 +1351,30 @@ useEffect(() => {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold text-blue-600"
                   />
                 </div>
-                <div>
-                  <label className="block font-medium text-slate-600 mb-0.5">% Barbero</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    required
-                    value={nuevoServicio.porcentajeBarberForm}
-                    onChange={(e) => setNuevoServicio({ ...nuevoServicio, porcentajeBarberForm: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold"
-                  />
-                </div>
+              <div>
+  <label className="block font-medium text-slate-600 mb-0.5">% Barbero</label>
+  <input
+    type="text"
+    readOnly
+    value={`${nuevoServicio.porcentajeBarberForm || 0}%`}
+    onClick={() => setMostrarAlertaPerfil(true)}
+    className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-500 font-bold cursor-pointer select-none transition-all hover:border-blue-400"
+  />
+  
+  {/* Mensaje de aviso que aparece al hacer clic */}
+  {mostrarAlertaPerfil && (
+    <p className="text-[10px] text-blue-600 font-medium mt-1 animate-in fade-in duration-150 flex items-center justify-between">
+      <span>💡 Para editar el %, ve a la sección de <strong>Perfil</strong>.</span>
+      <button 
+        type="button" 
+        onClick={() => setMostrarAlertaPerfil(false)}
+        className="text-slate-400 hover:text-slate-700 font-bold ml-2 cursor-pointer"
+      >
+        ✕
+      </button>
+    </p>
+  )}
+</div>
               </div>
 
               <div>
@@ -1608,6 +1645,24 @@ useEffect(() => {
   </div>
 )}
     </div>
+  </div>
+)}
+{/* Alerta flotante con los estilos de Visarka */}
+{mostrarAlertaPerfil && (
+  <div className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-md border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 z-50">
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+      <p className="text-xs font-medium">
+        Para editar el porcentaje, dirígete a la sección de <strong className="text-blue-400">Perfil</strong>.
+      </p>
+    </div>
+    <button 
+      type="button"
+      onClick={() => setMostrarAlertaPerfil(false)}
+      className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer"
+    >
+      ×
+    </button>
   </div>
 )}
 
