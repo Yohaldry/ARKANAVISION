@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from '../../components/firebase'; // Ajusta la ruta de tu configuración de Firebase si es necesario
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../../components/firebase'; 
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function Comunidad() {
   const [referidos, setReferidos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [copiado, setCopiado] = useState(false);
   const [usuarioEmail, setUsuarioEmail] = useState('');
+  const [barberoSeleccionado, setBarberoSeleccionado] = useState(null);
 
-// El link debe apuntar a la ruta donde vive tu PanelProfesionales, activando el flag de registro y el ref
-// El link debe apuntar a la ruta donde vive tu PanelProfesionales, activando el flag de registro y el ref
-const linkReferido = usuarioEmail 
-  ? `${window.location.origin}/panelprofesionales?register=true&ref=${encodeURIComponent(usuarioEmail)}`
-  : '';
+  const linkReferido = usuarioEmail 
+    ? `${window.location.origin}/panelprofesionales?register=true&ref=${encodeURIComponent(usuarioEmail)}`
+    : '';
+
   useEffect(() => {
     const cargarDatosComunidad = async () => {
       const user = auth.currentUser;
@@ -24,10 +24,8 @@ const linkReferido = usuarioEmail
       setUsuarioEmail(user.email);
 
       try {
-        // Consultar usuarios/barberos registrados cuyo campo 'ref' coincida con el correo del usuario actual
-        // (Asegúrate de que al registrarse un nuevo barbero guardes el campo 'ref' con el email o uid del invitador)
         const q = query(
-          collection(db, "usuarios"), // O la colección donde guardes los perfiles de los barberos (ej: "barberos", "users")
+          collection(db, "profesionales"), 
           where("ref", "==", user.email)
         );
 
@@ -58,11 +56,13 @@ const linkReferido = usuarioEmail
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6 text-slate-800 animate-in fade-in duration-200">
       
-      {/* Cabecera de la sección */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg">
-        <h2 className="text-xl font-bold mb-2">🤝 Comunidad y Referidos</h2>
-        <p className="text-emerald-100 text-xs sm:text-sm max-w-xl">
-          Invita a más colegas barberos a unirse a la plataforma. Comparte tu enlace personal y construye tu red para comenzar a generar comisiones por cada barbero activo.
+      {/* Cabecera de la sección compacta */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-4 text-white shadow-md">
+        <h2 className="text-base font-bold mb-1 flex items-center gap-2">
+          <span>🤝</span> Comunidad y Referidos
+        </h2>
+        <p className="text-emerald-100 text-[11px] sm:text-xs max-w-xl">
+          Invita a colegas y construye tu red para generar comisiones por cada barbero activo.
         </p>
       </div>
 
@@ -114,11 +114,14 @@ const linkReferido = usuarioEmail
         </div>
       </div>
 
-      {/* Mapa Estructurado de la Red */}
+      {/* Mapa Visual Interactivo de la Red en 3 Columnas */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <span>🗺️ Mapa de tu Red (Árbol de Referidos)</span>
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span>🗺️ Tu red</span>
+          </h3>
+          <span className="text-[11px] text-slate-400">Toca un nodo para ver detalles</span>
+        </div>
 
         {cargando ? (
           <div className="py-10 text-center text-slate-400 text-xs">Cargando red de comunidad...</div>
@@ -129,28 +132,75 @@ const linkReferido = usuarioEmail
             <p className="text-slate-400 text-[11px]">Comparte tu link de registro para empezar a estructurar tu comunidad.</p>
           </div>
         ) : (
-          <div className="space-y-3 relative before:absolute before:inset-0 before:left-5 before:w-0.5 before:bg-slate-100">
+          <div className="grid grid-cols-3 gap-3">
             {referidos.map((refUser, index) => (
-              <div key={refUser.id || index} className="relative flex items-center gap-3 pl-2">
-                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold z-10 shadow-sm border-2 border-white">
-                  {index + 1}
+              <div 
+                key={refUser.id || index}
+                onClick={() => setBarberoSeleccionado(refUser)}
+                className="bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-xl p-3 flex flex-col items-center text-center cursor-pointer transition-all shadow-sm group"
+              >
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs mb-2 shadow-inner group-hover:scale-105 transition-transform">
+                  {(refUser.nombre || refUser.displayName || 'B').charAt(0).toUpperCase()}
                 </div>
-                <div className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between shadow-sm">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-xs sm:text-sm">
-                      {refUser.nombre || refUser.displayName || 'Barbero Colega'}
-                    </h4>
-                    <p className="text-[11px] text-slate-500">{refUser.email}</p>
-                  </div>
-                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                    Activo en Red
-                  </span>
-                </div>
+                
+                <h4 className="font-bold text-slate-800 text-xs truncate w-full">
+                  {refUser.nombre || refUser.displayName || 'Colega'}
+                </h4>
+                <p className="text-[10px] text-slate-400 truncate w-full mt-0.5">
+                  {refUser.email}
+                </p>
+
+                <span className="mt-2 inline-block bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                  Activo
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de Información Detallada del Barbero */}
+      {barberoSeleccionado && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="font-black text-slate-900 text-sm">Detalles del Colega</h4>
+              <button 
+                onClick={() => setBarberoSeleccionado(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                  {(barberoSeleccionado.nombre || 'B').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {barberoSeleccionado.nombre || barberoSeleccionado.displayName || 'Sin nombre'}
+                  </p>
+                  <p className="text-slate-400">{barberoSeleccionado.email}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                <p className="text-slate-500">Estado en la red: <span className="font-bold text-emerald-600">Activo</span></p>
+              </div>
+            </div>
+
+            <button 
+              type="button"
+              onClick={() => setBarberoSeleccionado(null)}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
