@@ -50,10 +50,12 @@ const [refInvitador, setRefInvitador] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-
+const [pais, setPais] = useState('Colombia'); // O el país por defecto que prefieras
+const [tipoTrabajador, setTipoTrabajador] = useState('independiente'); // 'independiente' o 'empleado'
+const [porcentajeEmpleado, setPorcentajeEmpleado] = useState('');
   const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
-  
+const [moneda, setMoneda] = useState('COP');
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
 
   const primerCargaRef = useRef(true);
@@ -196,7 +198,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
   const [ciudad, setCiudad] = useState('Bogotá D.C.');
   const [especialidad, setEspecialidad] = useState('Fade & Visagismo');
   const [citasFirestore, setCitasFirestore] = useState([]);
-
+const [transicionVisarka, setTransicionVisarka] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -414,20 +416,44 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
     return () => { unsubAuth(); clearTimeout(safety); clearInterval(t); };
   }, []);
 
-  const handleAuth = async (e) => {
+const handleAuth = async (e) => {
     e.preventDefault();
     if (isRegistering && password !== confirmPassword) return setErrorMsgLogin('Las contraseñas no coinciden.');
     setLoginLoading(true);
+    setErrorMsgLogin(''); // Limpiamos errores previos
+    
     try {
       if (isRegistering) {
+        // 1. Crear el usuario en Firebase Authentication
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, 'profesionales', cred.user.uid), { uid: cred.user.uid, nombre: nombreRegistro || 'Socio', email: cred.user.email });
+        
+        // 2. Guardar TODOS los datos personalizados en Firestore dentro de la colección 'profesionales'
+        await setDoc(doc(db, 'profesionales', cred.user.uid), { 
+          uid: cred.user.uid, 
+          nombre: nombreRegistro || 'Socio', 
+          email: cred.user.email,
+          pais: pais || 'Colombia',
+          moneda: moneda || 'COP',
+          tipoTrabajador: tipoTrabajador || 'independiente',
+          porcentajeEmpleado: tipoTrabajador === 'empleado' ? Number(porcentajeEmpleado) || 0 : 100,
+          patrocinador: refInvitador || 'yohaldryquintero1995@gmail.com', // Patrocinador por defecto o capturado por enlace
+          createdAt: new Date().toISOString()
+        });
+
       } else { 
+        // Lógica de inicio de sesión normal
         await signInWithEmailAndPassword(auth, email, password); 
       }
+      
       setSuccessMsgLogin('¡Éxito!');
-    } catch { 
-      setErrorMsgLogin('Verifica tus datos.'); 
+      setTransicionVisarka(true);
+    } catch (err) { 
+      console.error(err); // Útil para depurar si Firestore rechaza algo
+    setErrorMsgLogin(err.message || 'Verifica tus datos o conexión.');
+      setLoginLoading(false);
+      setTransicionVisarka(false);
+    } finally {
+      // Nos aseguramos de apagar el estado de carga tanto si hay éxito como si hay error
       setLoginLoading(false); 
     }
   };
@@ -673,6 +699,87 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
               </div>
             )}
 
+          
+            {/* Selector de País y Moneda Automática */}
+{isRegistering && (
+  <div className="space-y-1">
+    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+      País y Moneda
+    </label>
+    <select
+      value={pais}
+      onChange={e => {
+        const paisSeleccionado = e.target.value;
+        setPais(paisSeleccionado);
+        
+        // Asignar moneda automáticamente según el país
+        if (paisSeleccionado === 'Colombia') {
+          setMoneda('COP');
+        } else if (paisSeleccionado === 'Venezuela' || paisSeleccionado === 'Estados Unidos (EE.UU.)') {
+          setMoneda('USD');
+        }
+      }}
+      className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-sm cursor-pointer"
+    >
+      <option value="Colombia">Colombia (COP)</option>
+      <option value="Venezuela">Venezuela (USD)</option>
+      <option value="Estados Unidos (EE.UU.)">Estados Unidos (EE.UU.) (USD)</option>
+    </select>
+  </div>
+)}
+
+            {/* Selección: Independiente o Empleado */}
+            {isRegistering && (
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                  Tipo de Trabajador
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTipoTrabajador('independiente')}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                      tipoTrabajador === 'independiente'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Independiente (100%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoTrabajador('empleado')}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                      tipoTrabajador === 'empleado'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Empleado
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Campo dinámico de Porcentaje (Solo si es Empleado) */}
+            {isRegistering && tipoTrabajador === 'empleado' && (
+              <div className="space-y-1 animate-in fade-in duration-200">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                  Porcentaje de Comisión / Ganancia (%)
+                </label>
+                <input 
+                  type="number" 
+                  min="0"
+                  max="100"
+                  required 
+                  placeholder="Ej. 50" 
+                  value={porcentajeEmpleado} 
+                  onChange={e => setPorcentajeEmpleado(e.target.value)} 
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm font-bold text-indigo-600" 
+                />
+              </div>
+            )}
+
             {/* Campo del Patrocinador / Referido */}
             {isRegistering && (
               <div className="space-y-1">
@@ -725,6 +832,9 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-mono flex flex-col justify-between pb-36 relative select-none">
+
+  
+      
       <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-xs">AV</div>
@@ -2165,6 +2275,19 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
           </div>
         );
       })()}
+         {/* Pantalla de Transición Fluida Visarka */}
+{transicionVisarka && (
+  <div className="fixed inset-0 z-[99999] bg-slate-950 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
+    <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-2xl shadow-indigo-500/50 animate-pulse mb-4">
+      VK
+    </div>
+    <h1 className="text-white text-sm font-black uppercase tracking-widest">Visarka</h1>
+    <p className="text-indigo-400 text-[10px] font-mono tracking-wider mt-1">Cargando Portal de Profesionales...</p>
+    <div className="w-32 h-1 bg-slate-800 rounded-full mt-6 overflow-hidden">
+      <div className="w-full h-full bg-indigo-500 animate-[indeterminate_1s_infinite_linear]"></div>
+    </div>
+  </div>
+)} 
     </div>
   );
 }
