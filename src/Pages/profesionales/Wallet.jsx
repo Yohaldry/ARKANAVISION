@@ -43,7 +43,7 @@ const [modalServicioInternoOpen, setModalServicioInternoOpen] = useState(false);
 const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', precio: '', color: '#10b981' });
   const [modalCitaDetalleOpen, setModalCitaDetalleOpen] = useState(false);
   const [citaSeleccionadaDetalle, setCitaSeleccionadaDetalle] = useState(null);
-
+const [exitoModalOpen, setExitoModalOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
   const [servicioAEliminar, setServicioAEliminar] = useState(null);
 
@@ -81,7 +81,7 @@ const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', p
     } else {
       setMostrarQ1(true);
       if (timerQ1) clearTimeout(timerQ1);
-      const id = setTimeout(() => setMostrarQ1(false), 10000);
+      const id = setTimeout(() => setMostrarQ1(false), 1000);
       setTimerQ1(id);
     }
   };
@@ -239,7 +239,7 @@ useEffect(() => {
 
   
 
-  const handleGuardarServicio = async (e) => {
+ const handleGuardarServicio = async (e) => {
     e.preventDefault();
     if (!nuevoServicio.cliente || !nuevoServicio.total) return;
 
@@ -273,6 +273,11 @@ useEffect(() => {
       const itemConId = { id: docRef.id, ...itemAEnviar };
       
       setServicios([itemConId, ...servicios]);
+      
+      // 1. Cerramos el modal primero
+      setModalAgregarOpen(false);
+
+      // 2. Limpiamos el formulario
       setNuevoServicio({ 
         cliente: '', 
         servicio: '', 
@@ -282,10 +287,12 @@ useEffect(() => {
         hora: new Date().toTimeString().slice(0, 5),
         serviciosSeleccionados: []
       });
-      setModalAgregarOpen(false);
-      setMensajeExito('¡Guardado con éxito!');
+
+      // 3. Activamos la alerta exclusiva de éxito
+      setMensajeExito('¡Registro Exitoso!');
       setAlertaExito(true);
-      setTimeout(() => setAlertaExito(false), 3500);
+      setTimeout(() => setAlertaExito(false), 1000);
+
     } catch (error) {
       console.error("Error al guardar:", error);
     } finally {
@@ -304,7 +311,7 @@ useEffect(() => {
 
       setMensajeExito('¡Registro eliminado!');
       setAlertaExito(true);
-      setTimeout(() => setAlertaExito(false), 3000);
+      setTimeout(() => setAlertaExito(false), 1000);
     } catch (error) {
       console.error("Error al eliminar:", error);
     }
@@ -352,7 +359,7 @@ useEffect(() => {
 
       setMensajeExito('¡Actualizado con éxito!');
       setAlertaExito(true);
-      setTimeout(() => setAlertaExito(false), 3500);
+      setTimeout(() => setAlertaExito(false), 1000);
     } catch (error) {
       console.error("Error al actualizar:", error);
     } finally {
@@ -1180,254 +1187,251 @@ useEffect(() => {
         </div>
       )}
 
-    {modalAgregarOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
-          <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-sm w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-2.5">
-              <h3 className="text-sm font-bold text-slate-900">Registrar Nuevo Servicio</h3>
+   {/* Modal de Registro */}
+{modalAgregarOpen && (
+  <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
+    <div className="bg-white border border-blue-200 rounded-2xl p-4 max-w-sm w-full shadow-2xl">
+      <div className="flex justify-between items-center mb-2.5">
+        <h3 className="text-sm font-bold text-slate-900">Registrar Nuevo Servicio</h3>
+      </div>
+
+      <form onSubmit={handleGuardarServicio} className="space-y-2.5 text-[11px]">
+        <div>
+          <label className="block font-medium text-slate-600 mb-0.5">Nombre del Cliente</label>
+          <input
+            type="text"
+            required
+            value={nuevoServicio.cliente}
+            onChange={(e) => setNuevoServicio({ ...nuevoServicio, cliente: e.target.value })}
+            placeholder="Ej. Carlos Pérez"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block font-medium text-slate-600 mb-0.5">Servicios Internos</label>
+          <div className="relative mb-2">
+            <div className="flex items-center gap-2">
+              <div 
+                onClick={() => setIsOpenServicios(!isOpenServicios)}
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-sm transition-all duration-200"
+              >
+                <span className="text-sm text-slate-600 font-medium">Selecciona un servicio...</span>
+                <svg 
+                  className={`w-4 h-4 text-slate-400 transition-transform duration-300 ease-out ${isOpenServicios ? 'rotate-180 text-blue-600' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpenServicios(false);
+                  setModalServicioInternoOpen(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shadow-sm transition-all cursor-pointer shrink-0 z-20"
+                title="Registrar nuevo servicio interno"
+              >
+                +
+              </button>
             </div>
 
-            <form onSubmit={handleGuardarServicio} className="space-y-2.5 text-[11px]">
-              <div>
-                <label className="block font-medium text-slate-600 mb-0.5">Nombre del Cliente</label>
-                <input
-                  type="text"
-                  required
-                  value={nuevoServicio.cliente}
-                  onChange={(e) => setNuevoServicio({ ...nuevoServicio, cliente: e.target.value })}
-                  placeholder="Ej. Carlos Pérez"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-0.5">Servicios Internos</label>
-            {/* Contenedor del selector personalizado con casillas coloreadas y ordenadas por precio */}
-<div className="relative mb-2">
-  <div className="flex items-center gap-2">
-    <div 
-      onClick={() => setIsOpenServicios(!isOpenServicios)}
-      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-sm transition-all duration-200"
-    >
-      <span className="text-sm text-slate-600 font-medium">Selecciona un servicio...</span>
-      <svg 
-        className={`w-4 h-4 text-slate-400 transition-transform duration-300 ease-out ${isOpenServicios ? 'rotate-180 text-blue-600' : ''}`} 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-
-    {/* Botón con el signo más (+) para abrir el modal inferior de nuevo servicio interno */}
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        setIsOpenServicios(false);
-        setModalServicioInternoOpen(true);
-      }}
-      className="bg-emerald-600 hover:bg-emerald-700 text-white w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shadow-sm transition-all cursor-pointer shrink-0 z-20"
-      title="Registrar nuevo servicio interno"
-    >
-      +
-    </button>
-  </div>
-
-  {isOpenServicios && (
-    <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 p-1.5 space-y-1">
-      {Array.isArray(serviciosFirebase) && serviciosFirebase.length > 0 ? (
-        serviciosFirebase
-          .filter(serv => {
-            const duracion = serv.duracion ? String(serv.duracion).toLowerCase().trim() : '';
-            const esInterno = duracion === 'interno';
-            const idDelBarberoActual = auth.currentUser?.uid; 
-            const esDelBarbero = String(serv.barberoId || serv.barberId || serv.barberoid) === String(idDelBarberoActual);
-            return esInterno && esDelBarbero;
-          })
-          .sort((a, b) => {
-            const precioA = parseFloat(String(a.precio || a.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
-            const precioB = parseFloat(String(b.precio || b.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
-            return precioA - precioB;
-          })
-          .map(serv => {
-            const colorServicio = serv.color || serv.colorHex || '#3b82f6';
-
-            return (
-              <div
-                key={serv.id}
-                onClick={() => {
-                  const servicioId = serv.id;
-                  const yaSeleccionado = (nuevoServicio.serviciosSeleccionados || []).some(s => s.id === servicioId);
-                  
-                  if (!yaSeleccionado) {
-                    const nuevosSeleccionados = [...(nuevoServicio.serviciosSeleccionados || []), serv];
-                    
-                    const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
-                      const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
-                      return acc + precioLimpiado;
-                    }, 0);
-
-                    const nombresConcatenados = nuevosSeleccionados.map(s => s.nombre || s.servicio).join(' + ');
-
-                    setNuevoServicio({
-                      ...nuevoServicio,
-                      serviciosSeleccionados: nuevosSeleccionados,
-                      servicio: nombresConcatenados,
-                      total: nuevoTotal
-                    });
-                  }
-                  setIsOpenServicios(false);
-                }}
-                style={{ 
-                  backgroundColor: `${colorServicio}15`, 
-                  borderColor: `${colorServicio}40`    
-                }}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-lg border cursor-pointer active:scale-[0.98] transition-all duration-150 group hover:shadow-sm"
-              >
-                <span className="font-semibold text-slate-800 text-sm group-hover:translate-x-0.5 transition-transform">
-                  {serv.nombre || serv.servicio}
-                </span>
-                <span 
-                  className="font-bold text-xs px-2.5 py-1 rounded-md text-white shadow-sm"
-                  style={{ backgroundColor: colorServicio }}
-                >
-                  ${serv.precio || serv.total}
-                </span>
-              </div>
-            );
-          })
-      ) : (
-        <div className="py-4 text-center text-slate-400 text-xs">
-          No hay servicios internos registrados.
-        </div>
-      )}
-    </div>
-  )}
-</div>
-
-                {nuevoServicio.serviciosSeleccionados && nuevoServicio.serviciosSeleccionados.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-1">
-                    {nuevoServicio.serviciosSeleccionados.map((s, index) => (
-                      <span key={s.id || index} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded-md font-medium text-[10px]">
-                        {s.nombre || s.servicio} (${s.precio || s.total})
-                        <button
-                          type="button"
+            {isOpenServicios && (
+              <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 p-1.5 space-y-1">
+                {Array.isArray(serviciosFirebase) && serviciosFirebase.length > 0 ? (
+                  serviciosFirebase
+                    .filter(serv => {
+                      const duracion = serv.duracion ? String(serv.duracion).toLowerCase().trim() : '';
+                      const esInterno = duracion === 'interno';
+                      const idDelBarberoActual = auth.currentUser?.uid; 
+                      const esDelBarbero = String(serv.barberoId || serv.barberId || serv.barberoid) === String(idDelBarberoActual);
+                      return esInterno && esDelBarbero;
+                    })
+                    .sort((a, b) => {
+                      const precioA = parseFloat(String(a.precio || a.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                      const precioB = parseFloat(String(b.precio || b.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                      return precioA - precioB;
+                    })
+                    .map(serv => {
+                      const colorServicio = serv.color || serv.colorHex || '#3b82f6';
+                      return (
+                        <div
+                          key={serv.id}
                           onClick={() => {
-                            const nuevosSeleccionados = nuevoServicio.serviciosSeleccionados.filter((_, i) => i !== index);
-                            const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
-                              const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
-                              return acc + precioLimpiado;
-                            }, 0);
-                            const nombresConcatenados = nuevosSeleccionados.map(item => item.nombre || item.servicio).join(' + ');
+                            const servicioId = serv.id;
+                            const yaSeleccionado = (nuevoServicio.serviciosSeleccionados || []).some(s => s.id === servicioId);
+                            
+                            if (!yaSeleccionado) {
+                              const nuevosSeleccionados = [...(nuevoServicio.serviciosSeleccionados || []), serv];
+                              const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
+                                const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                                return acc + precioLimpiado;
+                              }, 0);
+                              const nombresConcatenados = nuevosSeleccionados.map(s => s.nombre || s.servicio).join(' + ');
 
-                            setNuevoServicio({
-                              ...nuevoServicio,
-                              serviciosSeleccionados: nuevosSeleccionados,
-                              servicio: nombresConcatenados,
-                              total: nuevoTotal
-                            });
+                              setNuevoServicio({
+                                ...nuevoServicio,
+                                serviciosSeleccionados: nuevosSeleccionados,
+                                servicio: nombresConcatenados,
+                                total: nuevoTotal
+                              });
+                            }
+                            setIsOpenServicios(false);
                           }}
-                          className="hover:text-rose-600 font-bold ml-1 cursor-pointer"
+                          style={{ backgroundColor: `${colorServicio}15`, borderColor: `${colorServicio}40` }}
+                          className="flex items-center justify-between px-3.5 py-2.5 rounded-lg border cursor-pointer active:scale-[0.98] transition-all duration-150 group hover:shadow-sm"
                         >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                          <span className="font-semibold text-slate-800 text-sm group-hover:translate-x-0.5 transition-transform">
+                            {serv.nombre || serv.servicio}
+                          </span>
+                          <span className="font-bold text-xs px-2.5 py-1 rounded-md text-white shadow-sm" style={{ backgroundColor: colorServicio }}>
+                            ${serv.precio || serv.total}
+                          </span>
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className="py-4 text-center text-slate-400 text-xs">
+                    No hay servicios internos registrados.
                   </div>
                 )}
               </div>
+            )}
+          </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-medium text-slate-600 mb-0.5">Total (COP)</label>
-                  <input
-                    type="number"
-                    required
-                    value={nuevoServicio.total}
-                    onChange={(e) => setNuevoServicio({ ...nuevoServicio, total: e.target.value })}
-                    placeholder="Ej. 45000"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold text-blue-600"
-                  />
-                </div>
-              <div>
-  <label className="block font-medium text-slate-600 mb-0.5">% Barbero</label>
-  <input
-    type="text"
-    readOnly
-    value={`${nuevoServicio.porcentajeBarberForm || 0}%`}
-    onClick={() => setMostrarAlertaPerfil(true)}
-    className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-500 font-bold cursor-pointer select-none transition-all hover:border-blue-400"
-  />
-  
-  {/* Mensaje de aviso que aparece al hacer clic */}
-  {mostrarAlertaPerfil && (
-    <p className="text-[10px] text-blue-600 font-medium mt-1 animate-in fade-in duration-150 flex items-center justify-between">
-      <span>💡 Para editar el %, ve a la sección de <strong>Perfil</strong>.</span>
-      <button 
-        type="button" 
-        onClick={() => setMostrarAlertaPerfil(false)}
-        className="text-slate-400 hover:text-slate-700 font-bold ml-2 cursor-pointer"
-      >
-        ✕
-      </button>
-    </p>
-  )}
-</div>
-              </div>
+          {nuevoServicio.serviciosSeleccionados && nuevoServicio.serviciosSeleccionados.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {nuevoServicio.serviciosSeleccionados.map((s, index) => (
+                <span key={s.id || index} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded-md font-medium text-[10px]">
+                  {s.nombre || s.servicio} (${s.precio || s.total})
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nuevosSeleccionados = nuevoServicio.serviciosSeleccionados.filter((_, i) => i !== index);
+                      const nuevoTotal = nuevosSeleccionados.reduce((acc, curr) => {
+                        const precioLimpiado = parseFloat(String(curr.precio || curr.total || 0).replace(/[^0-9.-]+/g,"")) || 0;
+                        return acc + precioLimpiado;
+                      }, 0);
+                      const nombresConcatenados = nuevosSeleccionados.map(item => item.nombre || item.servicio).join(' + ');
 
-              <div>
-                <label className="block font-medium text-slate-600 mb-0.5">Ganancias (Calculado)</label>
-                <input
-                  type="text"
-                  disabled
-                  value={`$${gananciaCalculadaEnVivo.toLocaleString(undefined, { maximumFractionDigits: 0 })} COP`}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-blue-800 font-extrabold cursor-not-allowed"
-                />
-              </div>
+                      setNuevoServicio({
+                        ...nuevoServicio,
+                        serviciosSeleccionados: nuevosSeleccionados,
+                        servicio: nombresConcatenados,
+                        total: nuevoTotal
+                      });
+                    }}
+                    className="hover:text-rose-600 font-bold ml-1 cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-medium text-slate-600 mb-0.5">Fecha</label>
-                  <input
-                    type="date"
-                    value={nuevoServicio.fecha}
-                    onChange={(e) => setNuevoServicio({ ...nuevoServicio, fecha: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-slate-600 mb-0.5">Hora</label>
-                  <input
-                    type="time"
-                    value={nuevoServicio.hora}
-                    onChange={(e) => setNuevoServicio({ ...nuevoServicio, hora: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setModalAgregarOpen(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center cursor-pointer"
-                >
-                  {guardando ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
-            </form>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-slate-600 mb-0.5">Total (COP)</label>
+            <input
+              type="number"
+              required
+              value={nuevoServicio.total}
+              onChange={(e) => setNuevoServicio({ ...nuevoServicio, total: e.target.value })}
+              placeholder="Ej. 45000"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-bold text-blue-600"
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-slate-600 mb-0.5">% Barbero</label>
+            <input
+              type="text"
+              readOnly
+              value={`${nuevoServicio.porcentajeBarberForm || 0}%`}
+              onClick={() => setMostrarAlertaPerfil(true)}
+              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-500 font-bold cursor-pointer select-none transition-all hover:border-blue-400"
+            />
+            {mostrarAlertaPerfil && (
+              <p className="text-[10px] text-blue-600 font-medium mt-1 animate-in fade-in duration-150 flex items-center justify-between">
+                <span>💡 Para editar el %, ve a la sección de <strong>Perfil</strong>.</span>
+                <button type="button" onClick={() => setMostrarAlertaPerfil(false)} className="text-slate-400 hover:text-slate-700 font-bold ml-2 cursor-pointer">✕</button>
+              </p>
+            )}
           </div>
         </div>
-      )}
+
+        <div>
+          <label className="block font-medium text-slate-600 mb-0.5">Ganancias (Calculado)</label>
+          <input
+            type="text"
+            disabled
+            value={`$${gananciaCalculadaEnVivo.toLocaleString(undefined, { maximumFractionDigits: 0 })} COP`}
+            className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-blue-800 font-extrabold cursor-not-allowed"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-slate-600 mb-0.5">Fecha</label>
+            <input
+              type="date"
+              value={nuevoServicio.fecha}
+              onChange={(e) => setNuevoServicio({ ...nuevoServicio, fecha: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-slate-600 mb-0.5">Hora</label>
+            <input
+              type="time"
+              value={nuevoServicio.hora}
+              onChange={(e) => setNuevoServicio({ ...nuevoServicio, hora: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1.5">
+          <button
+            type="button"
+            onClick={() => setModalAgregarOpen(false)}
+            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-lg transition-all border border-slate-200 cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={guardando}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center cursor-pointer"
+          >
+            {guardando ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+{/* Alerta Central de Registro Exitoso con Estilos Visarka */}
+{exitoModalOpen && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4 z-50 animate-in fade-in duration-200">
+    <div className="bg-white border border-emerald-200 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center space-y-3 animate-in zoom-in-95 duration-200">
+      <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-inner">
+        ✓
+      </div>
+      <div>
+        <h4 className="text-sm font-bold text-slate-900">¡Registro Exitoso!</h4>
+        <p className="text-xs text-slate-500 mt-1">El servicio se ha guardado correctamente.</p>
+      </div>
+    </div>
+  </div>
+)}
 
       {modalEditarOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-3 z-50">
@@ -1663,6 +1667,21 @@ useEffect(() => {
     >
       ×
     </button>
+  </div>
+)}
+
+{/* Alerta central de éxito Visarka */}
+{alertaExito && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4 z-[9999] animate-in fade-in duration-200">
+    <div className="bg-white border border-emerald-200 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center space-y-3 animate-in zoom-in-95 duration-200">
+      <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-inner">
+        ✓
+      </div>
+      <div>
+        <h4 className="text-sm font-bold text-slate-900">{mensajeExito || '¡Registro Exitoso!'}</h4>
+        <p className="text-xs text-slate-500 mt-1"></p>
+      </div>
+    </div>
   </div>
 )}
 
