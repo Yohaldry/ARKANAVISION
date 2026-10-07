@@ -81,7 +81,7 @@ const [exitoModalOpen, setExitoModalOpen] = useState(false);
     } else {
       setMostrarQ1(true);
       if (timerQ1) clearTimeout(timerQ1);
-      const id = setTimeout(() => setMostrarQ1(false), 1000);
+      const id = setTimeout(() => setMostrarQ1(false), 10000);
       setTimerQ1(id);
     }
   };
