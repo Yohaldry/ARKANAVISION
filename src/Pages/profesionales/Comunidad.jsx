@@ -8,10 +8,10 @@ export default function Comunidad() {
   const [copiado, setCopiado] = useState(false);
   const [usuarioEmail, setUsuarioEmail] = useState('');
 
-  // Generar link de referido basado en el correo o UID del barbero actual
-  const linkReferido = usuarioEmail 
-    ? `${window.location.origin}/registro?ref=${encodeURIComponent(usuarioEmail)}`
-    : '';
+// El link debe apuntar a la ruta donde vive tu PanelProfesionales, activando el flag de registro y el ref
+const linkReferido = usuarioEmail 
+  ? `${window.location.origin}/panelprofesionales?register=true&ref=${encodeURIComponent(usuarioEmail)}`
+  : '';
 
   useEffect(() => {
     const cargarDatosComunidad = async () => {
