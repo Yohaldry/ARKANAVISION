@@ -574,7 +574,7 @@ useEffect(() => {
                   <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
                     <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
                   </span>
-                  {esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
+                  {esPrimeraQuincenaActiva && <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full animate-ping shadow-sm"></span>}
                 </div>
                 
                 <div className="h-7 w-full my-1 relative z-10 flex items-center">
@@ -1011,9 +1011,9 @@ useEffect(() => {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-blue-950">{srv.cliente || 'General'}</p>
-                          <p className="text-[10px] text-slate-600 font-medium">
-                            Cliente: <span className="text-blue-700 font-semibold">{srv.servicio || 'Servicio sin nombre'}</span>
-                          </p>
+                          <p className="text-[7px] text-slate-600 font-medium">
+  Servicio: <span className="text-blue-700 font-semibold">{srv.servicio || 'Servicio sin nombre'}</span>
+</p>
                           <p className="text-[9px] text-blue-500 font-mono mt-0.5">
                             {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
                           </p>
