@@ -1010,9 +1010,9 @@ useEffect(() => {
                           <Calendar size={16} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-blue-950">{srv.servicio || 'Servicio sin nombre'}</p>
+                          <p className="text-xs font-bold text-blue-950">{srv.cliente || 'General'}</p>
                           <p className="text-[10px] text-slate-600 font-medium">
-                            Cliente: <span className="text-blue-700 font-semibold">{srv.cliente || 'General'}</span>
+                            Cliente: <span className="text-blue-700 font-semibold">{srv.servicio || 'Servicio sin nombre'}</span>
                           </p>
                           <p className="text-[9px] text-blue-500 font-mono mt-0.5">
                             {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
