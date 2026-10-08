@@ -655,8 +655,15 @@ useEffect(() => {
               </div>
             </div>
 
-            {quincenaActivaModal && (() => {
+         {quincenaActivaModal && (() => {
               const modalGrafico = generarPathYCoordenadas(quincenaActivaModal.datos, 300, 100);
+              
+              // Obtener la fecha actual para comparar los días en 0
+              const hoy = new Date();
+              const diaActual = hoy.getDate();
+              const mesActualSistema = hoy.getMonth();
+              const anioActualSistema = hoy.getFullYear();
+
               return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
                   <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[90vh]">
@@ -681,193 +688,229 @@ useEffect(() => {
                     <div className="p-5 overflow-y-auto space-y-5 flex-grow">
                       <div className="flex justify-between items-center bg-blue-50/80 p-3.5 rounded-xl border border-blue-100">
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">Total Producido</p>
-                          <p className="text-xl font-extrabold text-blue-600">${quincenaActivaModal.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <p className="text-xs text-slate-500 font-medium">Total Producido</p>
+                            <p className="text-xl font-extrabold text-blue-600">${quincenaActivaModal.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-slate-500 font-medium">Total Servicios</p>
-                          <p className="text-lg font-bold text-slate-800">{quincenaActivaModal.serv} serv.</p>
+                            <p className="text-xs text-slate-500 font-medium">Total Servicios</p>
+                            <p className="text-lg font-bold text-slate-800">{quincenaActivaModal.serv} serv.</p>
                         </div>
                       </div>
+<div className="h-28 w-full">
+      <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
+        <defs>
+          <linearGradient id="modalGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path d={modalGrafico.areaD} fill="url(#modalGrad)" />
+        <path d={modalGrafico.pathD} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {modalGrafico.puntos.map((pt, i) => {
+          // Evaluamos si este punto específico corresponde a un día pasado con monto 0 (descanso)
+          const itemDia = quincenaActivaModal.datos[i];
+          const esDiaPasado = itemDia && (
+            anioActual < anioActualSistema || 
+            (anioActual === anioActualSistema && mesActual < mesActualSistema) || 
+            (anioActual === anioActualSistema && mesActual === mesActualSistema && itemDia.dia < diaActual)
+          );
+          const esDescansoPt = itemDia && itemDia.monto === 0 && esDiaPasado;
 
-                      <div className="bg-slate-950 p-4 rounded-xl border border-blue-500/30 relative">
-                        <div className="flex justify-between text-[10px] text-cyan-400 mb-2 font-mono">
-                          <span>MÁX: ${modalGrafico.max.toLocaleString()}</span>
-                          <span>GRÁFICO DIARIO (TENDENCIA)</span>
-                        </div>
-                        
-                        <div className="h-28 w-full">
-                          <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
-                            <defs>
-                              <linearGradient id="modalGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
-                              </linearGradient>
-                            </defs>
-                            <path d={modalGrafico.areaD} fill="url(#modalGrad)" />
-                            <path d={modalGrafico.pathD} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                            {modalGrafico.puntos.map((pt, i) => (
-                              <g key={i}>
-                                <circle 
-                                  cx={pt.x} 
-                                  cy={pt.y} 
-                                  r={pt.monto > 0 ? 5 : 2} 
-                                  className={pt.monto > 0 ? 'fill-cyan-400 ring-4 ring-cyan-500/20' : 'fill-slate-600'} 
-                                />
-                              </g>
-                            ))}
-                          </svg>
-                        </div>
-                      </div>
+          return (
+            <g key={i}>
+              <circle 
+                cx={pt.x} 
+                cy={pt.y} 
+                r={pt.monto > 0 ? 5 : (esDescansoPt ? 4 : 2)} 
+                className={
+                  pt.monto > 0 
+                    ? 'fill-cyan-400 ring-4 ring-cyan-500/20' 
+                    : esDescansoPt 
+                      ? 'fill-amber-500 ring-4 ring-amber-500/20' 
+                      : 'fill-slate-600'
+                } 
+              />
+            </g>
+          );
+        })}
+      </svg>
+  </div>
 
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Desglose Día por Día</h4>
-                          <span className="text-[10px] text-blue-600 font-medium">Haz clic en un día para ver detalles</span>
-                        </div>
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                          {quincenaActivaModal.datos.map((item, idx) => (
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Desglose Día por Día</h4>
+                        <span className="text-[10px] text-blue-600 font-medium">Haz clic en un día para ver detalles</span>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {quincenaActivaModal.datos.map((item, idx) => {
+                          // Determinamos si es un día pasado con 0 producción
+                          const esDiaPasado = (
+                            anioActual < anioActualSistema || 
+                            (anioActual === anioActualSistema && mesActual < mesActualSistema) || 
+                            (anioActual === anioActualSistema && mesActual === mesActualSistema && item.dia < diaActual)
+                          );
+                          const esDescanso = item.monto === 0 && esDiaPasado;
+
+                          return (
                             <div 
                               key={idx} 
                               onClick={() => setDiaSeleccionadoModal(item.dia)}
                               className={`flex justify-between items-center px-3 py-2.5 rounded-lg text-xs cursor-pointer transition-all border ${
                                 item.monto > 0 
                                   ? 'bg-blue-50/60 border-blue-200 hover:border-blue-400 hover:bg-blue-100/60 text-slate-900 font-medium shadow-sm' 
-                                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${item.monto > 0 ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
-                                Día {item.dia}
-                              </span>
-                              <div className="flex items-center gap-3">
+                                  : esDescanso
+                                    ? 'bg-amber-50/80 border-amber-200 hover:bg-amber-100/80 text-amber-900'
+                                    : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${
+                                item.monto > 0 
+                                  ? 'bg-blue-600' 
+                                  : esDescanso 
+                                    ? 'bg-amber-500' 
+                                    : 'bg-slate-300'
+                              }`}></span>
+                              Día {item.dia}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              {!esDescanso && (
                                 <span className="text-[11px] text-slate-500">{item.serviciosCount} serv.</span>
-                                <span className={`font-bold ${item.monto > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
-                                  ${item.monto.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                </span>
-                              </div>
+                              )}
+                              <span className={`font-bold ${
+                                item.monto > 0 
+                                  ? 'text-blue-600' 
+                                  : esDescanso 
+                                    ? 'text-amber-600 uppercase tracking-wide text-[10px] bg-amber-100 px-2 py-0.5 rounded-md font-extrabold' 
+                                    : 'text-slate-400'
+                              }`}>
+                                {esDescanso ? 'DESCANSO' : `$${item.monto.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                              </span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border-t border-blue-100 bg-blue-50/50 text-right flex-shrink-0">
-                      <button 
-                        onClick={() => {
-                          setQuincenaActivaModal(null);
-                          setDiaSeleccionadoModal(null);
-                        }}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
-                      >
-                        Cerrar Análisis
-                      </button>
+                          </div>
+                          );
+                        })}
                     </div>
                   </div>
-
-                  {diaSeleccionadoModal !== null && (() => {
-                    const serviciosDelDia = servicios.filter(s => {
-                      const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
-                      if (!rawFecha) return false;
-                      
-                      let dS = 0, mS = -1, aS = 0;
-                      if (typeof rawFecha === 'string') {
-                        const limpia = rawFecha.split('T')[0];
-                        if (limpia.includes('-')) {
-                          const partes = limpia.split('-');
-                          aS = parseInt(partes[0], 10);
-                          mS = parseInt(partes[1], 10) - 1;
-                          dS = parseInt(partes[2], 10);
-                        }
-                      }
-                      if (dS === 0) {
-                        const fechaObj = new Date(rawFecha);
-                        if (!isNaN(fechaObj.getTime())) {
-                          aS = fechaObj.getFullYear();
-                          mS = fechaObj.getMonth();
-                          dS = fechaObj.getDate();
-                        }
-                      }
-                      return dS === diaSeleccionadoModal && mS === mesActual && aS === anioActual;
-                    });
-
-                    const totalGananciasDia = serviciosDelDia.reduce((acc, curr) => {
-                      const val = (curr.ganancias !== undefined && !isNaN(Number(curr.ganancias))) 
-                        ? Number(curr.ganancias) 
-                        : (Number(curr.total) || 0);
-                      return acc + val;
-                    }, 0);
-
-                    return (
-                      <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn">
-                        <div className="bg-white border border-blue-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[85vh]">
-                          <div className="flex justify-between items-center px-5 py-4 border-b border-blue-100 bg-blue-600 text-white">
-                            <div>
-                              <span className="text-[10px] font-bold tracking-wider text-blue-100 uppercase">
-                                Detalle de Caja
-                              </span>
-                              <h3 className="text-base font-black text-white">Servicios del Día {diaSeleccionadoModal}</h3>
-                            </div>
-                            <button 
-                              onClick={() => setDiaSeleccionadoModal(null)}
-                              className="w-8 h-8 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center text-white transition-colors font-bold text-sm cursor-pointer"
-                            >
-                              ✕
-                            </button>
-                          </div>
-
-                          <div className="p-5 overflow-y-auto space-y-3 flex-grow">
-                            <div className="flex justify-between items-center bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-100 text-xs">
-                              <span className="text-slate-600">Total servicios: <strong className="text-slate-900">{serviciosDelDia.length}</strong></span>
-                              <span className="text-slate-600">Ganancias: <strong className="text-blue-600">${totalGananciasDia.toLocaleString()}</strong></span>
-                            </div>
-
-                            {serviciosDelDia.length === 0 ? (
-                              <div className="text-center py-10 text-slate-400 text-xs">
-                                No hay servicios registrados para este día.
-                              </div>
-                            ) : (
-                              serviciosDelDia.map((srv, i) => {
-                                const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
-                                const totalServicio = Number(srv.total) || 0;
-                                return (
-                                  <div key={i} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-2 hover:border-blue-400 transition-all">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <span className="text-xs font-bold text-blue-900 block">{srv.servicio || 'Servicio sin nombre'}</span>
-                                        <span className="text-xs text-slate-600 font-medium">Cliente: {srv.cliente || 'General'}</span>
-                                      </div>
-                                      <div className="text-right">
-                                        <span className="text-xs font-extrabold text-blue-600 block">+${gananciaServicio.toLocaleString()}</span>
-                                        <span className="text-[10px] text-slate-400">Total: ${totalServicio.toLocaleString()}</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-200 pt-2 font-mono">
-                                      <span>Hora: {srv.hora || 'N/A'}</span>
-                                      {srv.porcentajeValor && <span>Comisión: {srv.porcentajeValor}%</span>}
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-
-                          <div className="p-3.5 border-t border-slate-100 bg-slate-50 text-right">
-                            <button 
-                              onClick={() => setDiaSeleccionadoModal(null)}
-                              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
-                            >
-                              Volver al Resumen
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                 </div>
-              );
-            })()}
+
+                <div className="p-4 border-t border-blue-100 bg-blue-50/50 text-right flex-shrink-0">
+                  <button 
+                    onClick={() => {
+                      setQuincenaActivaModal(null);
+                      setDiaSeleccionadoModal(null);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                    Cerrar Análisis
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal de Detalle de Día */}
+              {diaSeleccionadoModal !== null && (() => {
+                const serviciosDelDia = servicios.filter(s => {
+                  const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
+                  if (!rawFecha) return false;
+                  
+                  let dS = 0, mS = -1, aS = 0;
+                  if (typeof rawFecha === 'string') {
+                    const limpia = rawFecha.split('T')[0];
+                    if (limpia.includes('-')) {
+                      const partes = limpia.split('-');
+                      aS = parseInt(partes[0], 10);
+                      mS = parseInt(partes[1], 10) - 1;
+                      dS = parseInt(partes[2], 10);
+                    }
+                  }
+                  if (dS === 0) {
+                    const fechaObj = new Date(rawFecha);
+                    if (!isNaN(fechaObj.getTime())) {
+                      aS = fechaObj.getFullYear();
+                      mS = fechaObj.getMonth();
+                      dS = fechaObj.getDate();
+                    }
+                  }
+                  return dS === diaSeleccionadoModal && mS === mesActual && aS === anioActual;
+                });
+
+                const totalGananciasDia = serviciosDelDia.reduce((acc, curr) => {
+                  const val = (curr.ganancias !== undefined && !isNaN(Number(curr.ganancias))) 
+                    ? Number(curr.ganancias) 
+                    : (Number(curr.total) || 0);
+                  return acc + val;
+              }, 0);
+
+              return (
+                  <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn">
+                    <div className="bg-white border border-blue-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-900 flex flex-col max-h-[85vh]">
+                      <div className="flex justify-between items-center px-5 py-4 border-b border-blue-100 bg-blue-600 text-white">
+                        <div>
+                          <span className="text-[10px] font-bold tracking-wider text-blue-100 uppercase">
+                            Detalle de Caja
+                          </span>
+                          <h3 className="text-base font-black text-white">Servicios del Día {diaSeleccionadoModal}</h3>
+                      </div>
+                      <button 
+                        onClick={() => setDiaSeleccionadoModal(null)}
+                        className="w-8 h-8 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center text-white transition-colors font-bold text-sm cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="p-5 overflow-y-auto space-y-3 flex-grow">
+                    <div className="flex justify-between items-center bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-100 text-xs">
+                      <span className="text-slate-600">Total servicios: <strong className="text-slate-900">{serviciosDelDia.length}</strong></span>
+                      <span className="text-slate-600">Ganancias: <strong className="text-blue-600">${totalGananciasDia.toLocaleString()}</strong></span>
+                    </div>
+
+                    {serviciosDelDia.length === 0 ? (
+                      <div className="text-center py-10 text-slate-400 text-xs">
+                        No hay servicios registrados para este día.
+                      </div>
+                    ) : (
+                      serviciosDelDia.map((srv, i) => {
+                        const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
+                        const totalServicio = Number(srv.total) || 0;
+                        return (
+                          <div key={i} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-2 hover:border-blue-400 transition-all">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-xs font-bold text-blue-900 block">{srv.servicio || 'Servicio sin nombre'}</span>
+                                <span className="text-xs text-slate-600 font-medium">Cliente: {srv.cliente || 'General'}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-extrabold text-blue-600 block">+${gananciaServicio.toLocaleString()}</span>
+                                <span className="text-[10px] text-slate-400">Total: ${totalServicio.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-200 pt-2 font-mono">
+                              <span>Hora: {srv.hora || 'N/A'}</span>
+                              {srv.porcentajeValor && <span>Comisión: {srv.porcentajeValor}%</span>}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="p-3.5 border-t border-slate-100 bg-slate-50 text-right">
+                    <button 
+                      onClick={() => setDiaSeleccionadoModal(null)}
+                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  >
+                      Volver al Resumen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          </div>
+        );
+    })()}
           </>
         );
       })()}
