@@ -1019,7 +1019,7 @@ useEffect(() => {
       )}
 
       {vistaTab === 'manual' ? (
-        <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
+      <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
           <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
             <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
               <Calendar size={14} className="text-blue-600" /> Historial de Servicios Manuales
@@ -1043,6 +1043,15 @@ useEffect(() => {
                   const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
                   const totalServicio = Number(srv.total) || 0;
 
+                  // Obtenemos los nombres de los servicios del cliente (puede venir como texto separado por comas o array)
+                  let nombresServicios = [];
+                  if (Array.isArray(srv.servicios)) {
+                    nombresServicios = srv.servicios.map(s => typeof s === 'string' ? s : s.nombre);
+                  } else if (typeof srv.servicio === 'string') {
+                    // Si están separados por comas o es uno solo
+                    nombresServicios = srv.servicio.split(',').map(s => s.trim());
+                  }
+
                   return (
                     <div 
                       key={srv.id || index}
@@ -1052,13 +1061,44 @@ useEffect(() => {
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0 border border-blue-200">
                           <Calendar size={16} />
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-xs font-bold text-blue-950">{srv.cliente || 'General'}</p>
-                          <p className="text-[7px] text-slate-600 font-medium">
-  Servicio: <span className="text-blue-700 font-semibold">{srv.servicio || 'Servicio sin nombre'}</span>
-</p>
-                          <p className="text-[9px] text-blue-500 font-mono mt-0.5">
-                            {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
+                          
+                          {/* Etiquetas separadas para cada servicio con su color correspondiente */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[7px] text-slate-500 font-medium">Servicios:</span>
+                            {nombresServicios.length > 0 ? (
+                              nombresServicios.map((nombreSrv, sIdx) => {
+                                // Buscamos en tu lista general de servicios cargados en el estado (ej. listaServiciosGlobal) el que coincida en nombre para sacar su color de Firestore
+                                const servicioEnDb = typeof listaServiciosGlobal !== 'undefined' 
+                                  ? listaServiciosGlobal.find(gs => gs.nombre?.toLowerCase() === nombreSrv.toLowerCase()) 
+                                  : null;
+
+                                const colorHex = servicioEnDb?.color || '#3b82f6'; // Color por defecto azul si no encuentra
+
+                                return (
+                                  <span 
+                                    key={sIdx}
+                                    style={{ 
+                                      backgroundColor: `${colorHex}15`, 
+                                      color: colorHex, 
+                                      borderColor: `${colorHex}40` 
+                                    }}
+                                    className="inline-block text-[9px] px-2 py-0.5 rounded-md font-bold border shadow-2xs"
+                                  >
+                                    {nombreSrv}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-[9px] bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-md font-bold">
+                                {srv.servicio || 'Servicio sin nombre'}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[9px] text-blue-500 font-mono">
+                            {srv.fecha || 'Fecha N/A'} - {srv.hora || 'Hora N/A'}
                           </p>
                         </div>
                       </div>

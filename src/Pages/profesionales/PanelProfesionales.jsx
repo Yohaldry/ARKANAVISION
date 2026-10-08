@@ -939,341 +939,272 @@ const handleAuth = async (e) => {
   </div>
 
   {/* Contenedor principal del calendario con scroll */}
-  <div 
-    className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-[0_8px_20px_rgba(37,99,235,0.06),inset_0_1px_2px_rgba(255,255,255,0.8)] border border-blue-300 bg-white [perspective:1400px] mb-2"
-    onTouchStart={(e) => {
-      const touch = e.touches[0];
-      e.currentTarget.dataset.touchStartX = touch.clientX;
-    }}
-    onTouchMove={(e) => {
-      const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
-      const currentX = e.touches[0].clientX;
-      const diff = currentX - startX;
-      const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
-      const hojaFondo = e.currentTarget.querySelector('.libro-pagina-fondo');
+ <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-[0_10px_30px_rgba(37,99,235,0.06)] border border-blue-200 bg-white mb-2 text-slate-900">
+  <div className="bg-white relative w-full text-slate-800 rounded-2xl">
+    {/* Cabecera de días superior fija con fondo sólido */}
+    <div className="grid sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md border-b border-blue-200 text-center text-[10px] font-medium uppercase tracking-wider text-blue-900 shadow-sm" style={{ gridTemplateColumns: `60px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+      <div className="text-left pl-3 py-3 text-blue-600 font-medium text-[9px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50">Hora</div>
+      {diasVisibles.map((d, i) => {
+        const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+        const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
-      if (hojaActual) {
-        const rotacion = (diff / window.innerWidth) * 20;
-        hojaActual.style.transform = `translateX(${diff * 0.5}px) rotateY(${rotacion}deg)`;
-        hojaActual.style.transition = 'none';
-      }
-
-      if (hojaFondo) {
-        hojaFondo.style.opacity = Math.min(1, Math.abs(diff) / 80);
-      }
-    }}
-    onTouchEnd={(e) => {
-      const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
-      const endX = e.changedTouches[0].clientX;
-      const diff = startX - endX;
-      const minSwipeDistance = 50;
-      const hojaActual = e.currentTarget.querySelector('.libro-pagina-actual');
-
-      if (Math.abs(diff) > minSwipeDistance) {
-        if (hojaActual) {
-          hojaActual.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
-          hojaActual.style.transform = `translateX(${diff > 0 ? '-100%' : '100%'}) rotateY(${diff > 0 ? '-15deg' : '15deg'})`;
-          hojaActual.style.opacity = '0';
-        }
-
-        setTimeout(() => {
-          const nuevaFecha = new Date(fechaSeleccionada);
-          let diasASaltar = 7;
-          if (vistaCalendario === 'diario') diasASaltar = 1;
-          if (vistaCalendario === '3dias') diasASaltar = 3;
-
-          if (diff > 0) {
-            nuevaFecha.setDate(nuevaFecha.getDate() + diasASaltar);
-          } else {
-            nuevaFecha.setDate(nuevaFecha.getDate() - diasASaltar);
-          }
-          setFechaSeleccionada(nuevaFecha);
-        }, 300);
-      } else {
-        if (hojaActual) {
-          hojaActual.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-          hojaActual.style.transform = 'translateX(0px) rotateY(0deg)';
-          hojaActual.style.opacity = '1';
-        }
-      }
-    }}
-  >
-    <div className="libro-pagina-fondo absolute inset-0 bg-white p-1 opacity-0 transition-opacity duration-150 pointer-events-none">
-      <div className="grid sticky top-0 z-30 bg-gradient-to-b from-blue-100 to-blue-200 border-b border-blue-300 text-center text-[9px] font-black uppercase text-blue-900 shadow-sm" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-        <div className="text-left pl-2 py-2 text-blue-800 font-bold text-[8px] border-r border-blue-300/60 sticky left-0 z-30 bg-blue-100">Hora</div>
-        {diasVisibles.map((d, i) => {
-          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-          return (
-            <div key={i} className={`py-2 px-0.5 border-r border-blue-300/60 last:border-r-0 truncate ${esHoy ? 'bg-blue-600 text-white font-black' : 'text-blue-800'}`}>
-              {d.nombre.toUpperCase()} {d.num}
+        return (
+          <div key={i} className="py-2 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
+            <div className={`w-8 h-8 rounded-full flex flex-col items-center justify-center ${
+              esHoy 
+                ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
+                : esSeleccionado 
+                  ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
+                  : 'text-slate-700 hover:bg-blue-100/50'
+            }`}>
+              <span className="text-[11px] font-bold leading-none">{d.num}</span>
+              <span className="text-[7px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
 
-    <div className="libro-pagina-actual bg-white relative w-full text-blue-950 [transform-style:preserve-3d] origin-left shadow-sm rounded-2xl overflow-hidden">
-      {/* Cabecera de días fija con z-30 */}
-      <div className="grid sticky top-0 z-30 bg-gradient-to-b from-blue-100 to-blue-200 border-b border-blue-300 text-center text-[9px] font-black uppercase text-blue-900 shadow-[0_2px_4px_rgba(0,0,0,0.04)]" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-        <div className="text-left pl-2 py-2 text-blue-800 font-bold text-[8px] border-r border-blue-300/60 bg-blue-100 sticky left-0 z-30">Hora</div>
-        {diasVisibles.map((d, i) => {
-          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-          const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
+    <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+      {dragOverInfo.horaTexto && (
+        <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
+             style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
+          📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
+        </div>
+      )}
 
-          let estiloDia = 'text-blue-900';
-          if (esHoy) {
-            estiloDia = 'bg-blue-600 text-white font-black border-b-2 border-blue-800 shadow-inner';
-          } else if (esSeleccionado) {
-            estiloDia = 'bg-blue-200/70 text-blue-950 font-black shadow-inner';
-          }
-
-          return (
-            <div key={i} className={`py-2 px-0.5 border-r border-blue-300/60 last:border-r-0 truncate transition-colors ${estiloDia}`}>
-              {d.nombre.toUpperCase()} {d.num} {esHoy && '📍'}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
-        {dragOverInfo.horaTexto && (
-          <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-lg shadow-[0_4px_12px_rgba(37,99,235,0.4)] border border-blue-400 backdrop-blur-sm"
-               style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
-            📍 Mover a: <span className="underline">{dragOverInfo.horaTexto}</span>
+      {/* Línea de hora actual */}
+      {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
+        <div 
+          className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
+          style={{ 
+            top: `${currentTimeMinutes}%`,
+            left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
+            width: `${100 / (diasVisibles.length + 1)}%`
+          }}
+        >
+          <div className="px-1.5 bg-rose-500 text-white text-[8px] font-black tracking-tighter text-center py-0.5 rounded-full shadow-md border border-rose-300">
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
           </div>
-        )}
+          <div className="flex-1 border-t-2 border-rose-500 shadow-sm"></div>
+        </div>
+      )}
 
-        {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
-          <div 
-            className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
-            style={{ 
-              top: `${currentTimeMinutes}%`,
-              left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
-              width: `${100 / (diasVisibles.length + 1)}%`
-            }}
-          >
-            <div className="w-[40px] bg-blue-600 text-white text-[7px] font-black text-center py-0.5 rounded-r shadow-md">HOY</div>
-            <div className="flex-1 border-t-2 border-blue-600 shadow-[0_1px_3px_rgba(37,99,235,0.4)]"></div>
-          </div>
-        )}
+      {horasCalendario.map((itemHora, idx) => {
+        const [fH, fM] = itemHora.val24.split(':').map(Number);
+        const minutosFilaInicio = fH * 60 + fM;
+        const minutosFilaFin = minutosFilaInicio + 60;
 
-        {horasCalendario.map((itemHora, idx) => {
-          const [fH, fM] = itemHora.val24.split(':').map(Number);
-          const minutosFilaInicio = fH * 60 + fM;
-          const minutosFilaFin = minutosFilaInicio + 60;
+        const esHorarioLaboral = fH >= 9 && fH <= 21;
 
-          const esHorarioLaboral = fH >= 9 && fH <= 21;
+        const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
+          if (!horaStr) return 0;
+          let clean = horaStr.toString().toUpperCase().trim();
+          
+          let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
+          let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
 
-          const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
-            if (!horaStr) return 0;
-            let clean = horaStr.toString().toUpperCase().trim();
-            
-            let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
-            let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
-
-            let timePart = clean.replace(/[^0-9:]/g, '').trim();
-            let parts = timePart.split(':');
-            let hours = parseInt(parts[0], 10) || 0;
-            let minutes = parseInt(parts[1], 10) || 0;
-            
-            if (esBloqueo) {
-              if (isPM && hours < 12) hours += 12;
-              if (isAM && hours === 12) hours = 0;
-            } else {
-              if (isPM && hours < 12) {
-                hours += 12;
-              } else if (isAM && hours === 12) {
-                hours = 0;
-              } else if (!isPM && !isAM && hours >= 1 && hours <= 7) {
-                hours += 12;
-              }
-            }
-
-            if (!esBloqueo && isAM && (hours === 1 || hours === 2)) {
+          let timePart = clean.replace(/[^0-9:]/g, '').trim();
+          let parts = timePart.split(':');
+          let hours = parseInt(parts[0], 10) || 0;
+          let minutes = parseInt(parts[1], 10) || 0;
+          
+          if (esBloqueo) {
+            if (isPM && hours < 12) hours += 12;
+            if (isAM && hours === 12) hours = 0;
+          } else {
+            if (isPM && hours < 12) {
+              hours += 12;
+            } else if (isAM && hours === 12) {
+              hours = 0;
+            } else if (!isPM && !isAM && hours >= 1 && hours <= 7) {
               hours += 12;
             }
-            
-            return hours * 60 + minutes;
-          };
+          }
 
-          const minutosAHoraTexto = (totalMinutos) => {
-            const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
-            const h24 = Math.floor(minutosNorm / 60);
-            const min = minutosNorm % 60;
-            const ampm = h24 >= 12 ? 'PM' : 'AM';
-            const h12 = h24 % 12 || 12;
-            return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
-          };
+          if (!esBloqueo && isAM && (hours === 1 || hours === 2)) {
+            hours += 12;
+          }
+          
+          return hours * 60 + minutes;
+        };
 
-          return (
-            <div key={idx} className="grid items-stretch min-h-[50px] border-b border-blue-300/45 text-[9px] relative" style={{ gridTemplateColumns: `50px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-              {/* Columna de la hora fija a la izquierda (sticky left-0) */}
-              <div className={`border-r border-blue-300/65 p-0.5 font-bold text-[7px] flex items-center justify-center text-center transition-colors shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] sticky left-0 z-20 ${esHorarioLaboral ? 'bg-blue-100/90 text-blue-900' : 'bg-blue-100/70 text-blue-700'}`}>
-                {itemHora.label}
-              </div>
+        const minutosAHoraTexto = (totalMinutos) => {
+          const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
+          const h24 = Math.floor(minutosNorm / 60);
+          const min = minutosNorm % 60;
+          const ampm = h24 >= 12 ? 'p. m.' : 'a. m.';
+          const h12 = h24 % 12 || 12;
+          return `${h12}:${String(min).padStart(2, '0')} ${ampm}`;
+        };
 
-              {diasVisibles.map((dia, dIdx) => {
-                const fechaStr = dia.fechaObj.toISOString().split('T')[0];
-
-                const citasEnEstaHora = citasFirestore.filter(c => {
-                  if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
-                  const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
-                  return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
-                });
-
-                const bloqueosEnEstaHora = citasFirestore.filter(c => {
-                  if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
-                  const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
-                  return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
-                });
-
-                const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
-
-                return (
-                  <div 
-                    key={dIdx} 
-                    className={`border-r border-blue-300/35 last:border-r-0 p-1 relative flex flex-row gap-1 items-stretch overflow-visible transition-colors ${
-                      dragOverInfo.diaStr === fechaStr ? 'bg-blue-200/50' : (esHorarioLaboral ? 'bg-blue-50/20 hover:bg-blue-100/30' : 'bg-white hover:bg-blue-50/40')
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const offsetY = e.clientY - rect.top;
-                      const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                      const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                      const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                      const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
-
-                      setDragOverInfo({
-                        diaStr: fechaStr,
-                        horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
-                        y: e.clientY
-                      });
-                    }}
-                    onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
-                      const citaId = e.dataTransfer.getData("text/plain");
-                      if (!citaId) return;
-                      const elementoArrastrado = citasFirestore.find(c => (c.id || c.uid) === citaId);
-                      if (!elementoArrastrado) return;
-
-                      // Si es una cita, verificar que no esté finalizada
-                      if (!elementoArrastrado.esBloqueo) {
-                        const estadoCita = (elementoArrastrado.estado || '').toLowerCase();
-                        if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
-                      }
-
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const offsetY = e.clientY - rect.top;
-                      const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                      const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                      const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                      const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
-                      
-                      // Si es un bloqueo y tiene horaFin, calculamos la nueva hora fin manteniendo la duración
-                      if (elementoArrastrado.esBloqueo && elementoArrastrado.horaFin) {
-                        const minInicioAntiguo = convertirHoraAMinutos(elementoArrastrado.hora, true);
-                        const minFinAntiguo = convertirHoraAMinutos(elementoArrastrado.horaFin, true);
-                        let duracionBloqueo = minFinAntiguo - minInicioAntiguo;
-                        if (duracionBloqueo < 0) duracionBloqueo += 1440;
-
-                        const nuevoMinFin = totalMinutosNuevos + duracionBloqueo;
-                        const nuevaHoraFinFormateada = minutosAHoraTexto(nuevoMinFin);
-
-                        actualizarBloqueoArrastrado(elementoArrastrado, fechaStr, nuevaHoraFormateada, nuevaHoraFinFormateada);
-                      } else {
-                        actualizarCitaArrastrada(elementoArrastrado, fechaStr, nuevaHoraFormateada);
-                      }
-                    }}
-                  >
-                    {elementosEnEstaHora.length > 0 ? (
-                      elementosEnEstaHora.map((itemCita, cIdx) => {
-                        const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
-                        const citaKey = itemCita.id || itemCita.uid;
-                        
-                        const estadoCita = (itemCita.estado || '').toLowerCase();
-                        const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
-
-                        let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-                        if (itemCita.esBloqueo && itemCita.horaFin) {
-                          const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
-                          if (minFin > minutosItemInicio) {
-                            duracionMin = minFin - minutosItemInicio;
-                          } else if (minFin < minutosItemInicio) {
-                            duracionMin = (1440 - minutosItemInicio) + minFin;
-                          }
-                        }
-
-                        const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-                        const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-                        const alturaTotalPixeles = (duracionMin / 60) * 50;
-
-                        const totalCol = elementosEnEstaHora.length;
-                        const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
-                        const leftPercent = totalCol > 1 ? `${(cIdx * (100 / totalCol))}%` : '0px';
-
-                        return (
-                          <div 
-                            key={cIdx}
-                            draggable={!esFinalizada}
-                            onDragStart={(e) => {
-                              if (esFinalizada) {
-                                e.preventDefault();
-                                return;
-                              }
-                              e.dataTransfer.setData("text/plain", citaKey);
-                            }}
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              abrirModalCita(itemCita); 
-                            }} 
-                            style={{ 
-                              top: `${topPercent}%`, 
-                              height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 38)}px` : `${Math.max((duracionMin / 60) * 100, 38)}%`, 
-                              minHeight: '38px', 
-                              zIndex: itemCita.esBloqueo ? 30 : 40,
-                              width: `calc(${widthPercent} - 4px)`,
-                              left: `calc(${leftPercent} + 2px)`
-                            }}
-                            className={`absolute p-1.5 border transition-all duration-200 shadow-[0_3px_8px_rgba(37,99,235,0.1),inset_0_1px_0_rgba(255,255,255,0.7)] flex flex-col justify-between overflow-hidden rounded-lg ${
-                              itemCita.esBloqueo 
-                                ? 'bg-gradient-to-b from-rose-100 to-rose-200 text-rose-900 border-rose-300 font-bold cursor-grab active:cursor-grabbing hover:shadow-[0_4px_12px_rgba(244,63,94,0.2)] select-none' 
-                                : esFinalizada
-                                  ? 'bg-slate-200 text-slate-500 border-slate-300 font-normal cursor-pointer select-none shadow-none opacity-80'
-                                  : `cursor-grab active:cursor-grabbing hover:shadow-[0_6px_16px_rgba(37,99,235,0.15)] hover:scale-[1.02] ${itemCita.color || 'bg-gradient-to-b from-blue-100 to-blue-200 border-blue-400 text-blue-950'}`
-                            }`}
-                          >
-                            <div className="flex justify-between items-center pointer-events-none">
-                              <span className="font-black truncate text-[8px] block drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
-                                {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
-                              </span>
-                              <span className="text-[7px] font-bold opacity-80">{itemCita.hora} {itemCita.horaFin ? `- ${itemCita.horaFin}` : ''}</span>
-                            </div>
-
-                            {!itemCita.esBloqueo && (
-                              <span className="text-[7px] truncate font-bold block pointer-events-none opacity-90">
-                                {itemCita.servicio} ({duracionMin}m)
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center text-blue-800/30 text-[9px] h-full flex items-center justify-center"></div>
-                    )}
-                  </div>
-                );
-              })}
+        return (
+          <div key={idx} className="grid items-stretch min-h-[64px] border-b border-blue-100 text-[10px] relative" style={{ gridTemplateColumns: `60px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+            {/* Columna de la hora fija a la izquierda */}
+            <div className="border-r border-blue-200 px-1 font-sans text-[9px] font-semibold text-blue-700 flex flex-col items-center justify-start pt-2 text-center sticky left-0 z-30 bg-blue-50/95">
+              <span>{itemHora.label.toLowerCase()}</span>
             </div>
-          );
-        })}
-      </div>
+
+            {diasVisibles.map((dia, dIdx) => {
+              const fechaStr = dia.fechaObj.toISOString().split('T')[0];
+
+              const citasEnEstaHora = citasFirestore.filter(c => {
+                if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
+                const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
+                return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
+              });
+
+              const bloqueosEnEstaHora = citasFirestore.filter(c => {
+                if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
+                const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
+                return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
+              });
+
+              const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
+
+              return (
+                <div 
+                  key={dIdx} 
+                  className={`border-r border-blue-100/60 last:border-r-0 p-0.5 relative flex flex-row gap-0.5 items-stretch overflow-visible transition-colors ${
+                    dragOverInfo.diaStr === fechaStr ? 'bg-blue-100/50' : 'hover:bg-blue-50/20'
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const offsetY = e.clientY - rect.top;
+                    const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                    const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                    const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                    const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
+
+                    setDragOverInfo({
+                      diaStr: fechaStr,
+                      horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
+                      y: e.clientY
+                    });
+                  }}
+                  onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
+                    const citaId = e.dataTransfer.getData("text/plain");
+                    if (!citaId) return;
+                    const elementoArrastrado = citasFirestore.find(c => (c.id || c.uid) === citaId);
+                    if (!elementoArrastrado) return;
+
+                    if (!elementoArrastrado.esBloqueo) {
+                      const estadoCita = (elementoArrastrado.estado || '').toLowerCase();
+                      if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
+                    }
+
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const offsetY = e.clientY - rect.top;
+                    const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                    const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                    const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                    const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
+                    
+                    if (elementoArrastrado.esBloqueo && elementoArrastrado.horaFin) {
+                      const minInicioAntiguo = convertirHoraAMinutos(elementoArrastrado.hora, true);
+                      const minFinAntiguo = convertirHoraAMinutos(elementoArrastrado.horaFin, true);
+                      let duracionBloqueo = minFinAntiguo - minInicioAntiguo;
+                      if (duracionBloqueo < 0) duracionBloqueo += 1440;
+
+                      const nuevoMinFin = totalMinutosNuevos + duracionBloqueo;
+                      const nuevaHoraFinFormateada = minutosAHoraTexto(nuevoMinFin);
+
+                      actualizarBloqueoArrastrado(elementoArrastrado, fechaStr, nuevaHoraFormateada, nuevaHoraFinFormateada);
+                    } else {
+                      actualizarCitaArrastrada(elementoArrastrado, fechaStr, nuevaHoraFormateada);
+                    }
+                  }}
+                >
+                  {elementosEnEstaHora.length > 0 ? (
+                    elementosEnEstaHora.map((itemCita, cIdx) => {
+                      const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
+                      const citaKey = itemCita.id || itemCita.uid;
+                      
+                      const estadoCita = (itemCita.estado || '').toLowerCase();
+                      const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
+
+                      let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+                      if (itemCita.esBloqueo && itemCita.horaFin) {
+                        const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
+                        if (minFin > minutosItemInicio) {
+                          duracionMin = minFin - minutosItemInicio;
+                        } else if (minFin < minutosItemInicio) {
+                          duracionMin = (1440 - minutosItemInicio) + minFin;
+                        }
+                      }
+
+                      const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+                      const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                      const alturaTotalPixeles = (duracionMin / 60) * 64;
+
+                      const totalCol = elementosEnEstaHora.length;
+                      const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
+                      const leftPercent = totalCol > 1 ? `${cIdx * (100 / totalCol)}%` : '0px';
+
+                      return (
+                        <div 
+                          key={cIdx}
+                          draggable={!esFinalizada}
+                          onDragStart={(e) => {
+                            if (esFinalizada) {
+                              e.preventDefault();
+                              return;
+                            }
+                            e.dataTransfer.setData("text/plain", citaKey);
+                          }}
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            abrirModalCita(itemCita); 
+                          }} 
+                          style={{ 
+                            top: `${topPercent}%`, 
+                            height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 42)}px` : `${Math.max((duracionMin / 60) * 100, 42)}%`, 
+                            minHeight: '42px', 
+                            zIndex: itemCita.esBloqueo ? 30 : 40,
+                            width: `calc(${widthPercent} - 2px)`,
+                            left: `calc(${leftPercent} + 1px)`
+                          }}
+                          className={`absolute p-1.5 border transition-all duration-200 shadow-sm flex flex-col justify-between overflow-hidden rounded-lg ${
+                            itemCita.esBloqueo 
+                              ? 'bg-rose-50 text-rose-900 border-rose-200 font-semibold cursor-grab active:cursor-grabbing select-none' 
+                              : esFinalizada
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 font-normal cursor-pointer select-none opacity-70'
+                                : `cursor-grab active:cursor-grabbing hover:shadow-md ${itemCita.color || 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'}`
+                          }`}
+                        >
+                          <div className="flex justify-between items-center pointer-events-none gap-0.5">
+                            <span className="font-bold truncate text-[8px] tracking-tight block">
+                              {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
+                            </span>
+                            <span className="text-[7px] font-mono opacity-70 whitespace-nowrap">{itemCita.hora}</span>
+                          </div>
+
+                          {!itemCita.esBloqueo && (
+                            <div className="flex justify-between items-end pointer-events-none text-[7px] opacity-85 font-medium">
+                              <span className="truncate">{itemCita.servicio}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-blue-200/40 text-[10px] h-full flex items-center justify-center"></div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   </div>
+</div>
 </div>
         )}
 
