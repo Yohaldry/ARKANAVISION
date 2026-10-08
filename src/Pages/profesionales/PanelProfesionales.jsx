@@ -436,7 +436,7 @@ const handleAuth = async (e) => {
           moneda: moneda || 'COP',
           tipoTrabajador: tipoTrabajador || 'independiente',
           porcentajeEmpleado: tipoTrabajador === 'empleado' ? Number(porcentajeEmpleado) || 0 : 100,
-          patrocinador: refInvitador || 'yohaldryquintero1995@gmail.com', // Patrocinador por defecto o capturado por enlace
+          ref: refInvitador || 'yohaldryquintero1995@gmail.com', // Patrocinador por defecto o capturado por enlace
           createdAt: new Date().toISOString()
         });
 
@@ -1964,6 +1964,8 @@ const handleAuth = async (e) => {
                   {renderFieldView("Especialidad", especialidad)}
                   {renderFieldView("Porcentaje (%)", porcentaje !== undefined && porcentaje !== null && porcentaje !== '' ? `${porcentaje}%` : '0%')}
                 </div>
+
+                
 
                 <div className={`p-2.5 rounded-xl border transition-all ${!zonasTrabajo || zonasTrabajo.length === 0 ? 'bg-red-50 border-red-300 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
                   <div className="flex items-center justify-between mb-1">
