@@ -939,33 +939,35 @@ const handleAuth = async (e) => {
   </div>
 
   {/* Contenedor principal del calendario con scroll */}
- <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full select-none rounded-2xl shadow-[0_10px_30px_rgba(37,99,235,0.06)] border border-blue-200 bg-white mb-2 text-slate-900">
-  <div className="bg-white relative w-full text-slate-800 rounded-2xl">
-    {/* Cabecera de días superior fija con fondo sólido */}
-    <div className="grid sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md border-b border-blue-200 text-center text-[10px] font-medium uppercase tracking-wider text-blue-900 shadow-sm" style={{ gridTemplateColumns: `60px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-      <div className="text-left pl-3 py-3 text-blue-600 font-medium text-[9px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50">Hora</div>
-      {diasVisibles.map((d, i) => {
-        const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-        const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
+ <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
+  <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
+    {/* Cabecera superior fija con sombra pronunciada y evidente */}
+    <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
+      <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+        <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
+        {diasVisibles.map((d, i) => {
+          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+          const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
-        return (
-          <div key={i} className="py-2 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
-            <div className={`w-8 h-8 rounded-full flex flex-col items-center justify-center ${
-              esHoy 
-                ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
-                : esSeleccionado 
-                  ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
-                  : 'text-slate-700 hover:bg-blue-100/50'
-            }`}>
-              <span className="text-[11px] font-bold leading-none">{d.num}</span>
-              <span className="text-[7px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
+          return (
+            <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
+              <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
+                esHoy 
+                  ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
+                  : esSeleccionado 
+                    ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
+                    : 'text-slate-700 hover:bg-blue-100/50'
+              }`}>
+                <span className="text-xs font-bold leading-none">{d.num}</span>
+                <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
 
-    <div className="relative" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+    <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
       {dragOverInfo.horaTexto && (
         <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
              style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
@@ -1039,9 +1041,9 @@ const handleAuth = async (e) => {
         };
 
         return (
-          <div key={idx} className="grid items-stretch min-h-[64px] border-b border-blue-100 text-[10px] relative" style={{ gridTemplateColumns: `60px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+          <div key={idx} className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px] relative" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
             {/* Columna de la hora fija a la izquierda */}
-            <div className="border-r border-blue-200 px-1 font-sans text-[9px] font-semibold text-blue-700 flex flex-col items-center justify-start pt-2 text-center sticky left-0 z-30 bg-blue-50/95">
+            <div className="border-r border-blue-200 px-2 font-sans text-[10px] font-semibold text-blue-700 flex flex-col items-center justify-start pt-2 text-center sticky left-0 z-30 bg-blue-50/95 shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">
               <span>{itemHora.label.toLowerCase()}</span>
             </div>
 
@@ -1065,7 +1067,7 @@ const handleAuth = async (e) => {
               return (
                 <div 
                   key={dIdx} 
-                  className={`border-r border-blue-100/60 last:border-r-0 p-0.5 relative flex flex-row gap-0.5 items-stretch overflow-visible transition-colors ${
+                  className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch overflow-visible transition-colors ${
                     dragOverInfo.diaStr === fechaStr ? 'bg-blue-100/50' : 'hover:bg-blue-50/20'
                   }`}
                   onDragOver={(e) => {
@@ -1141,7 +1143,7 @@ const handleAuth = async (e) => {
 
                       const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
                       const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-                      const alturaTotalPixeles = (duracionMin / 60) * 64;
+                      const alturaTotalPixeles = (duracionMin / 60) * 72;
 
                       const totalCol = elementosEnEstaHora.length;
                       const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
@@ -1164,13 +1166,13 @@ const handleAuth = async (e) => {
                           }} 
                           style={{ 
                             top: `${topPercent}%`, 
-                            height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 42)}px` : `${Math.max((duracionMin / 60) * 100, 42)}%`, 
-                            minHeight: '42px', 
+                            height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 46)}px` : `${Math.max((duracionMin / 60) * 100, 46)}%`, 
+                            minHeight: '46px', 
                             zIndex: itemCita.esBloqueo ? 30 : 40,
                             width: `calc(${widthPercent} - 2px)`,
                             left: `calc(${leftPercent} + 1px)`
                           }}
-                          className={`absolute p-1.5 border transition-all duration-200 shadow-sm flex flex-col justify-between overflow-hidden rounded-lg ${
+                          className={`absolute p-2 border transition-all duration-200 shadow-sm flex flex-col justify-between overflow-hidden rounded-lg ${
                             itemCita.esBloqueo 
                               ? 'bg-rose-50 text-rose-900 border-rose-200 font-semibold cursor-grab active:cursor-grabbing select-none' 
                               : esFinalizada
@@ -1178,15 +1180,15 @@ const handleAuth = async (e) => {
                                 : `cursor-grab active:cursor-grabbing hover:shadow-md ${itemCita.color || 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'}`
                           }`}
                         >
-                          <div className="flex justify-between items-center pointer-events-none gap-0.5">
-                            <span className="font-bold truncate text-[8px] tracking-tight block">
+                          <div className="flex justify-between items-center pointer-events-none gap-1">
+                            <span className="font-bold truncate text-[9px] tracking-tight block">
                               {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
                             </span>
-                            <span className="text-[7px] font-mono opacity-70 whitespace-nowrap">{itemCita.hora}</span>
+                            <span className="text-[8px] font-mono opacity-70 whitespace-nowrap">{itemCita.hora}</span>
                           </div>
 
                           {!itemCita.esBloqueo && (
-                            <div className="flex justify-between items-end pointer-events-none text-[7px] opacity-85 font-medium">
+                            <div className="flex justify-between items-end pointer-events-none text-[8px] opacity-85 font-medium">
                               <span className="truncate">{itemCita.servicio}</span>
                             </div>
                           )}
