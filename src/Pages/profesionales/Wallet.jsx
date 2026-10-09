@@ -273,7 +273,15 @@ useEffect(() => {
       const itemConId = { id: docRef.id, ...itemAEnviar };
       
       setServicios([itemConId, ...servicios]);
-      
+      setNuevoServicio({
+        cliente: '',
+        servicio: '',
+        serviciosSeleccionados: [],
+        total: '',
+        fecha: new Date().toISOString().split('T')[0],
+        hora: new Date().toTimeString().slice(0, 5),
+        porcentajeBarberForm: nuevoServicio.porcentajeBarberForm // Mantiene el porcentaje actual del perfil
+      });
       // 1. Cerramos el modal primero
       setModalAgregarOpen(false);
 
@@ -1392,7 +1400,7 @@ useEffect(() => {
             />
           </div>
           <div>
-            <label className="block font-medium text-slate-600 mb-0.5">% Barbero</label>
+            <label className="block font-medium text-slate-600 mb-0.5">% Profesional</label>
             <input
               type="text"
               readOnly

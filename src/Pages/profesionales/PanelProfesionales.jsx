@@ -4,7 +4,7 @@ import {
   Plus, Tag, ArrowRight, AlertTriangle, 
   Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown, FileText, Check
 } from 'lucide-react';
-import { signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where  } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
 import Wallet from './Wallet'
@@ -34,28 +34,13 @@ const zonasBogotaDisponibles = [
 export default function PanelProfesionales() {
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [errorMsgLogin, setErrorMsgLogin] = useState('');
-  const [successMsgLogin, setSuccessMsgLogin] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [nombreRegistro, setNombreRegistro] = useState('');
-const [refInvitador, setRefInvitador] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [dragOverInfo, setDragOverInfo] = useState({ diaStr: null, horaTexto: null, x: 0, y: 0 });
   const [activeTab, setActiveTab] = useState('facturacion');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-const [pais, setPais] = useState('Colombia'); // O el país por defecto que prefieras
-const [tipoTrabajador, setTipoTrabajador] = useState('independiente'); // 'independiente' o 'empleado'
-const [porcentajeEmpleado, setPorcentajeEmpleado] = useState('');
   const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
-const [moneda, setMoneda] = useState('COP');
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
 
   const primerCargaRef = useRef(true);
@@ -69,7 +54,7 @@ const [moneda, setMoneda] = useState('COP');
   const [nuevaHoraFinCita, setNuevaHoraFinCita] = useState('1:00 a. m.');
   const [nuevoMotivoBloqueo, setNuevoMotivoBloqueo] = useState('');
   const [nuevoServicioCita, setNuevoServicioCita] = useState('');
-const [pestanaActiva, setPestanaActiva] = useState('externos');
+  const [pestanaActiva, setPestanaActiva] = useState('externos');
   const [menuAgendaAbierto, setMenuAgendaAbierto] = useState(false);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
   const [modalNuevaCitaAbierto, setModalNuevaCitaAbierto] = useState(false);
@@ -95,15 +80,13 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
     const bloqueoId = bloqueo.id || bloqueo.uid;
     if (!bloqueoId) return;
 
-    // Calculamos la duración exacta que tenía el bloqueo para respetarla
     const minInicio = convertirHoraAMinutos(nuevaHoraInicio, true);
     const minFin = convertirHoraAMinutos(nuevaHoraFin, true);
     let duracionTotal = minFin - minInicio;
-    if (duracionTotal <= 0) duracionTotal += 1440; // Por si cruza la medianoche
+    if (duracionTotal <= 0) duracionTotal += 1440;
 
     const bloqueoRef = doc(db, "citas", bloqueoId);
     
-    // Actualizamos tanto fechaStr como fecha para asegurar que coincida con tu filtro
     const datosActualizados = {
       fechaStr: nuevaFechaStr,
       fecha: nuevaFechaStr,
@@ -114,7 +97,6 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
 
     await updateDoc(bloqueoRef, datosActualizados);
 
-    // Refrescamos el estado local inmediatamente para que se fije en la nueva celda
     setCitasFirestore(prev => 
       prev.map(c => ((c.id || c.uid) === bloqueoId ? { ...c, ...datosActualizados } : c))
     );
@@ -172,7 +154,7 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
         localStorage.clear();
         sessionStorage.clear();
         await signOut(auth);
-        window.location.href = '/panelprofesionales';
+        window.location.href = '/loginprofesionales';
       } catch (error) {
         console.error("Error al cerrar sesión:", error);
         overlay.remove();
@@ -198,7 +180,6 @@ const [pestanaActiva, setPestanaActiva] = useState('externos');
   const [ciudad, setCiudad] = useState('Bogotá D.C.');
   const [especialidad, setEspecialidad] = useState('Fade & Visagismo');
   const [citasFirestore, setCitasFirestore] = useState([]);
-const [transicionVisarka, setTransicionVisarka] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -231,21 +212,6 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
         </div>
       </div>
     );
-  };
-
- 
-
-  const handleLogout = async () => {
-    try {
-      setLoginLoading(false); 
-      setEmail('');           
-      setPassword('');
-      await signOut(auth);    
-      setShowLogoutModal(false); 
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      setShowLogoutModal(false);
-    }
   };
 
   const reproducirSonidoAlerta = () => {
@@ -282,21 +248,6 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
   };
 
   useEffect(() => {
-  const queryParams = new URLSearchParams(window.location.search);
-  const referidoParam = queryParams.get('ref');
-  const registerParam = queryParams.get('register');
-  
-  if (referidoParam) {
-    setRefInvitador(referidoParam);
-  }
-
-  // Esto fuerza a que se abra la pestaña de registro automáticamente
-  if (registerParam === 'true' || referidoParam) {
-    setIsRegistering(true);
-  }
-}, []);
-
-  useEffect(() => {
     const calcTime = () => {
       const now = new Date();
       setCurrentTimeMinutes(Math.max(0, Math.min(100, ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100)));
@@ -324,7 +275,7 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
             setFoto(d.foto || '');
             setTelefono(d.telefono || '');
             setCorreoPerfil(d.correo || user.email || '');
-         setPorcentaje(d.porcentaje !== undefined && d.porcentaje !== null ? d.porcentaje : '');
+            setPorcentaje(d.porcentaje !== undefined && d.porcentaje !== null ? d.porcentaje : '');
             setZonasTrabajo(d.zonasTrabajo || []);
           } else {
             setCorreoPerfil(user.email || '');
@@ -344,7 +295,7 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
           setServiciosFirebase(listaServicios);
         });
 
-       unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
+        unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
           const citasServer = [];
           let idsActuales = citasFirestore.map(c => c.id);
 
@@ -356,7 +307,6 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
             if (coincideId || coincideNombre || !data.barberoId) {
               let horaBD = (data.hora || '').trim();
               
-              // 🚀 Ajuste: Si la hora viene en formato militar o 24h (ej. "22:00"), la convertimos a formato 12h ("10:00 p. m.")
               if (horaBD.includes(':') && !horaBD.toLowerCase().includes('m') && !horaBD.toLowerCase().includes('a')) {
                 const partes = horaBD.split(':');
                 let hNum = parseInt(partes[0], 10);
@@ -386,7 +336,8 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
               if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
               if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-400 font-normal';
               if (estado === 'bloqueado') colorClase = 'bg-rose-100 border-rose-300 text-rose-800 font-bold';
-if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
+              if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
+              
               citasServer.push({
                 ...data,
                 id: docSnap.id, 
@@ -428,49 +379,7 @@ if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 b
     return () => { unsubAuth(); clearTimeout(safety); clearInterval(t); };
   }, []);
 
-const handleAuth = async (e) => {
-    e.preventDefault();
-    if (isRegistering && password !== confirmPassword) return setErrorMsgLogin('Las contraseñas no coinciden.');
-    setLoginLoading(true);
-    setErrorMsgLogin(''); // Limpiamos errores previos
-    
-    try {
-      if (isRegistering) {
-        // 1. Crear el usuario en Firebase Authentication
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        
-        // 2. Guardar TODOS los datos personalizados en Firestore dentro de la colección 'profesionales'
-        await setDoc(doc(db, 'profesionales', cred.user.uid), { 
-          uid: cred.user.uid, 
-          nombre: nombreRegistro || 'Socio', 
-          email: cred.user.email,
-          pais: pais || 'Colombia',
-          moneda: moneda || 'COP',
-          tipoTrabajador: tipoTrabajador || 'independiente',
-          porcentajeEmpleado: tipoTrabajador === 'empleado' ? Number(porcentajeEmpleado) || 0 : 100,
-          ref: refInvitador || 'yohaldryquintero1995@gmail.com', // Patrocinador por defecto o capturado por enlace
-          createdAt: new Date().toISOString()
-        });
-
-      } else { 
-        // Lógica de inicio de sesión normal
-        await signInWithEmailAndPassword(auth, email, password); 
-      }
-      
-      setSuccessMsgLogin('¡Éxito!');
-      setTransicionVisarka(true);
-    } catch (err) { 
-      console.error(err); // Útil para depurar si Firestore rechaza algo
-    setErrorMsgLogin(err.message || 'Verifica tus datos o conexión.');
-      setLoginLoading(false);
-      setTransicionVisarka(false);
-    } finally {
-      // Nos aseguramos de apagar el estado de carga tanto si hay éxito como si hay error
-      setLoginLoading(false); 
-    }
-  };
-
-const [serviciosModalCita, setServiciosModalCita] = useState([]);
+  const [serviciosModalCita, setServiciosModalCita] = useState([]);
 
   const abrirModalCita = (cita) => {
     setCitaSeleccionada(cita);
@@ -479,7 +388,6 @@ const [serviciosModalCita, setServiciosModalCita] = useState([]);
     setNuevaHoraFinCita(cita.horaFin || 'No disponible');
     setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
     
-    // Si la cita ya tiene un array de servicios, lo cargamos; si no, convertimos el servicio individual
     if (cita.servicios && Array.isArray(cita.servicios)) {
       setServiciosModalCita(cita.servicios);
     } else if (cita.servicio) {
@@ -618,7 +526,7 @@ const [serviciosModalCita, setServiciosModalCita] = useState([]);
     }
   };
 
-if (authLoading) return (
+  if (authLoading) return (
     <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 select-none">
       <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-blue-200 shadow-xl flex items-center justify-center p-2.5 mb-4 animate-pulse">
         <img 
@@ -635,250 +543,20 @@ if (authLoading) return (
     </div>
   );
 
-  if (!authUser) {
-    return (
-  <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
-        <div className={`w-full max-w-sm border shadow-xl rounded-2xl p-5 space-y-4 transition-all duration-300 ease-in-out ${
-          isRegistering 
-            ? 'bg-slate-50 border-indigo-100 shadow-indigo-100/50' 
-            : 'bg-white border-slate-200 shadow-slate-200/50'
-        }`}>
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-            <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center font-black text-xs shadow-md transition-colors duration-300 ${
-              isRegistering ? 'bg-indigo-600 shadow-indigo-600/20' : 'bg-slate-900 shadow-slate-900/20'
-            }`}>AV</div>
-            <div>
-              <h3 className="text-xs font-black uppercase text-slate-900 tracking-wider">
-                {isRegistering ? 'Nuevo Registro' : 'Portal Profesionales'}
-              </h3>
-              <p className={`text-[10px] font-mono tracking-widest transition-colors duration-300 ${
-                isRegistering ? 'text-indigo-600' : 'text-slate-500'
-              }`}>Arkana Vision</p>
-            </div>
-          </div>
-
-          {errorMsgLogin && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-[10px] flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMsgLogin}</span>
-            </div>
-          )}
-
-          {successMsgLogin && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-              <span className="font-bold">{successMsgLogin}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleAuth} className="space-y-3">
-            {isRegistering && (
-              <input 
-                type="text" 
-                required 
-                placeholder="Nombre Completo" 
-                value={nombreRegistro} 
-                onChange={e => setNombreRegistro(e.target.value)} 
-                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm" 
-              />
-            )}
-
-            <input 
-              type="email" 
-              required 
-              placeholder="correo@dominio.com" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm" 
-            />
-
-            <div className="space-y-1">
-              <div className="relative">
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  placeholder="Contraseña (mínimo 8 caracteres)" 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-3 pr-9 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm" 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)} 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 cursor-pointer"
-                >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-            </div>
-
-            {isRegistering && (
-              <div className="space-y-1">
-                <div className="relative">
-                  <input 
-                    type={showConfirmPassword ? "text" : "password"} 
-                    required 
-                    placeholder="Confirmar Contraseña" 
-                    value={confirmPassword} 
-                    onChange={e => setConfirmPassword(e.target.value)} 
-                    className="w-full bg-white border rounded-xl py-2 pl-3 pr-9 text-xs text-slate-800 outline-none transition-all placeholder-slate-400 shadow-sm border-slate-200 focus:border-indigo-600" 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 cursor-pointer"
-                  >
-                    {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-          
-            {/* Selector de País y Moneda Automática */}
-{isRegistering && (
-  <div className="space-y-1">
-    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-      País y Moneda
-    </label>
-    <select
-      value={pais}
-      onChange={e => {
-        const paisSeleccionado = e.target.value;
-        setPais(paisSeleccionado);
-        
-        // Asignar moneda automáticamente según el país
-        if (paisSeleccionado === 'Colombia') {
-          setMoneda('COP');
-        } else if (paisSeleccionado === 'Venezuela' || paisSeleccionado === 'Estados Unidos (EE.UU.)') {
-          setMoneda('USD');
-        }
-      }}
-      className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-sm cursor-pointer"
-    >
-      <option value="Colombia">Colombia (COP)</option>
-      <option value="Venezuela">Venezuela (USD)</option>
-      <option value="Estados Unidos (EE.UU.)">Estados Unidos (EE.UU.) (USD)</option>
-    </select>
-  </div>
-)}
-
-            {/* Selección: Independiente o Empleado */}
-            {isRegistering && (
-              <div className="space-y-1.5 pt-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                  Tipo de Trabajador
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTipoTrabajador('independiente')}
-                    className={`py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                      tipoTrabajador === 'independiente'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    Independiente (100%)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipoTrabajador('empleado')}
-                    className={`py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                      tipoTrabajador === 'empleado'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    Empleado
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Campo dinámico de Porcentaje (Solo si es Empleado) */}
-            {isRegistering && tipoTrabajador === 'empleado' && (
-              <div className="space-y-1 animate-in fade-in duration-200">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                  Porcentaje de Comisión / Ganancia (%)
-                </label>
-                <input 
-                  type="number" 
-                  min="0"
-                  max="100"
-                  required 
-                  placeholder="Ej. 50" 
-                  value={porcentajeEmpleado} 
-                  onChange={e => setPorcentajeEmpleado(e.target.value)} 
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 outline-none focus:border-indigo-600 transition-all placeholder-slate-400 shadow-sm font-bold text-indigo-600" 
-                />
-              </div>
-            )}
-
-            {/* Campo del Patrocinador / Referido */}
-            {isRegistering && (
-              <div className="space-y-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                  Patrocinador (Invitado por)
-                </label>
-                <input 
-                  type="email" 
-                  value={refInvitador || "yohaldryquintero1995@gmail.com"} 
-                  disabled={Boolean(new URLSearchParams(window.location.search).get('ref'))}
-                  onChange={e => setRefInvitador(e.target.value)}
-                  placeholder="yohaldryquintero1995@gmail.com"
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-600 outline-none cursor-not-allowed shadow-sm disabled:bg-slate-100 disabled:text-slate-500" 
-                />
-                <p className="text-[9px] text-slate-400 ml-1">
-                  {new URLSearchParams(window.location.search).get('ref')
-                    ? '* Vinculado automáticamente a la red de tu patrocinador.'
-                    : '* Se asignará por defecto si se deja libre.'}
-                </p>
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              disabled={loginLoading} 
-              className={`w-full font-black py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all ${
-                isRegistering 
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20' 
-                  : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20'
-              }`}
-            >
-              {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{isRegistering ? 'Registrarse' : 'Acceder'} <ArrowRight className="w-4 h-4" /></>}
-            </button>
-          </form>
-
-          <button 
-            type="button" 
-            onClick={() => { setIsRegistering(!isRegistering); setErrorMsgLogin(''); setSuccessMsgLogin(''); }} 
-            className="w-full text-center text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer pt-1"
-          >
-            {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const diasVisibles = getDiasVisibles();
-  const linkReserva = `${window.location.origin}/reservar/${authUser.uid}`;
+  const linkReserva = `${window.location.origin}/reservar/${authUser?.uid}`;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-mono flex flex-col justify-between pb-36 relative select-none">
-
-  
-      
       <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2">
-    <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-blue-200 flex items-center justify-center shadow-sm p-1">
-  <img 
-    src="https://res.cloudinary.com/dtkirmtfq/image/upload/v1791241981/Visarka/mxmsobksbvrii384mlja.png" 
-    alt="Logo ARKANAVISION" 
-    className="w-full h-full object-contain"
-  />
-</div>
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-blue-200 flex items-center justify-center shadow-sm p-1">
+            <img 
+              src="https://res.cloudinary.com/dtkirmtfq/image/upload/v1791241981/Visarka/mxmsobksbvrii384mlja.png" 
+              alt="Logo ARKANAVISION" 
+              className="w-full h-full object-contain"
+            />
+          </div>
           <div className="flex flex-col">
             <span className="text-[11px] font-black uppercase text-slate-900">Hola, {nombre.split(' ')[0]}</span>
             <span className="text-[8px] text-slate-400 font-bold">VISARKA • {ciudad} • {especialidad}</span>
@@ -893,362 +571,351 @@ if (authLoading) return (
 
         {activeTab === 'agenda' && (
           <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
-  
-  {/* Cabecera con relieve y tonos azul eléctrico */}
-  <div className="shrink-0 space-y-1.5">
-    <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
-          <input 
-            type="date" 
-            value={fechaSeleccionada.toISOString().split('T')[0]} 
-            onChange={(e) => {
-              if (e.target.value) {
-                setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
-              }
-            }}
-            className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
-          />
-        </div>
+            <div className="shrink-0 space-y-1.5">
+              <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
+                    <input 
+                      type="date" 
+                      value={fechaSeleccionada.toISOString().split('T')[0]} 
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
+                        }
+                      }}
+                      className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
+                    />
+                  </div>
 
-        <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-          <button 
-            type="button"
-            onClick={() => setVistaCalendario('diario')}
-            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-          >
-            1 Día
-          </button>
-          <button 
-            type="button"
-            onClick={() => setVistaCalendario('3dias')}
-            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-          >
-            3 Días
-          </button>
-          <button 
-            type="button"
-            onClick={() => setVistaCalendario('semanal')}
-            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-          >
-            7 Días
-          </button>
-        </div>
-      </div>
-    </div>
+                  <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+                    <button 
+                      type="button"
+                      onClick={() => setVistaCalendario('diario')}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                    >
+                      1 Día
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setVistaCalendario('3dias')}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                    >
+                      3 Días
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setVistaCalendario('semanal')}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                    >
+                      7 Días
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-    <div className="relative flex justify-end items-center gap-2">
-      <button
-        type="button"
-        onClick={() => setFechaSeleccionada(new Date())}
-        className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
-      >
-        📍 Hoy
-      </button>
+              <div className="relative flex justify-end items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFechaSeleccionada(new Date())}
+                  className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
+                >
+                  📍 Hoy
+                </button>
 
-      <button 
-        onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
-        className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
-      >
-        <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
-      </button>
+                <button 
+                  onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
+                  className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
+                </button>
 
-      {menuAgendaAbierto && (
-        <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
-          <button 
-            onClick={() => {
-              setMenuAgendaAbierto(false);
-              setModalNuevaCitaAbierto(true);
-            }}
-            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            ✨ Cita nueva
-          </button>
-          <button 
-            onClick={() => {
-              setMenuAgendaAbierto(false);
-              setModalBloqueoAbierto(true);
-            }}
-            className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
-          >
-            🚫 Horario no disponible
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {/* Contenedor principal del calendario con scroll */}
- <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
-  <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
-    {/* Cabecera superior fija con sombra pronunciada y evidente */}
-    <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
-      <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-        <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
-        {diasVisibles.map((d, i) => {
-          const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-          const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
-
-          return (
-            <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
-              <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
-                esHoy 
-                  ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
-                  : esSeleccionado 
-                    ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
-                    : 'text-slate-700 hover:bg-blue-100/50'
-              }`}>
-                <span className="text-xs font-bold leading-none">{d.num}</span>
-                <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
+                {menuAgendaAbierto && (
+                  <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
+                    <button 
+                      onClick={() => {
+                        setMenuAgendaAbierto(false);
+                        setModalNuevaCitaAbierto(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      ✨ Cita nueva
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setMenuAgendaAbierto(false);
+                        setModalBloqueoAbierto(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
+                    >
+                      🚫 Horario no disponible
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
 
-    <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
-      {dragOverInfo.horaTexto && (
-        <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
-             style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
-          📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
-        </div>
-      )}
+            <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
+              <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
+                <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
+                  <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+                    <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
+                    {diasVisibles.map((d, i) => {
+                      const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+                      const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
-      {/* Línea de hora actual */}
-      {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
-        <div 
-          className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
-          style={{ 
-            top: `${currentTimeMinutes}%`,
-            left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
-            width: `${100 / (diasVisibles.length + 1)}%`
-          }}
-        >
-          <div className="px-1.5 bg-rose-500 text-white text-[8px] font-black tracking-tighter text-center py-0.5 rounded-full shadow-md border border-rose-300">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
-          </div>
-          <div className="flex-1 border-t-2 border-rose-500 shadow-sm"></div>
-        </div>
-      )}
+                      return (
+                        <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
+                          <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
+                            esHoy 
+                              ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
+                              : esSeleccionado 
+                                ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
+                                : 'text-slate-700 hover:bg-blue-100/50'
+                          }`}>
+                            <span className="text-xs font-bold leading-none">{d.num}</span>
+                            <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-      {horasCalendario.map((itemHora, idx) => {
-        const [fH, fM] = itemHora.val24.split(':').map(Number);
-        const minutosFilaInicio = fH * 60 + fM;
-        const minutosFilaFin = minutosFilaInicio + 60;
+                <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+                  {dragOverInfo.horaTexto && (
+                    <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
+                         style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
+                      📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
+                    </div>
+                  )}
 
-        const esHorarioLaboral = fH >= 9 && fH <= 21;
+                  {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
+                    <div 
+                      className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
+                      style={{ 
+                        top: `${currentTimeMinutes}%`,
+                        left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
+                        width: `${100 / (diasVisibles.length + 1)}%`
+                      }}
+                    >
+                      <div className="px-1.5 bg-rose-500 text-white text-[8px] font-black tracking-tighter text-center py-0.5 rounded-full shadow-md border border-rose-300">
+                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
+                      </div>
+                      <div className="flex-1 border-t-2 border-rose-500 shadow-sm"></div>
+                    </div>
+                  )}
 
-     const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
-          if (!horaStr) return 0;
-          let clean = horaStr.toString().toUpperCase().trim();
-          
-          let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
-          let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
+                  {horasCalendario.map((itemHora, idx) => {
+                    const [fH, fM] = itemHora.val24.split(':').map(Number);
+                    const minutosFilaInicio = fH * 60 + fM;
+                    const minutosFilaFin = minutosFilaInicio + 60;
 
-          let timePart = clean.replace(/[^0-9:]/g, '').trim();
-          let parts = timePart.split(':');
-          let hours = parseInt(parts[0], 10) || 0;
-          let minutes = parseInt(parts[1], 10) || 0;
-          
-          // Si viene en formato militar o 24 horas (ej. "22:00") o texto plano sin AM/PM
-          if (!isPM && !isAM) {
-            if (hours >= 13 && hours <= 23) {
-              isPM = true; // Ya está en formato 24h correcto
-            } else if (hours >= 1 && hours <= 7 && !clean.includes('AM')) {
-              // Si guardaron "10:00" pensando en la noche o formato ambiguo, lo pasamos a PM si corresponde
-              // Pero si el usuario eligió explícitamente 10:00 PM:
-              hours += 12; 
-            }
-          }
-
-          if (isPM && hours < 12) {
-            hours += 12;
-          } else if (isAM && hours === 12) {
-            hours = 0;
-          }
-          
-          return hours * 60 + minutes;
-        };
-
-        const minutosAHoraTexto = (totalMinutos) => {
-          const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
-          const h24 = Math.floor(minutosNorm / 60);
-          const min = minutosNorm % 60;
-          const ampm = h24 >= 12 ? 'p. m.' : 'a. m.';
-          const h12 = h24 % 12 || 12;
-          return `${h12}:${String(min).padStart(2, '0')} ${ampm}`;
-        };
-
-        return (
-          <div key={idx} className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px] relative" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-            {/* Columna de la hora fija a la izquierda */}
-            <div className="border-r border-blue-200 px-2 font-sans text-[10px] font-semibold text-blue-700 flex flex-col items-center justify-start pt-2 text-center sticky left-0 z-30 bg-blue-50/95 shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">
-              <span>{itemHora.label.toLowerCase()}</span>
-            </div>
-
-            {diasVisibles.map((dia, dIdx) => {
-              const fechaStr = dia.fechaObj.toISOString().split('T')[0];
-
-              const citasEnEstaHora = citasFirestore.filter(c => {
-                if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
-                const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
-                return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
-              });
-
-              const bloqueosEnEstaHora = citasFirestore.filter(c => {
-                if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
-                const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
-                return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
-              });
-
-              const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
-
-              return (
-                <div 
-                  key={dIdx} 
-                  className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch overflow-visible transition-colors ${
-                    dragOverInfo.diaStr === fechaStr ? 'bg-blue-100/50' : 'hover:bg-blue-50/20'
-                  }`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const offsetY = e.clientY - rect.top;
-                    const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                    const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                    const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                    const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
-
-                    setDragOverInfo({
-                      diaStr: fechaStr,
-                      horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
-                      y: e.clientY
-                    });
-                  }}
-                  onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
-                    const citaId = e.dataTransfer.getData("text/plain");
-                    if (!citaId) return;
-                    const elementoArrastrado = citasFirestore.find(c => (c.id || c.uid) === citaId);
-                    if (!elementoArrastrado) return;
-
-                    if (!elementoArrastrado.esBloqueo) {
-                      const estadoCita = (elementoArrastrado.estado || '').toLowerCase();
-                      if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
-                    }
-
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const offsetY = e.clientY - rect.top;
-                    const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                    const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                    const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                    const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
-                    
-                    if (elementoArrastrado.esBloqueo && elementoArrastrado.horaFin) {
-                      const minInicioAntiguo = convertirHoraAMinutos(elementoArrastrado.hora, true);
-                      const minFinAntiguo = convertirHoraAMinutos(elementoArrastrado.horaFin, true);
-                      let duracionBloqueo = minFinAntiguo - minInicioAntiguo;
-                      if (duracionBloqueo < 0) duracionBloqueo += 1440;
-
-                      const nuevoMinFin = totalMinutosNuevos + duracionBloqueo;
-                      const nuevaHoraFinFormateada = minutosAHoraTexto(nuevoMinFin);
-
-                      actualizarBloqueoArrastrado(elementoArrastrado, fechaStr, nuevaHoraFormateada, nuevaHoraFinFormateada);
-                    } else {
-                      actualizarCitaArrastrada(elementoArrastrado, fechaStr, nuevaHoraFormateada);
-                    }
-                  }}
-                >
-                  {elementosEnEstaHora.length > 0 ? (
-                    elementosEnEstaHora.map((itemCita, cIdx) => {
-                      const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
-                      const citaKey = itemCita.id || itemCita.uid;
+                    const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
+                      if (!horaStr) return 0;
+                      let clean = horaStr.toString().toUpperCase().trim();
                       
-                      const estadoCita = (itemCita.estado || '').toLowerCase();
-                      const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
+                      let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
+                      let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
 
-                      let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-                      if (itemCita.esBloqueo && itemCita.horaFin) {
-                        const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
-                        if (minFin > minutosItemInicio) {
-                          duracionMin = minFin - minutosItemInicio;
-                        } else if (minFin < minutosItemInicio) {
-                          duracionMin = (1440 - minutosItemInicio) + minFin;
+                      let timePart = clean.replace(/[^0-9:]/g, '').trim();
+                      let parts = timePart.split(':');
+                      let hours = parseInt(parts[0], 10) || 0;
+                      let minutes = parseInt(parts[1], 10) || 0;
+                      
+                      if (!isPM && !isAM) {
+                        if (hours >= 13 && hours <= 23) {
+                          isPM = true;
+                        } else if (hours >= 1 && hours <= 7 && !clean.includes('AM')) {
+                          hours += 12; 
                         }
                       }
 
-                      const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-                      const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-                      const alturaTotalPixeles = (duracionMin / 60) * 72;
+                      if (isPM && hours < 12) {
+                        hours += 12;
+                      } else if (isAM && hours === 12) {
+                        hours = 0;
+                      }
+                      
+                      return hours * 60 + minutes;
+                    };
 
-                      const totalCol = elementosEnEstaHora.length;
-                      const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
-                      const leftPercent = totalCol > 1 ? `${cIdx * (100 / totalCol)}%` : '0px';
+                    const minutosAHoraTexto = (totalMinutos) => {
+                      const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
+                      const h24 = Math.floor(minutosNorm / 60);
+                      const min = minutosNorm % 60;
+                      const ampm = h24 >= 12 ? 'p. m.' : 'a. m.';
+                      const h12 = h24 % 12 || 12;
+                      return `${h12}:${String(min).padStart(2, '0')} ${ampm}`;
+                    };
 
-                      return (
-                        <div 
-                          key={cIdx}
-                          draggable={!esFinalizada}
-                          onDragStart={(e) => {
-                            if (esFinalizada) {
-                              e.preventDefault();
-                              return;
-                            }
-                            e.dataTransfer.setData("text/plain", citaKey);
-                          }}
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            abrirModalCita(itemCita); 
-                          }} 
-                          style={{ 
-                            top: `${topPercent}%`, 
-                            height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 46)}px` : `${Math.max((duracionMin / 60) * 100, 46)}%`, 
-                            minHeight: '46px', 
-                            zIndex: itemCita.esBloqueo ? 30 : 40,
-                            width: `calc(${widthPercent} - 2px)`,
-                            left: `calc(${leftPercent} + 1px)`
-                          }}
-                          className={`absolute p-2 border transition-all duration-200 shadow-sm flex flex-col justify-between overflow-hidden rounded-lg ${
-                            itemCita.esBloqueo 
-                              ? 'bg-rose-50 text-rose-900 border-rose-200 font-semibold cursor-grab active:cursor-grabbing select-none' 
-                              : esFinalizada
-                                ? 'bg-slate-100 text-slate-400 border-slate-200 font-normal cursor-pointer select-none opacity-70'
-                                : `cursor-grab active:cursor-grabbing hover:shadow-md ${itemCita.color || 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'}`
-                          }`}
-                        >
-                          <div className="flex justify-between items-center pointer-events-none gap-1">
-                            <span className="font-bold truncate text-[9px] tracking-tight block">
-                              {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
-                            </span>
-                            <span className="text-[8px] font-mono opacity-70 whitespace-nowrap">{itemCita.hora}</span>
-                          </div>
-
-                          {!itemCita.esBloqueo && (
-                            <div className="flex justify-between items-end pointer-events-none text-[8px] opacity-85 font-medium">
-                              <span className="truncate">{itemCita.servicio}</span>
-                            </div>
-                          )}
+                    return (
+                      <div key={idx} className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px] relative" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+                        <div className="border-r border-blue-200 px-2 font-sans text-[10px] font-semibold text-blue-700 flex flex-col items-center justify-start pt-2 text-center sticky left-0 z-30 bg-blue-50/95 shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">
+                          <span>{itemHora.label.toLowerCase()}</span>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center text-blue-200/40 text-[10px] h-full flex items-center justify-center"></div>
-                  )}
+
+                        {diasVisibles.map((dia, dIdx) => {
+                          const fechaStr = dia.fechaObj.toISOString().split('T')[0];
+
+                          const citasEnEstaHora = citasFirestore.filter(c => {
+                            if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
+                            const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
+                            return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
+                          });
+
+                          const bloqueosEnEstaHora = citasFirestore.filter(c => {
+                            if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
+                            const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
+                            return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
+                          });
+
+                          const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
+
+                          return (
+                            <div 
+                              key={dIdx} 
+                              className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch overflow-visible transition-colors ${
+                                dragOverInfo.diaStr === fechaStr ? 'bg-blue-100/50' : 'hover:bg-blue-50/20'
+                              }`}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const offsetY = e.clientY - rect.top;
+                                const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                                const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                                const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                                const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
+
+                                setDragOverInfo({
+                                  diaStr: fechaStr,
+                                  horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
+                                  y: e.clientY
+                                });
+                              }}
+                              onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
+                                const citaId = e.dataTransfer.getData("text/plain");
+                                if (!citaId) return;
+                                const elementoArrastrado = citasFirestore.find(c => (c.id || c.uid) === citaId);
+                                if (!elementoArrastrado) return;
+
+                                if (!elementoArrastrado.esBloqueo) {
+                                  const estadoCita = (elementoArrastrado.estado || '').toLowerCase();
+                                  if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
+                                }
+
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const offsetY = e.clientY - rect.top;
+                                const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
+                                const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
+                                const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
+
+                                const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
+                                
+                                if (elementoArrastrado.esBloqueo && elementoArrastrado.horaFin) {
+                                  const minInicioAntiguo = convertirHoraAMinutos(elementoArrastrado.hora, true);
+                                  const minFinAntiguo = convertirHoraAMinutos(elementoArrastrado.horaFin, true);
+                                  let duracionBloqueo = minFinAntiguo - minInicioAntiguo;
+                                  if (duracionBloqueo < 0) duracionBloqueo += 1440;
+
+                                  const nuevoMinFin = totalMinutosNuevos + duracionBloqueo;
+                                  const nuevaHoraFinFormateada = minutosAHoraTexto(nuevoMinFin);
+
+                                  actualizarBloqueoArrastrado(elementoArrastrado, fechaStr, nuevaHoraFormateada, nuevaHoraFinFormateada);
+                                } else {
+                                  actualizarCitaArrastrada(elementoArrastrado, fechaStr, nuevaHoraFormateada);
+                                }
+                              }}
+                            >
+                              {elementosEnEstaHora.length > 0 ? (
+                                elementosEnEstaHora.map((itemCita, cIdx) => {
+                                  const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
+                                  const citaKey = itemCita.id || itemCita.uid;
+                                  
+                                  const estadoCita = (itemCita.estado || '').toLowerCase();
+                                  const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
+
+                                  let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+                                  if (itemCita.esBloqueo && itemCita.horaFin) {
+                                    const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
+                                    if (minFin > minutosItemInicio) {
+                                      duracionMin = minFin - minutosItemInicio;
+                                    } else if (minFin < minutosItemInicio) {
+                                      duracionMin = (1440 - minutosItemInicio) + minFin;
+                                    }
+                                  }
+
+                                  const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+                                  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                                  const alturaTotalPixeles = (duracionMin / 60) * 72;
+
+                                  const totalCol = elementosEnEstaHora.length;
+                                  const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
+                                  const leftPercent = totalCol > 1 ? `${cIdx * (100 / totalCol)}%` : '0px';
+
+                                  return (
+                                    <div 
+                                      key={cIdx}
+                                      draggable={!esFinalizada}
+                                      onDragStart={(e) => {
+                                        if (esFinalizada) {
+                                          e.preventDefault();
+                                          return;
+                                        }
+                                        e.dataTransfer.setData("text/plain", citaKey);
+                                      }}
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        abrirModalCita(itemCita); 
+                                      }} 
+                                      style={{ 
+                                        top: `${topPercent}%`, 
+                                        height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 46)}px` : `${Math.max((duracionMin / 60) * 100, 46)}%`, 
+                                        minHeight: '46px', 
+                                        zIndex: itemCita.esBloqueo ? 30 : 40,
+                                        width: `calc(${widthPercent} - 2px)`,
+                                        left: `calc(${leftPercent} + 1px)`
+                                      }}
+                                      className={`absolute p-2 border transition-all duration-200 shadow-sm flex flex-col justify-between overflow-hidden rounded-lg ${
+                                        itemCita.esBloqueo 
+                                          ? 'bg-rose-50 text-rose-900 border-rose-200 font-semibold cursor-grab active:cursor-grabbing select-none' 
+                                          : esFinalizada
+                                            ? 'bg-slate-100 text-slate-400 border-slate-200 font-normal cursor-pointer select-none opacity-70'
+                                            : `cursor-grab active:cursor-grabbing hover:shadow-md ${itemCita.color || 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'}`
+                                      }`}
+                                    >
+                                      <div className="flex justify-between items-center pointer-events-none gap-1">
+                                        <span className="font-bold truncate text-[9px] tracking-tight block">
+                                          {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
+                                        </span>
+                                        <span className="text-[8px] font-mono opacity-70 whitespace-nowrap">{itemCita.hora}</span>
+                                      </div>
+
+                                      {!itemCita.esBloqueo && (
+                                        <div className="flex justify-between items-end pointer-events-none text-[8px] opacity-85 font-medium">
+                                          <span className="truncate">{itemCita.servicio}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-center text-blue-200/40 text-[10px] h-full flex items-center justify-center"></div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            </div>
           </div>
-        );
-      })}
-    </div>
-  </div>
-</div>
-</div>
         )}
 
         {modalBloqueoAbierto && (
@@ -1569,327 +1236,322 @@ if (authLoading) return (
         )}
 
         {activeTab === 'servicios' && (
+          <div className="space-y-3 bg-white p-4 rounded-2xl shadow-sm text-slate-800">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
+                <p className="text-[9px] text-slate-500">Configura los servicios y paquetes que ofreces a tus clientes</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setServicioEditando(null);
+                    setFormServicio({ 
+                      nombre: '', 
+                      descripcion: '', 
+                      precio: '', 
+                      duracion: pestanaActiva === 'internos' ? 'interno' : '45 min', 
+                      categoria: 'servicio', 
+                      color: pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9' 
+                    });
+                    setShowServicioModal(true);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition shadow-sm ${
+                    pestanaActiva === 'internos'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border border-emerald-600/30 shadow-emerald-500/20'
+                      : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white border border-sky-600/30 shadow-sky-500/20'
+                  }`}
+                >
+                  <Plus className="w-3 h-3 text-white" /> Servicio
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setServicioEditando(null);
+                    setFormServicio({ 
+                      nombre: '', 
+                      descripcion: '', 
+                      precio: '', 
+                      duracion: pestanaActiva === 'internos' ? 'interno' : '60 min', 
+                      categoria: 'paquete', 
+                      color: pestanaActiva === 'internos' ? '#059669' : '#3b82f6' 
+                    });
+                    setShowServicioModal(true);
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                >
+                  <Plus className="w-3 h-3 text-slate-600" /> Paquete
+                </button>
+              </div>
+            </div>
 
-<div className="space-y-3 bg-white p-4 rounded-2xl shadow-sm text-slate-800">
-    {/* Cabecera y Botones de Nuevo Servicio/Paquete */}
-    <div className="flex justify-between items-center">
-      <div>
-        <h3 className="text-xs font-black uppercase text-slate-900">Mis Servicios y Paquetes</h3>
-        <p className="text-[9px] text-slate-500">Configura los servicios y paquetes que ofreces a tus clientes</p>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <button 
-          type="button"
-          onClick={() => {
-            setServicioEditando(null);
-            setFormServicio({ 
-              nombre: '', 
-              descripcion: '', 
-              precio: '', 
-              duracion: pestanaActiva === 'internos' ? 'interno' : '45 min', 
-              categoria: 'servicio', 
-              color: pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9' 
-            });
-            setShowServicioModal(true);
-          }}
-          className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition shadow-sm ${
-            pestanaActiva === 'internos'
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border border-emerald-600/30 shadow-emerald-500/20'
-              : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white border border-sky-600/30 shadow-sky-500/20'
-          }`}
-        >
-          <Plus className="w-3 h-3 text-white" /> Servicio
-        </button>
-        <button 
-          type="button"
-          onClick={() => {
-            setServicioEditando(null);
-            setFormServicio({ 
-              nombre: '', 
-              descripcion: '', 
-              precio: '', 
-              duracion: pestanaActiva === 'internos' ? 'interno' : '60 min', 
-              categoria: 'paquete', 
-              color: pestanaActiva === 'internos' ? '#059669' : '#3b82f6' 
-            });
-            setShowServicioModal(true);
-          }}
-          className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
-        >
-          <Plus className="w-3 h-3 text-slate-600" /> Paquete
-        </button>
-      </div>
-    </div>
+            <div className="flex border-b border-slate-200 gap-4">
+              <button
+                type="button"
+                onClick={() => setPestanaActiva('externos')}
+                className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
+                  pestanaActiva === 'externos' 
+                    ? 'border-sky-500 text-sky-600' 
+                    : 'border-transparent text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                Servicios Externos
+              </button>
+              <button
+                type="button"
+                onClick={() => setPestanaActiva('internos')}
+                className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
+                  pestanaActiva === 'internos' 
+                    ? 'border-emerald-500 text-emerald-600' 
+                    : 'border-transparent text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                Servicios Internos
+              </button>
+            </div>
 
-    {/* Selector de Pestañas: Servicios Externos vs Servicios Internos */}
-    <div className="flex border-b border-slate-200 gap-4">
-      <button
-        type="button"
-        onClick={() => setPestanaActiva('externos')}
-        className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
-          pestanaActiva === 'externos' 
-            ? 'border-sky-500 text-sky-600' 
-            : 'border-transparent text-slate-400 hover:text-slate-700'
-        }`}
-      >
-        Servicios Externos
-      </button>
-      <button
-        type="button"
-        onClick={() => setPestanaActiva('internos')}
-        className={`pb-2 text-[10px] font-bold uppercase border-b-2 cursor-pointer transition-colors ${
-          pestanaActiva === 'internos' 
-            ? 'border-emerald-500 text-emerald-600' 
-            : 'border-transparent text-slate-400 hover:text-slate-700'
-        }`}
-      >
-        Servicios Internos
-      </button>
-    </div>
+            <div className="space-y-2">
+              {serviciosFirebase.filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno').length === 0 ? (
+                <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center text-slate-500 text-[10px]">
+                  {pestanaActiva === 'internos' 
+                    ? 'No tienes servicios internos creados.' 
+                    : 'No tienes servicios externos creados.'}
+                </div>
+              ) : (
+                serviciosFirebase
+                  .filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno')
+                  .map(serv => {
+                    const esPaquete = serv.categoria === 'paquete';
+                    const esInterno = pestanaActiva === 'internos';
+                    const colorServicio = serv.color || (esPaquete ? (esInterno ? '#059669' : '#3b82f6') : (esInterno ? '#10b981' : '#0ea5e9'));
 
-    {/* Listado filtrado según la pestaña activa */}
-    <div className="space-y-2">
-      {serviciosFirebase.filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno').length === 0 ? (
-        <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center text-slate-500 text-[10px]">
-          {pestanaActiva === 'internos' 
-            ? 'No tienes servicios internos creados.' 
-            : 'No tienes servicios externos creados.'}
-        </div>
-      ) : (
-        serviciosFirebase
-          .filter(serv => pestanaActiva === 'internos' ? serv.duracion === 'interno' : serv.duracion !== 'interno')
-          .map(serv => {
-            const esPaquete = serv.categoria === 'paquete';
-            const esInterno = pestanaActiva === 'internos';
-            const colorServicio = serv.color || (esPaquete ? (esInterno ? '#059669' : '#3b82f6') : (esInterno ? '#10b981' : '#0ea5e9'));
+                    return (
+                      <div key={serv.id} className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3 relative overflow-hidden">
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${esInterno ? 'bg-gradient-to-b from-emerald-400 to-teal-600' : 'bg-gradient-to-b from-sky-400 to-blue-600'}`} />
+                        
+                        <div className="flex items-start gap-2.5 pl-1">
+                          <div 
+                            className="w-3 h-3 rounded-full mt-1 shrink-0 border border-slate-300 shadow-xs" 
+                            style={{ backgroundColor: colorServicio }} 
+                            title={`Color: ${colorServicio}`}
+                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${
+                                esInterno 
+                                  ? (esPaquete ? 'bg-teal-50 border-teal-200 text-teal-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600')
+                                  : (esPaquete ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-sky-50 border-sky-200 text-sky-600')
+                              }`}>
+                                {esPaquete ? 'Paquete' : 'Servicio'}
+                              </span>
+                              <p className="text-[11px] font-bold text-slate-800">{serv.nombre}</p>
+                              {pestanaActiva !== 'internos' && (
+                                <span className="text-[8px] bg-slate-200/70 border border-slate-300 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                              )}
+                            </div>
+                            <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
+                          </div>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                          <p className={`text-[11px] font-bold bg-gradient-to-r bg-clip-text text-transparent ${esInterno ? 'from-emerald-600 to-teal-600' : 'from-sky-600 to-blue-600'}`}>{serv.precio}</p>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setServicioEditando(serv);
+                                setFormServicio({ 
+                                  nombre: serv.nombre, 
+                                  descripcion: serv.descripcion || '', 
+                                  precio: serv.precio, 
+                                  duracion: pestanaActiva === 'internos' ? 'interno' : (serv.duracion || '45 min'),
+                                  categoria: serv.categoria || 'servicio',
+                                  color: serv.color || (serv.categoria === 'paquete' ? (esInterno ? '#059669' : '#3b82f6') : (esInterno ? '#10b981' : '#0ea5e9'))
+                                });
+                                setShowServicioModal(true);
+                              }}
+                              className={`p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 cursor-pointer transition-colors shadow-xs ${
+                                esInterno ? 'hover:bg-emerald-50 hover:text-emerald-600' : 'hover:bg-sky-50 hover:text-sky-600'
+                              }`}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => eliminarServicioFirestore(serv.id)}
+                              className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 cursor-pointer transition-colors shadow-xs"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
 
-            return (
-              <div key={serv.id} className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl flex justify-between items-start shadow-xs gap-3 relative overflow-hidden">
-                {/* Acento degradado lateral sutil */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${esInterno ? 'bg-gradient-to-b from-emerald-400 to-teal-600' : 'bg-gradient-to-b from-sky-400 to-blue-600'}`} />
-                
-                <div className="flex items-start gap-2.5 pl-1">
-                  <div 
-                    className="w-3 h-3 rounded-full mt-1 shrink-0 border border-slate-300 shadow-xs" 
-                    style={{ backgroundColor: colorServicio }} 
-                    title={`Color: ${colorServicio}`}
-                  />
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase border ${
-                        esInterno 
-                          ? (esPaquete ? 'bg-teal-50 border-teal-200 text-teal-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600')
-                          : (esPaquete ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-sky-50 border-sky-200 text-sky-600')
-                      }`}>
-                        {esPaquete ? 'Paquete' : 'Servicio'}
-                      </span>
-                      <p className="text-[11px] font-bold text-slate-800">{serv.nombre}</p>
+            {showServicioModal && (
+              <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95 text-slate-800">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full inline-block ${pestanaActiva === 'internos' ? 'bg-emerald-500' : 'bg-sky-500'}`}></span>
+                      {servicioEditando ? '✏️ EDITAR SERVICIO / PAQUETE' : '✨ NUEVO SERVICIO O PAQUETE'}
+                    </h3>
+                    <button 
+                      type="button"
+                      onClick={() => setShowServicioModal(false)} 
+                      className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 cursor-pointer transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={(e) => {
+                    if (pestanaActiva === 'internos') {
+                      e.preventDefault();
+                      const formFinal = { ...formServicio, duracion: 'interno' };
+                    }
+                    handleGuardarServicio(e);
+                  }} className="space-y-3 text-[10px]">
+                    
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-500 uppercase text-[9px]">Tipo</label>
+                      <select 
+                        value={formServicio.categoria} 
+                        onChange={e => setFormServicio({...formServicio, categoria: e.target.value})}
+                        className={`w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-800 outline-none font-medium uppercase ${
+                          pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                        }`}
+                      >
+                        <option value="servicio">SERVICIO</option>
+                        <option value="paquete">PAQUETE</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="EJ: CORTE FADE + BARBA VIP" 
+                        value={formServicio.nombre} 
+                        onChange={e => setFormServicio({...formServicio, nombre: e.target.value.toUpperCase()})}
+                        className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none uppercase ${
+                          pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                        }`} 
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción</label>
+                      <textarea 
+                        rows="2" 
+                        placeholder="DETALLES DE LO QUE INCLUYE..." 
+                        value={formServicio.descripcion} 
+                        onChange={e => setFormServicio({...formServicio, descripcion: e.target.value.toUpperCase()})}
+                        className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none resize-none uppercase ${
+                          pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                        }`} 
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-500 uppercase text-[9px]">Color del Servicio</label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                          <input 
+                            type="color" 
+                            value={formServicio.color || (pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9')} 
+                            onChange={e => setFormServicio({...formServicio, color: e.target.value})}
+                            className="w-7 h-6 rounded border-0 bg-transparent cursor-pointer outline-none"
+                          />
+                          <span className="ml-2 text-xs font-mono uppercase text-slate-600">
+                            {formServicio.color || (pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                        {(pestanaActiva === 'internos' 
+                          ? ['#10b981', '#34d399', '#059669', '#0d9488', '#14b8a6', '#22c55e', '#84cc16', '#6366f1', '#ec4899', '#64748b']
+                          : ['#0ea5e9', '#38bdf8', '#3b82f6', '#6366f1', '#06b6d4', '#10b981', '#8b5cf6', '#ec4899', '#f43f5e', '#64748b']
+                        ).map((colorHex) => (
+                          <button
+                            key={colorHex}
+                            type="button"
+                            onClick={() => setFormServicio({ ...formServicio, color: colorHex })}
+                            className="w-5 h-5 rounded-full border border-slate-300 hover:scale-110 transition-transform cursor-pointer shadow-xs"
+                            style={{ backgroundColor: colorHex }}
+                            title={colorHex}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={pestanaActiva === 'internos' ? "space-y-1" : "grid grid-cols-2 gap-2"}>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-500 uppercase text-[9px]">Precio *</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="EJ: $45.000" 
+                          value={formServicio.precio} 
+                          onChange={e => setFormServicio({...formServicio, precio: e.target.value})}
+                          className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none ${
+                            pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
+                          }`} 
+                        />
+                      </div>
                       {pestanaActiva !== 'internos' && (
-                        <span className="text-[8px] bg-slate-200/70 border border-slate-300 text-slate-600 px-2 py-0.5 rounded-lg font-bold">Duración: {serv.duracion}</span>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 uppercase text-[9px]">Duración</label>
+                          <input 
+                            type="text" 
+                            placeholder="EJ: 45 MIN" 
+                            value={formServicio.duracion} 
+                            onChange={e => setFormServicio({...formServicio, duracion: e.target.value.toUpperCase()})}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none focus:border-sky-500 uppercase" 
+                          />
+                        </div>
                       )}
                     </div>
-                    <p className="text-[9px] text-slate-500 leading-snug">{serv.descripcion || 'Sin descripción detallada.'}</p>
-                  </div>
-                </div>
-                <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                  <p className={`text-[11px] font-bold bg-gradient-to-r bg-clip-text text-transparent ${esInterno ? 'from-emerald-600 to-teal-600' : 'from-sky-600 to-blue-600'}`}>{serv.precio}</p>
-                  <div className="flex items-center gap-1">
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setServicioEditando(serv);
-                        setFormServicio({ 
-                          nombre: serv.nombre, 
-                          descripcion: serv.descripcion || '', 
-                          precio: serv.precio, 
-                          duracion: pestanaActiva === 'internos' ? 'interno' : (serv.duracion || '45 min'),
-                          categoria: serv.categoria || 'servicio',
-                          color: serv.color || (serv.categoria === 'paquete' ? (esInterno ? '#059669' : '#3b82f6') : (esInterno ? '#10b981' : '#0ea5e9'))
-                        });
-                        setShowServicioModal(true);
-                      }}
-                      className={`p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 cursor-pointer transition-colors shadow-xs ${
-                        esInterno ? 'hover:bg-emerald-50 hover:text-emerald-600' : 'hover:bg-sky-50 hover:text-sky-600'
-                      }`}
-                    >
-                      <Edit3 className="w-3 h-3" />
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => eliminarServicioFirestore(serv.id)}
-                      className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 cursor-pointer transition-colors shadow-xs"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+
+                    <div className="flex gap-2 pt-3 border-t border-slate-100">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowServicioModal(false)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer border border-slate-200 uppercase"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        type="submit" 
+                        onClick={() => {
+                          if (pestanaActiva === 'internos') {
+                            setFormServicio(prev => ({ ...prev, duracion: 'interno' }));
+                          }
+                        }}
+                        className={`flex-1 font-black py-2 rounded-xl text-[10px] uppercase transition-all cursor-pointer shadow-md ${
+                          pestanaActiva === 'internos'
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-emerald-500/20'
+                            : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-sky-500/20'
+                        }`}
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
-            );
-          })
-      )}
-    </div>
-
-    {/* Modal de Crear / Editar */}
-  {showServicioModal && (
-  <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-in fade-in zoom-in-95 text-slate-800">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-        <h3 className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
-          <span className={`w-2 h-2 rounded-full inline-block ${pestanaActiva === 'internos' ? 'bg-emerald-500' : 'bg-sky-500'}`}></span>
-          {servicioEditando ? '✏️ EDITAR SERVICIO / PAQUETE' : '✨ NUEVO SERVICIO O PAQUETE'}
-        </h3>
-        <button 
-          type="button"
-          onClick={() => setShowServicioModal(false)} 
-          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 cursor-pointer transition"
-        >
-          ✕
-        </button>
-      </div>
-
-      <form onSubmit={(e) => {
-        if (pestanaActiva === 'internos') {
-          e.preventDefault();
-          const formFinal = { ...formServicio, duracion: 'interno' };
-        }
-        handleGuardarServicio(e);
-      }} className="space-y-3 text-[10px]">
-        
-        <div className="space-y-1">
-          <label className="font-bold text-slate-500 uppercase text-[9px]">Tipo</label>
-          <select 
-            value={formServicio.categoria} 
-            onChange={e => setFormServicio({...formServicio, categoria: e.target.value})}
-            className={`w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-800 outline-none font-medium uppercase ${
-              pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
-            }`}
-          >
-            <option value="servicio">SERVICIO</option>
-            <option value="paquete">PAQUETE</option>
-          </select>
-        </div>
-
-        <div className="space-y-1">
-          <label className="font-bold text-slate-500 uppercase text-[9px]">Nombre del Servicio / Paquete *</label>
-          <input 
-            type="text" 
-            required
-            placeholder="EJ: CORTE FADE + BARBA VIP" 
-            value={formServicio.nombre} 
-            onChange={e => setFormServicio({...formServicio, nombre: e.target.value.toUpperCase()})}
-            className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none uppercase ${
-              pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
-            }`} 
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="font-bold text-slate-500 uppercase text-[9px]">Descripción</label>
-          <textarea 
-            rows="2" 
-            placeholder="DETALLES DE LO QUE INCLUYE..." 
-            value={formServicio.descripcion} 
-            onChange={e => setFormServicio({...formServicio, descripcion: e.target.value.toUpperCase()})}
-            className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none resize-none uppercase ${
-              pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
-            }`} 
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="font-bold text-slate-500 uppercase text-[9px]">Color del Servicio</label>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-              <input 
-                type="color" 
-                value={formServicio.color || (pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9')} 
-                onChange={e => setFormServicio({...formServicio, color: e.target.value})}
-                className="w-7 h-6 rounded border-0 bg-transparent cursor-pointer outline-none"
-              />
-              <span className="ml-2 text-xs font-mono uppercase text-slate-600">
-                {formServicio.color || (pestanaActiva === 'internos' ? '#10b981' : '#0ea5e9')}
-              </span>
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-            {(pestanaActiva === 'internos' 
-              ? ['#10b981', '#34d399', '#059669', '#0d9488', '#14b8a6', '#22c55e', '#84cc16', '#6366f1', '#ec4899', '#64748b']
-              : ['#0ea5e9', '#38bdf8', '#3b82f6', '#6366f1', '#06b6d4', '#10b981', '#8b5cf6', '#ec4899', '#f43f5e', '#64748b']
-            ).map((colorHex) => (
-              <button
-                key={colorHex}
-                type="button"
-                onClick={() => setFormServicio({ ...formServicio, color: colorHex })}
-                className="w-5 h-5 rounded-full border border-slate-300 hover:scale-110 transition-transform cursor-pointer shadow-xs"
-                style={{ backgroundColor: colorHex }}
-                title={colorHex}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className={pestanaActiva === 'internos' ? "space-y-1" : "grid grid-cols-2 gap-2"}>
-          <div className="space-y-1">
-            <label className="font-bold text-slate-500 uppercase text-[9px]">Precio *</label>
-            <input 
-              type="text" 
-              required
-              placeholder="EJ: $45.000" 
-              value={formServicio.precio} 
-              onChange={e => setFormServicio({...formServicio, precio: e.target.value})}
-              className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none ${
-                pestanaActiva === 'internos' ? 'focus:border-emerald-500' : 'focus:border-sky-500'
-              }`} 
-            />
-          </div>
-          {pestanaActiva !== 'internos' && (
-            <div className="space-y-1">
-              <label className="font-bold text-slate-500 uppercase text-[9px]">Duración</label>
-              <input 
-                type="text" 
-                placeholder="EJ: 45 MIN" 
-                value={formServicio.duracion} 
-                onChange={e => setFormServicio({...formServicio, duracion: e.target.value.toUpperCase()})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[11px] text-slate-800 outline-none focus:border-sky-500 uppercase" 
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2 pt-3 border-t border-slate-100">
-          <button 
-            type="button" 
-            onClick={() => setShowServicioModal(false)}
-            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer border border-slate-200 uppercase"
-          >
-            Cancelar
-          </button>
-          <button 
-            type="submit" 
-            onClick={() => {
-              if (pestanaActiva === 'internos') {
-                setFormServicio(prev => ({ ...prev, duracion: 'interno' }));
-              }
-            }}
-            className={`flex-1 font-black py-2 rounded-xl text-[10px] uppercase transition-all cursor-pointer shadow-md ${
-              pestanaActiva === 'internos'
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-emerald-500/20'
-                : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-sky-500/20'
-            }`}
-          >
-            Guardar
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
-  </div>
         )}
- {activeTab === 'comunidad' && (
-  <Comunidad />
 
- )}
+        {activeTab === 'comunidad' && (
+          <Comunidad />
+        )}
+
         {activeTab === 'facturacion' && (
           <Wallet setPestanaActiva={setPestanaActiva} setActiveTab={setActiveTab}/>
         )}
@@ -1901,7 +1563,7 @@ if (authLoading) return (
           </div>
         )}
 
-     {activeTab === 'perfil' && (
+        {activeTab === 'perfil' && (
           <div className="space-y-3">
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 shadow-xs">
               <h3 className="text-[11px] font-black uppercase text-indigo-950 flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5 text-indigo-600" /> Link de Reserva para Clientes</h3>
@@ -1912,7 +1574,7 @@ if (authLoading) return (
               </div>
             </div>
 
-         <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5">
                   <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Perfil Profesional
@@ -1939,8 +1601,6 @@ if (authLoading) return (
                   {renderFieldView("Porcentaje (%)", porcentaje !== undefined && porcentaje !== null && porcentaje !== '' ? `${porcentaje}%` : '0%')}
                 </div>
 
-                
-
                 <div className={`p-2.5 rounded-xl border transition-all ${!zonasTrabajo || zonasTrabajo.length === 0 ? 'bg-red-50 border-red-300 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`font-bold uppercase text-[9px] ${!zonasTrabajo || zonasTrabajo.length === 0 ? 'text-red-600' : 'text-slate-500'}`}>Zonas de Bogotá donde trabajas</span>
@@ -1958,7 +1618,8 @@ if (authLoading) return (
                 </div>
               </div>
             </div>
-        {isModalOpen && (
+
+            {isModalOpen && (
               <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
                 <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
@@ -2083,66 +1744,63 @@ if (authLoading) return (
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 px-1 flex items-center justify-around z-40 shadow-lg">
-  <button 
-    onClick={() => setActiveTab('agenda')}
-    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-  >
-    <Calendar className="w-4 h-4 mb-1" />
-    <span className="text-[9px] uppercase">Agenda</span>
-  </button>
+        <button 
+          onClick={() => setActiveTab('agenda')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'agenda' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Calendar className="w-4 h-4 mb-1" />
+          <span className="text-[9px] uppercase">Agenda</span>
+        </button>
 
-  <button
-    type="button"
-    onClick={() => setActiveTab('comunidad')}
-    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'comunidad' ? 'text-emerald-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-  >
-    <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-    <span className="text-[9px] uppercase">Comunidad</span>
-  </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('comunidad')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'comunidad' ? 'text-emerald-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span className="text-[9px] uppercase">Comunidad</span>
+        </button>
 
-  <button 
-    onClick={() => setActiveTab('servicios')}
-    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-  >
-    <Tag className="w-4 h-4 mb-1" />
-    <span className="text-[9px] uppercase">Servicios</span>
-  </button>
+        <button 
+          onClick={() => setActiveTab('servicios')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'servicios' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Tag className="w-4 h-4 mb-1" />
+          <span className="text-[9px] uppercase">Servicios</span>
+        </button>
 
-  <button 
-    onClick={() => setActiveTab('facturacion')}
-    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-  >
-    <FileText className="w-4 h-4 mb-1" />
-    <span className="text-[9px] uppercase">Finanzas</span>
-  </button>
+        <button 
+          onClick={() => setActiveTab('facturacion')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'facturacion' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <FileText className="w-4 h-4 mb-1" />
+          <span className="text-[9px] uppercase">Finanzas</span>
+        </button>
 
+        <button 
+          onClick={() => setActiveTab('perfil')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+        >
+          <Edit3 className="w-4 h-4 mb-1" />
+          <span className="text-[9px] uppercase">Perfil</span>
+        </button>
 
+        <button 
+          onClick={handleCerrarSesion}
+          className="flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer text-red-600 hover:text-red-700"
+        >
+          <LogOut className="w-4 h-4 mb-1 text-red-600" />
+          <span className="text-[9px] uppercase font-bold">Salir</span>
+        </button>
+      </nav>
 
-  <button 
-    onClick={() => setActiveTab('perfil')}
-    className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${activeTab === 'perfil' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-  >
-    <Edit3 className="w-4 h-4 mb-1" />
-    <span className="text-[9px] uppercase">Perfil</span>
-  </button>
-
-  <button 
-    onClick={handleCerrarSesion}
-    className="flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer text-red-600 hover:text-red-700"
-  >
-    <LogOut className="w-4 h-4 mb-1 text-red-600" />
-    <span className="text-[9px] uppercase font-bold">Salir</span>
-  </button>
-</nav>
-
-{citaSeleccionada && (() => {
+      {citaSeleccionada && (() => {
         const estadoActual = (citaSeleccionada.estado || '').toLowerCase();
         const esFinalizada = estadoActual === 'finalizada' || estadoActual === 'finalizado';
         const esCancelada = estadoActual === 'cancelada' || estadoActual === 'cancelado';
 
-        // Cálculo dinámico del total sumando los precios numéricos o formateados
         const calcularTotalDinamico = () => {
           let suma = 0;
           serviciosModalCita.forEach(s => {
@@ -2321,7 +1979,6 @@ if (authLoading) return (
                 )}
               </div>
 
-              {/* Botones de acción según si es bloqueo, finalizada, cancelada o cita normal */}
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-100">
                 {citaSeleccionada.esBloqueo ? (
                   <div className="flex gap-2 w-full">
@@ -2472,19 +2129,6 @@ if (authLoading) return (
           </div>
         );
       })()}
-         {/* Pantalla de Transición Fluida Visarka */}
-{transicionVisarka && (
-  <div className="fixed inset-0 z-[99999] bg-slate-950 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-    <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-2xl shadow-indigo-500/50 animate-pulse mb-4">
-      VK
-    </div>
-    <h1 className="text-white text-sm font-black uppercase tracking-widest">Visarka</h1>
-    <p className="text-indigo-400 text-[10px] font-mono tracking-wider mt-1">Cargando Portal de Profesionales...</p>
-    <div className="w-32 h-1 bg-slate-800 rounded-full mt-6 overflow-hidden">
-      <div className="w-full h-full bg-indigo-500 animate-[indeterminate_1s_infinite_linear]"></div>
-    </div>
-  </div>
-)} 
     </div>
   );
 }
