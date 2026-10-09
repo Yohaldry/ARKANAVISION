@@ -344,7 +344,7 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
           setServiciosFirebase(listaServicios);
         });
 
-        unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
+       unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
           const citasServer = [];
           let idsActuales = citasFirestore.map(c => c.id);
 
@@ -356,8 +356,20 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
             if (coincideId || coincideNombre || !data.barberoId) {
               let horaBD = (data.hora || '').trim();
               
+              // 🚀 Ajuste: Si la hora viene en formato militar o 24h (ej. "22:00"), la convertimos a formato 12h ("10:00 p. m.")
+              if (horaBD.includes(':') && !horaBD.toLowerCase().includes('m') && !horaBD.toLowerCase().includes('a')) {
+                const partes = horaBD.split(':');
+                let hNum = parseInt(partes[0], 10);
+                const mNum = partes[1] || '00';
+                if (!isNaN(hNum)) {
+                  const ampm = hNum >= 12 ? 'p. m.' : 'a. m.';
+                  const h12 = hNum % 12 || 12;
+                  horaBD = `${h12}:${mNum.substring(0, 2)} ${ampm}`;
+                }
+              }
+
               const matchHora = horasCalendario.find(h => 
-                h.val24 === horaBD || 
+                h.val24 === data.hora || 
                 h.label.toLowerCase() === horaBD.toLowerCase() ||
                 horaBD.toLowerCase().includes(h.val24) ||
                 horaBD.toLowerCase().replace(/\s+/g, '').includes(h.label.toLowerCase().replace(/\s+/g, ''))
@@ -374,7 +386,7 @@ const [transicionVisarka, setTransicionVisarka] = useState(false);
               if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
               if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-400 font-normal';
               if (estado === 'bloqueado') colorClase = 'bg-rose-100 border-rose-300 text-rose-800 font-bold';
-
+if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
               citasServer.push({
                 ...data,
                 id: docSnap.id, 
@@ -458,6 +470,8 @@ const handleAuth = async (e) => {
     }
   };
 
+const [serviciosModalCita, setServiciosModalCita] = useState([]);
+
   const abrirModalCita = (cita) => {
     setCitaSeleccionada(cita);
     setNuevaFechaCita(cita.fechaStr || cita.fecha || '');
@@ -465,8 +479,14 @@ const handleAuth = async (e) => {
     setNuevaHoraFinCita(cita.horaFin || 'No disponible');
     setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
     
-    const nombreServicio = cita.servicios?.[0]?.nombre || cita.servicio || '';
-    setNuevoServicioCita(nombreServicio);
+    // Si la cita ya tiene un array de servicios, lo cargamos; si no, convertimos el servicio individual
+    if (cita.servicios && Array.isArray(cita.servicios)) {
+      setServiciosModalCita(cita.servicios);
+    } else if (cita.servicio) {
+      setServiciosModalCita([{ nombre: cita.servicio, precio: cita.monto || cita.precioTotal || '$0' }]);
+    } else {
+      setServiciosModalCita([]);
+    }
   };
 
   const actualizarCitaArrastrada = async (cita, nuevaFechaStr, nuevaHoraExacta) => {
@@ -1020,7 +1040,7 @@ if (authLoading) return (
 
         const esHorarioLaboral = fH >= 9 && fH <= 21;
 
-        const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
+     const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
           if (!horaStr) return 0;
           let clean = horaStr.toString().toUpperCase().trim();
           
@@ -1032,21 +1052,21 @@ if (authLoading) return (
           let hours = parseInt(parts[0], 10) || 0;
           let minutes = parseInt(parts[1], 10) || 0;
           
-          if (esBloqueo) {
-            if (isPM && hours < 12) hours += 12;
-            if (isAM && hours === 12) hours = 0;
-          } else {
-            if (isPM && hours < 12) {
-              hours += 12;
-            } else if (isAM && hours === 12) {
-              hours = 0;
-            } else if (!isPM && !isAM && hours >= 1 && hours <= 7) {
-              hours += 12;
+          // Si viene en formato militar o 24 horas (ej. "22:00") o texto plano sin AM/PM
+          if (!isPM && !isAM) {
+            if (hours >= 13 && hours <= 23) {
+              isPM = true; // Ya está en formato 24h correcto
+            } else if (hours >= 1 && hours <= 7 && !clean.includes('AM')) {
+              // Si guardaron "10:00" pensando en la noche o formato ambiguo, lo pasamos a PM si corresponde
+              // Pero si el usuario eligió explícitamente 10:00 PM:
+              hours += 12; 
             }
           }
 
-          if (!esBloqueo && isAM && (hours === 1 || hours === 2)) {
+          if (isPM && hours < 12) {
             hours += 12;
+          } else if (isAM && hours === 12) {
+            hours = 0;
           }
           
           return hours * 60 + minutes;
@@ -2117,78 +2137,256 @@ if (authLoading) return (
   </button>
 </nav>
 
-      {citaSeleccionada && (() => {
+{citaSeleccionada && (() => {
         const estadoActual = (citaSeleccionada.estado || '').toLowerCase();
         const esFinalizada = estadoActual === 'finalizada' || estadoActual === 'finalizado';
+        const esCancelada = estadoActual === 'cancelada' || estadoActual === 'cancelado';
+
+        // Cálculo dinámico del total sumando los precios numéricos o formateados
+        const calcularTotalDinamico = () => {
+          let suma = 0;
+          serviciosModalCita.forEach(s => {
+            if (s.precioNum) {
+              suma += Number(s.precioNum);
+            } else if (s.precio) {
+              const num = parseInt(s.precio.toString().replace(/[^0-9]/g, ''), 10);
+              if (!isNaN(num)) suma += num;
+            }
+          });
+          return suma > 0 ? `$${suma.toLocaleString('es-CO')} COP` : (citaSeleccionada.precioTotal || '$0');
+        };
 
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-md space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-xs font-black uppercase text-slate-900">
-                    {citaSeleccionada.esBloqueo ? '🚫 Gestionar Horario No Disponible' : esFinalizada ? '📋 Detalle de Cita Finalizada' : 'Gestionar Cita / Servicio'}
+                    {citaSeleccionada.esBloqueo ? '🚫 Gestionar Horario No Disponible' : esFinalizada ? '📋 Detalle de Cita Finalizada' : esCancelada ? '❌ Detalle de Cita Cancelada' : 'Gestionar Cita / Servicio'}
                   </h3>
-                  <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.esBloqueo ? citaSeleccionada.motivo : citaSeleccionada.servicio}</p>
+                  <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.esBloqueo ? citaSeleccionada.motivo : 'Actualización de servicios y agenda'}</p>
                 </div>
-                <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"><X className="w-4 h-4" /></button>
+                <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer">✕</button>
               </div>
 
-              <div className="space-y-2 text-[10px]">
-                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
-                  {citaSeleccionada.esBloqueo ? (
-                    <>
-                      <p><strong className="text-slate-500">Motivo:</strong> <span className="text-rose-700 font-bold">{citaSeleccionada.motivo || 'No disponible'}</span></p>
-                      <p><strong className="text-slate-500">Fecha:</strong> <span className="text-slate-900">{citaSeleccionada.fechaStr}</span></p>
-                      <p><strong className="text-slate-500">Rango:</strong> <span className="text-slate-900">{citaSeleccionada.hora} - {citaSeleccionada.horaFin || 'N/A'}</span></p>
-                    </>
-                  ) : (
-                    <>
+              <div className="space-y-3 text-[10px]">
+                {citaSeleccionada.esBloqueo ? (
+                  <div className="space-y-2.5 pt-1">
+                    <div>
+                      <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Motivo del Bloqueo:</label>
+                      <input 
+                        type="text" 
+                        value={nuevoMotivoBloqueo} 
+                        onChange={e => setNuevoMotivoBloqueo(e.target.value)} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Fecha del Bloqueo:</label>
+                      <input 
+                        type="date" 
+                        value={nuevaFechaCita} 
+                        onChange={e => setNuevaFechaCita(e.target.value)} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Hora Inicio:</label>
+                        <select 
+                          value={nuevaHoraCita} 
+                          onChange={e => setNuevaHoraCita(e.target.value)} 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+                        >
+                          {horasCalendario.map((h, i) => (
+                            <option key={i} value={h.label}>{h.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Hora Fin:</label>
+                        <select 
+                          value={nuevaHoraFinCita} 
+                          onChange={e => setNuevaHoraFinCita(e.target.value)} 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+                        >
+                          {horasCalendario.map((h, i) => (
+                            <option key={i} value={h.label}>{h.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
                       <p><strong className="text-slate-500">Cliente:</strong> <span className="text-slate-900 font-bold">{citaSeleccionada.clienteNombre || citaSeleccionada.cliente}</span></p>
                       {citaSeleccionada.clienteTelefono && <p><strong className="text-slate-500">Teléfono:</strong> <span className="text-slate-900">{citaSeleccionada.clienteTelefono}</span></p>}
-                      
                       <p><strong className="text-slate-500">Dirección:</strong> <span className="text-slate-900">{citaSeleccionada.direccion || 'No especificada'}</span></p>
-                      <p><strong className="text-slate-500">Servicio:</strong> <span className="text-slate-900 font-medium">{citaSeleccionada.servicio || 'Servicio General'}</span></p>
-                      <p><strong className="text-slate-500">Monto:</strong> <span className="text-indigo-600 font-bold">{citaSeleccionada.precioTotal || citaSeleccionada.monto || '$0'}</span></p>
+                      <p><strong className="text-slate-500">Estado:</strong> <span className={`uppercase font-bold ${esCancelada ? 'text-rose-600' : esFinalizada ? 'text-slate-500' : 'text-emerald-600'}`}>{citaSeleccionada.estado}</span></p>
+                    </div>
 
-                      <p><strong className="text-slate-500">Fecha actual:</strong> <span className="text-slate-900">{citaSeleccionada.fecha}</span></p>
-                      <p><strong className="text-slate-500">Hora actual:</strong> <span className="text-slate-900">{citaSeleccionada.hora}</span></p>
-                      <p><strong className="text-slate-500">Estado:</strong> <span className="uppercase text-emerald-600 font-bold">{citaSeleccionada.estado}</span></p>
-                    </>
-                  )}
-                </div>
+                    {!esFinalizada && !esCancelada && (
+                      <div className="space-y-2.5 pt-1 border-t border-slate-100">
+                        <label className="font-bold text-slate-700 uppercase text-[9px] block">Servicios Seleccionados:</label>
+                        
+                        <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                          {serviciosModalCita.length === 0 ? (
+                            <span className="text-slate-400 italic">No hay servicios seleccionados.</span>
+                          ) : (
+                            serviciosModalCita.map((s, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-950 px-2 py-1 rounded-lg font-bold text-[9px] shadow-xs">
+                                <span>{s.nombre || s.name}</span>
+                                <span className="text-indigo-600 font-normal">({s.precio})</span>
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    setServiciosModalCita(prev => prev.filter((_, i) => i !== idx));
+                                  }}
+                                  className="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
 
-                {!citaSeleccionada.esBloqueo && !esFinalizada && (
-                  <div className="space-y-2 pt-1">
-                    <label className="text-[8px] text-slate-400 font-bold block mb-0.5 uppercase">Cambiar / Actualizar Servicio</label>
-                    <select 
-                      value={nuevoServicioCita} 
-                      onChange={e => setNuevoServicioCita(e.target.value)} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium"
-                    >
-                      <option value={citaSeleccionada.servicio}>{citaSeleccionada.servicio} (Actual)</option>
-                      {serviciosFirebase.map((serv) => (
-                        <option key={serv.id} value={serv.nombre}>{serv.nombre} - {serv.precio}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <select 
+                            id="select-agregar-servicio"
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+                          >
+                            <option value="">-- Añadir otro servicio --</option>
+                            {serviciosFirebase.map((serv) => (
+                              <option key={serv.id} value={serv.id}>{serv.nombre} - {serv.precio}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const selectEl = document.getElementById('select-agregar-servicio');
+                              const servId = selectEl.value;
+                              if (!servId) return;
+                              const servEncontrado = serviciosFirebase.find(s => s.id === servId);
+                              if (servEncontrado) {
+                                setServiciosModalCita(prev => [...prev, {
+                                  nombre: servEncontrado.nombre,
+                                  precio: servEncontrado.precio,
+                                  precioNum: servEncontrado.precioNum || parseInt((servEncontrado.precio || '').replace(/[^0-9]/g, ''), 10) || 0
+                                }]);
+                                selectEl.value = '';
+                              }
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] uppercase cursor-pointer shadow-xs transition"
+                          >
+                            Añadir
+                          </button>
+                        </div>
 
-                {!citaSeleccionada.esBloqueo && !esFinalizada && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <p className="font-bold text-slate-700 uppercase text-[9px]">Reprogramar Fecha y Hora:</p>
-                    <input 
-                      type="date" 
-                      value={nuevaFechaCita} 
-                      onChange={e => setNuevaFechaCita(e.target.value)} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
-                    />
-                  </div>
+                        <div className="flex justify-between items-center bg-indigo-50/60 border border-indigo-100 p-2.5 rounded-xl font-bold">
+                          <span className="text-slate-600 uppercase text-[9px]">Total Actualizado:</span>
+                          <span className="text-indigo-600 text-[11px]">{calcularTotalDinamico()}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {!esFinalizada && !esCancelada && (
+                      <div className="space-y-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Reprogramar Fecha:</label>
+                          <input 
+                            type="date" 
+                            value={nuevaFechaCita} 
+                            onChange={e => setNuevaFechaCita(e.target.value)} 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Reprogramar Hora:</label>
+                          <select 
+                            value={nuevaHoraCita} 
+                            onChange={e => setNuevaHoraCita(e.target.value)} 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+                          >
+                            <option value={nuevaHoraCita}>{nuevaHoraCita} (Actual)</option>
+                            {horasCalendario.map((h, i) => (
+                              <option key={i} value={h.label}>{h.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
+              {/* Botones de acción según si es bloqueo, finalizada, cancelada o cita normal */}
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-100">
-                {esFinalizada ? (
+                {citaSeleccionada.esBloqueo ? (
+                  <div className="flex gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm('¿Estás seguro de eliminar este bloqueo?')) {
+                          try {
+                            await deleteDoc(doc(db, 'citas', citaSeleccionada.id));
+                            setSuccessMsg('Bloqueo eliminado correctamente');
+                            setCitaSeleccionada(null);
+                            setTimeout(() => setSuccessMsg(''), 3000);
+                          } catch (err) {
+                            console.error(err);
+                            setErrorMsg('Error al eliminar el bloqueo');
+                            setTimeout(() => setErrorMsg(''), 3000);
+                          }
+                        }
+                      }}
+                      className="flex-1 px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      🗑️ Eliminar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setModalLoading(true);
+                        try {
+                          const minInicio = horaAMinutos(nuevaHoraCita, true);
+                          const minFin = horaAMinutos(nuevaHoraFinCita, true);
+                          if (minFin <= minInicio) {
+                            alert('La hora fin debe ser posterior a la hora de inicio.');
+                            setModalLoading(false);
+                            return;
+                          }
+                          const duracionTotal = minFin - minInicio;
+
+                          const citaRef = doc(db, 'citas', citaSeleccionada.id);
+                          await updateDoc(citaRef, {
+                            fecha: nuevaFechaCita,
+                            fechaStr: nuevaFechaCita,
+                            hora: nuevaHoraCita,
+                            horaFin: nuevaHoraFinCita,
+                            motivo: nuevoMotivoBloqueo,
+                            duracionTotal: duracionTotal
+                          });
+
+                          setSuccessMsg('Bloqueo actualizado correctamente');
+                          setCitaSeleccionada(null);
+                          setTimeout(() => setSuccessMsg(''), 3000);
+                        } catch (err) {
+                          console.error(err);
+                          setErrorMsg('Error al actualizar el bloqueo');
+                          setTimeout(() => setErrorMsg(''), 3000);
+                        } finally {
+                          setModalLoading(false);
+                        }
+                      }}
+                      disabled={modalLoading}
+                      className="flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-blue-600 text-white hover:bg-blue-700 border border-blue-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Editar / Guardar</>}
+                    </button>
+                  </div>
+                ) : esFinalizada ? (
                   <button
                     type="button"
                     onClick={() => setCitaSeleccionada(null)}
@@ -2196,13 +2394,31 @@ if (authLoading) return (
                   >
                     Cerrar Detalle
                   </button>
+                ) : esCancelada ? (
+                  <div className="flex gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setCitaSeleccionada(null)}
+                      className="flex-1 px-3 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300 transition-all cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => actualizarCitaFirestore('confirmada')}
+                      disabled={modalLoading}
+                      className="flex-1 px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-800 transition-all cursor-pointer shadow-md flex items-center justify-center gap-1"
+                    >
+                      {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>✨ Activar Cita</>}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <button
                       type="button"
                       onClick={() => actualizarCitaFirestore('cancelada')}
                       disabled={modalLoading}
-                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
+                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-600 text-white hover:bg-rose-700 border border-rose-800 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
                     >
                       ❌ Cancelar
                     </button>
@@ -2218,7 +2434,32 @@ if (authLoading) return (
 
                     <button
                       type="button"
-                      onClick={() => actualizarCitaFirestore('confirmada')}
+                      onClick={async () => {
+                        if (!citaSeleccionada) return;
+                        setModalLoading(true);
+                        try {
+                          const citaRef = doc(db, 'citas', citaSeleccionada.id);
+                          const nombresServicios = serviciosModalCita.map(s => s.nombre || s.name).join(', ');
+                          
+                          await updateDoc(citaRef, {
+                            fecha: nuevaFechaCita,
+                            hora: nuevaHoraCita,
+                            servicios: serviciosModalCita,
+                            servicio: nombresServicios || 'Servicio General',
+                            precioTotal: calcularTotalDinamico()
+                          });
+                          
+                          setSuccessMsg('Cita actualizada correctamente');
+                          setCitaSeleccionada(null);
+                          setTimeout(() => setSuccessMsg(''), 3000);
+                        } catch (err) {
+                          console.error(err);
+                          setErrorMsg('Error al actualizar la cita');
+                          setTimeout(() => setErrorMsg(''), 3000);
+                        } finally {
+                          setModalLoading(false);
+                        }
+                      }}
                       disabled={modalLoading}
                       className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-blue-600 text-white hover:bg-blue-700 border border-blue-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
                     >

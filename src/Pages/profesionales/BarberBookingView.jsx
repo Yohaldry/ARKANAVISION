@@ -23,19 +23,26 @@ const BarberBookingView = ({ onBookingComplete }) => {
   const [detalleCita, setDetalleCita] = useState(null);
   const [form, setForm] = useState({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', referencia: '', torreApto: '', parqueaderoMoto: false });
 
-  const generate24Hours = () => {
-    const times = [];
-    for (let i = 0; i < 24; i++) {
-      const hour24 = i;
-      const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-      const ampm = hour24 >= 12 ? 'PM' : 'AM';
-      const formattedHour = `${hour12.toString().padStart(2, '0')}:00 ${ampm}`;
-      times.push(formattedHour);
-    }
-    return times;
+ 
+const generate24Hours = () => {
+    return [
+      { label: '12:00 a. m.', val24: '00:00' }, { label: '1:00 a. m.', val24: '01:00' },
+      { label: '2:00 a. m.', val24: '02:00' }, { label: '3:00 a. m.', val24: '03:00' },
+      { label: '4:00 a. m.', val24: '04:00' }, { label: '5:00 a. m.', val24: '05:00' },
+      { label: '6:00 a. m.', val24: '06:00' }, { label: '7:00 a. m.', val24: '07:00' },
+      { label: '8:00 a. m.', val24: '08:00' }, { label: '9:00 a. m.', val24: '09:00' },
+      { label: '10:00 a. m.', val24: '10:00' }, { label: '11:00 a. m.', val24: '11:00' },
+      { label: '12:00 p. m.', val24: '12:00' }, { label: '1:00 p. m.', val24: '13:00' },
+      { label: '2:00 p. m.', val24: '14:00' }, { label: '3:00 p. m.', val24: '15:00' },
+      { label: '4:00 p. m.', val24: '16:00' }, { label: '5:00 p. m.', val24: '17:00' },
+      { label: '6:00 p. m.', val24: '18:00' }, { label: '7:00 p. m.', val24: '19:00' },
+      { label: '8:00 p. m.', val24: '20:00' }, { label: '9:00 p. m.', val24: '21:00' },
+      { label: '10:00 p. m.', val24: '22:00' }, { label: '11:00 p. m.', val24: '23:00' }
+    ];
   };
 
   const all24Hours = generate24Hours();
+
 
   useEffect(() => {
     if (!barberoId) return;
@@ -83,7 +90,7 @@ const BarberBookingView = ({ onBookingComplete }) => {
           id: docSnap.id, name: data.nombre || "Profesional", email: data.email || "", location: data.ciudad || "Bogotá D.C.", rating: "4.9", reviewsCount: 28,
           image: data.foto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
           bio: data.descripcion || data.biografia || "Experto en visagismo y tendencias.", services: listaServicios,
-          availableTimes: all24Hours
+          availableTimes: all24Hours.map(h => h.label) // Usamos las etiquetas exactas (ej. "10:00 p. m.")
         });
         
         setSelectedServices([]);
@@ -104,24 +111,22 @@ useEffect(() => {
       const bookedSet = new Set();
       const timesList = barber?.availableTimes || all24Hours;
 
-      const parseToMin = (str) => {
+     const parseToMin = (str) => {
         if (!str) return null;
-        let clean = str.toString().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
-        let isPM = clean.includes('pm') || clean.includes('p m');
-        let isAM = clean.includes('am') || clean.includes('a m');
+        let clean = str.toString().toLowerCase().trim();
+        
+        let isPM = clean.includes('p. m.') || clean.includes('pm') || clean.includes('p.m.');
+        let isAM = clean.includes('a. m.') || clean.includes('am') || clean.includes('a.m.');
 
-        let timePart = clean.replace(/pm|am|p m|a m/g, '').trim();
+        let timePart = clean.replace(/[^0-9:]/g, '').trim();
         let parts = timePart.split(':');
         let hours = parseInt(parts[0], 10) || 0;
         let minutes = parseInt(parts[1], 10) || 0;
         
-        if (isPM) {
-          if (hours < 12) hours += 12;
-        } else if (isAM) {
-          if (hours === 12) hours = 0;
-        } else {
-          if (hours >= 1 && hours <= 7) hours += 12;
-        }
+        if (isPM && hours < 12) hours += 12;
+        if (isAM && hours === 12) hours = 0;
+        if (!isPM && !isAM && hours >= 1 && hours <= 7) hours += 12; // Soporte para formato 24h directo
+
         return hours * 60 + minutes;
       };
 
@@ -353,9 +358,10 @@ useEffect(() => {
                     <button onClick={() => setModalType(null)} className="bg-neutral-800 p-1.5 rounded-full hover:bg-neutral-700 text-neutral-300"><FiX size={16} /></button>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[50vh] pr-1 py-1">
-                    {all24Hours.map((time) => {
-                      const isOccupied = horasOcupadas.includes(time.toUpperCase());
+                 <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[50vh] pr-1 py-1">
+                    {all24Hours.map((itemTime) => {
+                      const time = itemTime.label; // Obtenemos el texto de la etiqueta (ej. "10:00 p. m.")
+                      const isOccupied = horasOcupadas.includes(time.toLowerCase());
                       const isSelected = selectedTime === time;
 
                       if (isOccupied) {

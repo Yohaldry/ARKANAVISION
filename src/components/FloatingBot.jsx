@@ -11,7 +11,7 @@ const FloatingBot = () => {
   ]);
   const chatEndRef = useRef(null);
 
-  const WHATSAPP_NUMBER = "573123456789"; // Reemplaza con tu número real
+  const WHATSAPP_NUMBER = "573123456789"; 
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
