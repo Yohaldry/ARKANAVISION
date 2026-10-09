@@ -598,7 +598,22 @@ const handleAuth = async (e) => {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-mono"><RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" /></div>;
+if (authLoading) return (
+    <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 select-none">
+      <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-blue-200 shadow-xl flex items-center justify-center p-2.5 mb-4 animate-pulse">
+        <img 
+          src="https://res.cloudinary.com/dtkirmtfq/image/upload/v1791241981/Visarka/mxmsobksbvrii384mlja.png" 
+          alt="VISARKA" 
+          className="w-full h-full object-contain"
+        />
+      </div>
+      <h1 className="text-slate-900 text-xs font-black uppercase tracking-widest">VISARKA</h1>
+      <p className="text-blue-600 text-[10px] font-mono tracking-wider mt-1">Cargando Portal Profesional...</p>
+      <div className="w-32 h-1 bg-blue-100 rounded-full mt-6 overflow-hidden">
+        <div className="w-full h-full bg-blue-600 animate-[indeterminate_1s_infinite_linear]"></div>
+      </div>
+    </div>
+  );
 
   if (!authUser) {
     return (
