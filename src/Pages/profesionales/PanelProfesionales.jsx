@@ -75,6 +75,8 @@ export default function PanelProfesionales() {
     hora: '12:00 a. m.'
   });
 
+  
+
   const actualizarBloqueoArrastrado = async (bloqueo, nuevaFechaStr, nuevaHoraInicio, nuevaHoraFin) => {
   try {
     const bloqueoId = bloqueo.id || bloqueo.uid;
@@ -167,7 +169,7 @@ export default function PanelProfesionales() {
   const [servicioEditando, setServicioEditando] = useState(null);
   const [formServicio, setFormServicio] = useState({ nombre: '', descripcion: '', precio: '', duracion: '45 min', categoria: 'servicio' });
 
-  const [, setBarberData] = useState(null);
+  const [barberData, setBarberData] = useState(null);
   
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -175,13 +177,14 @@ export default function PanelProfesionales() {
   const [telefono, setTelefono] = useState('');
   const [correoPerfil, setCorreoPerfil] = useState('');
   const [zonasTrabajo, setZonasTrabajo] = useState([]);
-  
   const [experiencia, setExperiencia] = useState('1 a 3 años');
   const [ciudad, setCiudad] = useState('Bogotá D.C.');
   const [especialidad, setEspecialidad] = useState('Fade & Visagismo');
   const [citasFirestore, setCitasFirestore] = useState([]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
+  const [notificaciones, setNotificaciones] = useState([]);
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
@@ -247,7 +250,34 @@ export default function PanelProfesionales() {
     return diasDelMes.slice(Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)), Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)) + 7);
   };
 
-  useEffect(() => {
+  // 1. Funciones para responder a la solicitud del establecimiento
+  const aceptarVinculacion = async () => {
+    try {
+      const profRef = doc(db, 'profesionales', authUser.uid);
+      await updateDoc(profRef, {
+        estadoVinculacion: 'aceptado'
+      });
+      // Actualizar estado local opcionalmente
+      setSuccessMsg('¡Te has vinculado exitosamente al establecimiento!');
+    } catch (err) {
+      console.error("Error al aceptar:", err);
+    }
+  };
+
+  const rechazarVinculacion = async () => {
+    try {
+      const profRef = doc(db, 'profesionales', authUser.uid);
+      await updateDoc(profRef, {
+        establecimientoId: '',
+        establecimientoNombre: '',
+        estadoVinculacion: 'rechazado'
+      });
+    } catch (err) {
+      console.error("Error al rechazar:", err);
+    }
+  };
+
+useEffect(() => {
     const calcTime = () => {
       const now = new Date();
       setCurrentTimeMinutes(Math.max(0, Math.min(100, ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100)));
@@ -357,6 +387,37 @@ export default function PanelProfesionales() {
             }
           });
 
+          // Generación automática de notificaciones basadas en los movimientos y cambios de estado
+          const listaNotif = citasServer.map(c => {
+            let texto = '';
+            let icono = '✨';
+            
+            if (c.esBloqueo) {
+              texto = `Horario bloqueado: ${c.motivo || 'No disponible'} (${c.fechaStr})`;
+              icono = '🚫';
+            } else if (c.estado === 'confirmada' || c.estado === 'confirmado') {
+              texto = `Cita confirmada: ${c.cliente} - ${c.servicio} (${c.hora})`;
+              icono = '✅';
+            } else if (c.estado === 'finalizada' || c.estado === 'finalizado') {
+              texto = `Servicio finalizado: ${c.cliente} (${c.servicio})`;
+              icono = '🏁';
+            } else if (c.estado === 'cancelada' || c.estado === 'cancelado') {
+              texto = `Cita cancelada de ${c.cliente}`;
+              icono = '❌';
+            } else {
+              texto = `Nuevo servicio / cita: ${c.cliente} (${c.servicio})`;
+              icono = '📅';
+            }
+
+            return {
+              id: c.id,
+              texto,
+              icono,
+              fecha: c.fechaStr || 'Hoy'
+            };
+          });
+          setNotificaciones(listaNotif.reverse());
+
           primerCargaRef.current = false;
           setCitasFirestore(citasServer);
         });
@@ -365,6 +426,7 @@ export default function PanelProfesionales() {
         setAuthUser(null); 
         setCitasFirestore([]); 
         setServiciosFirebase([]);
+        setNotificaciones([]);
       }
       setAuthLoading(false);
 
@@ -377,7 +439,7 @@ export default function PanelProfesionales() {
 
     const safety = setTimeout(() => setAuthLoading(false), 2000);
     return () => { unsubAuth(); clearTimeout(safety); clearInterval(t); };
-  }, []);
+  }, [nombre]);
 
   const [serviciosModalCita, setServiciosModalCita] = useState([]);
 
@@ -548,7 +610,7 @@ export default function PanelProfesionales() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-mono flex flex-col justify-between pb-36 relative select-none">
-      <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+     <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-blue-200 flex items-center justify-center shadow-sm p-1">
             <img 
@@ -562,7 +624,99 @@ export default function PanelProfesionales() {
             <span className="text-[8px] text-slate-400 font-bold">VISARKA • {ciudad} • {especialidad}</span>
           </div>
         </div>
-        <button onClick={() => setActiveTab('estadisticas')} className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 cursor-pointer"><Sparkles className="w-3.5 h-3.5" /></button>
+
+        <div className="flex items-center gap-2 relative">
+          {/* Botón de Notificaciones (Campanita) */}
+          <div className="relative">
+           <button 
+      onClick={() => setNotificacionesAbiertas(!notificacionesAbiertas)}
+      className="p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100 border border-blue-200 text-blue-600 cursor-pointer relative transition-all shadow-2xs flex items-center justify-center active:scale-95"
+      title="Notificaciones"
+    >
+      <span className="text-sm">🔔</span>
+      {notificaciones.length > 0 && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-full text-[8px] font-black flex items-center justify-center shadow-xs animate-pulse">
+          {notificaciones.length}
+        </span>
+      )}
+    </button>
+            {/* Panel Desplegable de Notificaciones */}
+            {/* Notificación especial de Solicitud de Establecimiento (si está pendiente) */}
+
+           {notificacionesAbiertas && (
+  <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-slate-800">
+    <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+      <span className="text-[10px] font-black uppercase text-slate-900">Notificaciones de Actividad</span>
+      <button 
+        onClick={() => setNotificacionesAbiertas(false)}
+        className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+      >
+        ✕
+      </button>
+    </div>
+
+    <div className="max-h-64 overflow-y-auto space-y-1.5">
+      
+      {/* Tarjeta de Solicitud de Vinculación Pendiente */}
+      {barberData?.establecimientoId && barberData?.estadoVinculacion === 'pendiente' && (
+        <div className="p-2 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 flex items-center justify-between gap-2 text-[10px] shadow-2xs">
+          <div className="flex items-center gap-2 truncate">
+            <span className="text-xs p-1 bg-white rounded-lg border border-blue-100 shadow-2xs shrink-0">🏢</span>
+            <div className="truncate">
+              <p className="font-black text-blue-950 leading-tight">Solicitud de Vinculación</p>
+              <p className="text-slate-600 truncate mt-0.5">
+                <strong className="text-slate-900">{barberData.establecimientoNombre || 'Establecimiento'}</strong> te invitó.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button 
+              onClick={aceptarVinculacion}
+              className="w-6 h-6 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-black flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 text-xs"
+              title="Aceptar"
+            >
+              ✓
+            </button>
+            <button 
+              onClick={rechazarVinculacion}
+              className="w-6 h-6 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-600 border border-rose-200 font-black flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 text-xs"
+              title="Rechazar"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Listado de Notificaciones Normales */}
+      {notificaciones.length === 0 && (!barberData?.establecimientoId || barberData?.estadoVinculacion !== 'pendiente') ? (
+        <div className="py-6 text-center text-slate-400 text-[10px] italic">
+          No hay notificaciones recientes.
+        </div>
+      ) : (
+        notificaciones.map((notif) => (
+          <div 
+            key={notif.id} 
+            className="p-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50/50 transition flex items-start gap-2 text-[10px]"
+          >
+            <span className="text-sm shrink-0">{notif.icono}</span>
+            <div className="flex-1">
+              <p className="font-semibold text-slate-800 leading-tight">{notif.texto}</p>
+              <span className="text-[8px] text-slate-400 mt-0.5 block">{notif.fecha}</span>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
+          </div>
+
+          <button onClick={() => setActiveTab('estadisticas')} className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 cursor-pointer">
+            <Sparkles className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 p-2 w-full max-w-lg mx-auto overflow-x-hidden">

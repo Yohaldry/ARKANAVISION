@@ -46,6 +46,7 @@ const [nuevoServicioInterno, setNuevoServicioInterno] = useState({ nombre: '', p
 const [exitoModalOpen, setExitoModalOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
   const [servicioAEliminar, setServicioAEliminar] = useState(null);
+  const [barberData, setBarberData] = useState(null);
 
   const [modalEditarOpen, setModalEditarOpen] = useState(false);
   const [formEdicion, setFormEdicion] = useState({
@@ -195,10 +196,26 @@ useEffect(() => {
       // Listener directo al documento del profesional usando su UID como ID de documento
       const docRef = doc(db, "profesionales", user.uid);
 
-      unsubscribeProfesional = onSnapshot(docRef, (docSnap) => {
+      unsubscribeProfesional = onSnapshot(docRef, async (docSnap) => {
         if (docSnap.exists()) {
           const dataBarbero = docSnap.data();
           console.log("Datos del profesional obtenidos directamente:", dataBarbero);
+          
+          // Guardar datos del barbero y buscar nombre del establecimiento si está vinculado
+          let infoBarbero = { ...dataBarbero };
+          if (dataBarbero.establecimientoId) {
+            try {
+              const estabDocRef = doc(db, "establecimientos", dataBarbero.establecimientoId);
+              const estabSnap = await getDoc(estabDocRef);
+              if (estabSnap.exists()) {
+                const estabData = estabSnap.data();
+                infoBarbero.establecimientoNombre = estabData.nombre || estabData.nombreEstablecimiento || "Establecimiento Socio";
+              }
+            } catch (err) {
+              console.error("Error al obtener nombre del establecimiento:", err);
+            }
+          }
+          setBarberData(infoBarbero);
           
           const porcentajeFirestore = dataBarbero.porcentaje;
           console.log("Valor del campo 'porcentaje':", porcentajeFirestore);
@@ -467,14 +484,27 @@ useEffect(() => {
           </h1>
           <p className="text-slate-500 text-[10px] sm:text-xs">Control de porcentajes y servicios a domicilio.</p>
         </div>
+       {/* Etiqueta de Establecimiento Administrador compacta */}
+
 
         {vistaTab === 'manual' && (
-          <button
-            onClick={() => setModalAgregarOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs cursor-pointer"
-          >
-            <Plus size={15} /> Registrar
-          </button>
+        barberData?.establecimientoId ? (
+            /* Etiqueta compacta que reemplaza al botón cuando está administrado */
+            <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-md text-[9px] font-bold shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+              <span className="truncate max-w-[220px]">
+                Admin: <strong className="text-emerald-900">{barberData.establecimientoNombre || 'Establecimiento Socio'}</strong>
+              </span>
+            </div>
+          ) : (
+            /* Botón de Registrar original que aparece solo si no está vinculado */
+            <button
+              onClick={() => setModalAgregarOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs cursor-pointer"
+            >
+              <Plus size={15} /> Registrar
+            </button>
+          )
         )}
       </div>
 

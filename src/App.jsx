@@ -14,6 +14,8 @@ import BarberoLintero from './Pages/barberos/BarberoKintero'
 import PanelProfesionales from './Pages/profesionales/PanelProfesionales';
 import BarberBookingView from './Pages/profesionales/BarberBookingView'; // Asegúrate de importar tu nueva vista de reserva dinámica
 import LoginProfesionales from './Pages/profesionales/LoginProfesionales';
+import PanelEstablecimientos from './Pages/profesionales/establecimientos/PanelEstablecimientos';
+import AgendaEstablecimiento from './Pages/profesionales/establecimientos/AgendaEstablecimiento';
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
   return isAuthenticated ? children : <Navigate to="/" />;
@@ -36,10 +38,12 @@ function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/kintero" element={<BarberoLintero />} />
         <Route path="/panelprofesionales" element={<PanelProfesionales />} />
-<Route path="/loginprofesionales" element={<LoginProfesionales />} />
+        <Route path="/loginprofesionales" element={<LoginProfesionales />} />
+        <Route path="/panelestablecimientos" element={<PanelEstablecimientos />} />
+        <Route path="/agendaestablecimiento" element={<AgendaEstablecimiento />} />
 
         {/* Ruta dinámica para que cada cliente reserve con su barbero respectivo */}
-    <Route path="/reservar/:barberoId" element={<BarberBookingView />} />
+        <Route path="/reservar/:barberoId" element={<BarberBookingView />} />
 
         {/* Si escriben cualquier otra cosa, redirige al Home */}
         <Route path="*" element={<Navigate to="/" />} />

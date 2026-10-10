@@ -3,7 +3,7 @@ import {
   Eye, EyeOff, ArrowRight, Loader2, AlertTriangle, CheckCircle2, ShieldCheck, Zap, Users 
 } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase'; // Ajusta la ruta a tu archivo firebase.js si es necesario
 
 export default function LoginProfesionales() {
@@ -58,30 +58,59 @@ export default function LoginProfesionales() {
       if (isRegistering) {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         
-        await setDoc(doc(db, 'profesionales', cred.user.uid), { 
-          uid: cred.user.uid, 
-          nombre: nombreRegistro || 'Socio', 
-          email: cred.user.email,
-          pais: pais || 'Colombia',
-          moneda: moneda || 'COP',
-          tipoTrabajador: tipoTrabajador || 'establecimiento',
-          // Se guarda el nombre del establecimiento si se seleccionó, de lo contrario vacío
-          establecimiento: tipoTrabajador === 'establecimiento' ? establecimiento : '',
-          porcentaje: tipoTrabajador === 'empleado' ? Number(porcentajeEmpleado) || 0 : 100, 
-          ref: refInvitador || 'yohaldryquintero1995@gmail.com',
-          createdAt: new Date().toISOString()
-        });
+        if (tipoTrabajador === 'establecimiento') {
+          // Guardar en la tabla de establecimientos
+          await setDoc(doc(db, 'establecimientos', cred.user.uid), {
+            uid: cred.user.uid,
+            nombre: establecimiento || nombreRegistro || 'Establecimiento Socio',
+            email: cred.user.email,
+            pais: pais || 'Colombia',
+            moneda: moneda || 'COP',
+            tipo: 'establecimiento',
+            ref: refInvitador || 'yohaldryquintero1995@gmail.com',
+            createdAt: new Date().toISOString()
+          });
+        } else {
+          // Guardar en la tabla de profesionales (empleados)
+          await setDoc(doc(db, 'profesionales', cred.user.uid), { 
+            uid: cred.user.uid, 
+            nombre: nombreRegistro || 'Socio', 
+            email: cred.user.email,
+            pais: pais || 'Colombia',
+            moneda: moneda || 'COP',
+            tipoTrabajador: tipoTrabajador,
+            establecimiento: '',
+            porcentaje: Number(porcentajeEmpleado) || 0, 
+            ref: refInvitador || 'yohaldryquintero1995@gmail.com',
+            createdAt: new Date().toISOString()
+          });
+        }
 
         setSuccessMsgLogin('¡Registro exitoso!');
         setTransicionVisarka(true);
         setTimeout(() => {
-          window.location.href = '/panelprofesionales';
+          if (tipoTrabajador === 'establecimiento') {
+            window.location.href = '/panelestablecimientos';
+          } else {
+            window.location.href = '/panelprofesionales';
+          }
         }, 1500);
       } else { 
-        await signInWithEmailAndPassword(auth, email, password); 
+        const cred = await signInWithEmailAndPassword(auth, email, password); 
+        
+        // Verificar si el usuario pertenece a la tabla de establecimientos
+        const estabDocRef = doc(db, 'establecimientos', cred.user.uid);
+        const estabSnap = await getDoc(estabDocRef);
+
         setSuccessMsgLogin('¡Éxito! Redirigiendo...');
+        setTransicionVisarka(true);
+
         setTimeout(() => {
-          window.location.href = '/panelprofesionales'; 
+          if (estabSnap.exists()) {
+            window.location.href = '/panelestablecimientos';
+          } else {
+            window.location.href = '/panelprofesionales'; 
+          }
         }, 1000);
       }
     } catch (err) { 
@@ -100,7 +129,7 @@ export default function LoginProfesionales() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-100 flex items-center justify-center p-3 sm:p-6 font-sans text-slate-800 relative select-none">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.15),transparent_50%)] pointer-events-none"></div>
 
-      {/* Contenedor Principal Adaptable (Columna en móvil, Fila dividida con animación en PC) */}
+      {/* Contenedor Principal Adaptable */}
       <div className={`w-full max-w-4xl bg-white/95 border border-blue-100 shadow-[0_20px_50px_rgba(37,99,235,0.12)] rounded-3xl overflow-hidden flex flex-col md:flex-row transition-all duration-700 ease-in-out relative z-10 ${
         isRegistering ? 'md:flex-row-reverse' : ''
       }`}>
@@ -120,7 +149,7 @@ export default function LoginProfesionales() {
             
             <div className="space-y-1">
               <span className="text-[8px] sm:text-[9px] font-mono tracking-widest uppercase bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm text-sky-100">
-                Portal de Profesionales
+                Portal de Profesionales y Establecimientos
               </span>
               <h1 className="text-lg sm:text-2xl font-black tracking-tight leading-tight">
                 VISARKA
@@ -208,7 +237,7 @@ export default function LoginProfesionales() {
                 />
               </div>
 
-              {/* Campo Contraseña con efecto en vivo */}
+              {/* Campo Contraseña */}
               <div className="space-y-0.5">
                 <div className="flex justify-between items-center ml-1">
                   <label className="block text-[8px] font-bold text-slate-500 uppercase tracking-wider">Contraseña</label>
@@ -243,7 +272,7 @@ export default function LoginProfesionales() {
                 </div>
               </div>
 
-              {/* Campo Confirmar Contraseña con efecto en vivo */}
+              {/* Campo Confirmar Contraseña */}
               {isRegistering && (
                 <div className="space-y-0.5">
                   <div className="flex justify-between items-center ml-1">
@@ -422,7 +451,7 @@ export default function LoginProfesionales() {
             />
           </div>
           <h1 className="text-white text-sm font-black uppercase tracking-widest">Visarka</h1>
-          <p className="text-sky-400 text-[10px] font-mono tracking-wider mt-1">Cargando Portal de Profesionales...</p>
+          <p className="text-sky-400 text-[10px] font-mono tracking-wider mt-1">Cargando Panel...</p>
           <div className="w-32 h-1 bg-slate-800 rounded-full mt-6 overflow-hidden border border-sky-900">
             <div className="w-full h-full bg-gradient-to-r from-blue-500 to-sky-400 animate-[indeterminate_1s_infinite_linear]"></div>
           </div>
