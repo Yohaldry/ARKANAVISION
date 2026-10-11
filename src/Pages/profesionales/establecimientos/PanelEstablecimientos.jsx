@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Users, Sparkles, CheckCircle2, Clock, 
-  AlertCircle, ShieldCheck, Filter, RefreshCw, LogOut, Check, Search, TrendingUp, Scissors, UserPlus, X, Link as LinkIcon, Unlink, LayoutDashboard, Settings, DollarSign, Globe, Copy, ExternalLink
+  AlertCircle, ShieldCheck, Filter, RefreshCw, LogOut, Check, Search, TrendingUp, Scissors, UserPlus, X, Link as LinkIcon, Unlink, LayoutDashboard, Settings, DollarSign, Globe, Copy, ExternalLink, Package
 } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, query, where, doc, getDoc, updateDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../../components/firebase';
 import Servicios from './Servicios';
+import InventarioEstablecimiento from './InventarioEstablecimiento';
+import Producido from './Producido';
+
 
 const horasCalendario = [
   { label: '12:00 a. m.', val24: '00:00' }, { label: '1:00 a. m.', val24: '01:00' },
@@ -352,6 +355,29 @@ export default function PanelEstablecimientos() {
               Servicios
             </span>
           </button>
+          <button 
+  onClick={() => setSeccionActiva('producido')}
+  className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer ${
+    seccionActiva === 'producido' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50 hover:text-blue-600'
+  }`}
+>
+  <DollarSign className="w-5 h-5 shrink-0" />
+  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-bold text-xs uppercase tracking-wider whitespace-nowrap">
+    Producido
+  </span>
+</button>
+
+          <button 
+  onClick={() => setSeccionActiva('inventario')}
+  className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer ${
+    seccionActiva === 'inventario' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50 hover:text-blue-600'
+  }`}
+>
+  <Package className="w-5 h-5 shrink-0" />
+  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-bold text-xs uppercase tracking-wider whitespace-nowrap">
+    Inventario
+  </span>
+</button>
 
           <button 
             onClick={() => {
@@ -647,6 +673,12 @@ export default function PanelEstablecimientos() {
           {/* ================= SECCIÓN: SERVICIOS ================= */}
           {seccionActiva === 'servicios' && (
             <Servicios />
+          )}
+           {seccionActiva === 'inventario' && (
+            <InventarioEstablecimiento />
+          )}
+           {seccionActiva === 'producido' && (
+            <Producido />
           )}
 
         </main>
