@@ -187,9 +187,15 @@ export default function PanelProfesionales() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
-  const [notificaciones, setNotificaciones] = useState([]);
 
-  const [modalHorarioSemanalAbierto, setModalHorarioSemanalAbierto] = useState(false);
+
+
+
+const [notificaciones, setNotificaciones] = useState([]);
+const [nuevaFechaFinCita, setNuevaFechaFinCita] = useState('');
+const [esRangoBloqueo, setEsRangoBloqueo] = useState(false);
+
+const [modalHorarioSemanalAbierto, setModalHorarioSemanalAbierto] = useState(false);
 const [horarioSemanal, setHorarioSemanal] = useState({
   lunes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
   martes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
@@ -200,8 +206,20 @@ const [horarioSemanal, setHorarioSemanal] = useState({
   domingo: { abierto: false, apertura: '8:00 a. m.', cierre: '7:00 p. m.' }
 });
 
-  const [horaInicioLaboral, setHoraInicioLaboral] = useState('8:00 a. m.');
+const [horaInicioLaboral, setHoraInicioLaboral] = useState('8:00 a. m.');
 const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
+// Obtener el horario específico de este profesional
+
+// 1. Obtén la fecha que estás evaluando (reemplaza 'fechaSeleccionada' por la variable de fecha real que use tu componente)
+const fechaActualEval = fechaSeleccionada || new Date(); 
+
+// 2. Si la fecha es un string (ej: "2026-10-12"), asegúrate de convertirla a objeto Date:
+const objetoFecha = typeof fechaActualEval === 'string' 
+  ? new Date(fechaActualEval + 'T00:00:00') 
+  : (fechaActualEval instanceof Date ? fechaActualEval : new Date());
+
+
+
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
@@ -485,7 +503,7 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
   }, [nombre]);
 
   const [serviciosModalCita, setServiciosModalCita] = useState([]);
-
+const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId === authUser?.uid);
   const abrirModalCita = (cita) => {
     setCitaSeleccionada(cita);
     setNuevaFechaCita(cita.fechaStr || cita.fecha || '');
@@ -1034,9 +1052,9 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
         </div>
       )}
 
- {modalBloqueoAbierto && (
+{modalBloqueoAbierto && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-    <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
       <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div>
           <h3 className="text-xs font-black text-slate-900 uppercase flex items-center gap-1">
@@ -1045,6 +1063,7 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
           <p className="text-[10px] text-indigo-600 font-bold">{nuevoMotivoBloqueo || 'No disponible'}</p>
         </div>
         <button 
+          type="button"
           onClick={() => {
             setModalBloqueoAbierto(false);
             setCitaSeleccionada(null);
@@ -1068,16 +1087,52 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
           />
         </div>
 
-        {/* Fecha del bloqueo */}
-        <div className="space-y-1">
-          <label className="font-bold text-slate-500 uppercase text-[9px]">FECHA DEL BLOQUEO:</label>
-          <input 
-            type="date" 
-            value={nuevaFechaCita} 
-            onChange={(e) => setNuevaFechaCita(e.target.value)} 
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
-          />
-        </div>
+        {/* Opción de Rango de Días (Solo al crear un nuevo bloqueo) */}
+        {!citaSeleccionada?.id && (
+          <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2 rounded-xl">
+            <span className="font-bold text-slate-700 uppercase text-[9px]">¿Aplicar a varios días?</span>
+            <input 
+              type="checkbox" 
+              checked={esRangoBloqueo} 
+              onChange={(e) => setEsRangoBloqueo(e.target.checked)}
+              className="rounded text-indigo-600 cursor-pointer w-4 h-4"
+            />
+          </div>
+        )}
+
+        {/* Selector de Fechas */}
+        {!citaSeleccionada?.id && esRangoBloqueo ? (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">DESDE LA FECHA:</label>
+              <input 
+                type="date" 
+                value={nuevaFechaCita} 
+                onChange={(e) => setNuevaFechaCita(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-bold text-slate-500 uppercase text-[9px]">HASTA LA FECHA:</label>
+              <input 
+                type="date" 
+                value={nuevaFechaFinCita} 
+                onChange={(e) => setNuevaFechaFinCita(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <label className="font-bold text-slate-500 uppercase text-[9px]">FECHA DEL BLOQUEO:</label>
+            <input 
+              type="date" 
+              value={nuevaFechaCita} 
+              onChange={(e) => setNuevaFechaCita(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
+            />
+          </div>
+        )}
 
         {/* Horas Inicio y Fin */}
         <div className="grid grid-cols-2 gap-2">
@@ -1097,7 +1152,7 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
           <div className="space-y-1">
             <label className="font-bold text-slate-500 uppercase text-[9px]">HORA FIN:</label>
             <select 
-              value={nuevaHoraFinCita} 
+              value={nuevaHoraFinCitaSelect => nuevaHoraFinCitaSelect} // o usa tu estado existente de hora fin
               onChange={(e) => setNuevaHoraFinCita(e.target.value)} 
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
             >
@@ -1111,11 +1166,11 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
 
       {/* Acciones del Modal */}
       <div className="flex gap-2 pt-2">
-        {/* El botón de Eliminar SOLO se muestra cuando se está EDITANDO un bloqueo existente */}
         {citaSeleccionada?.id && (
           <button 
             type="button"
-            onClick={async () => {
+            onClick={async (e) => {
+              e.stopPropagation();
               try {
                 setLoading(true);
                 await deleteDoc(doc(db, "bloqueos", citaSeleccionada.id));
@@ -1137,10 +1192,10 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
           </button>
         )}
 
-        {/* Botón de Guardar / Editar según el caso */}
         <button 
           type="button"
-          onClick={async () => {
+          onClick={async (e) => {
+            e.stopPropagation();
             try {
               setLoading(true);
 
@@ -1149,11 +1204,9 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
               let duracionTotal = minFin - minInicio;
               if (duracionTotal <= 0) duracionTotal += 1440;
 
-              const payloadBloqueo = {
+              const payloadBase = {
                 barberoId: authUser.uid,
                 motivo: nuevoMotivoBloqueo || 'No disponible',
-                fechaStr: nuevaFechaCita,
-                fecha: nuevaFechaCita,
                 horaInicio: nuevaHoraCita,
                 hora: nuevaHoraCita,
                 horaFin: nuevaHoraFinCita,
@@ -1163,18 +1216,51 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
               };
 
               if (citaSeleccionada?.id) {
-                // EDITAR bloqueo existente
-                await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadBloqueo);
+                // EDITAR bloqueo existente (un solo día)
+                const payloadEditar = {
+                  ...payloadBase,
+                  fechaStr: nuevaFechaCita,
+                  fecha: nuevaFechaCita
+                };
+                await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadEditar);
                 setSuccessMsg('¡Bloqueo actualizado con éxito!');
+              } else if (esRangoBloqueo) {
+                // CREAR BLOQUEOS EN RANGO DE DÍAS MÚLTIPLES
+                const fechaInicioObj = new Date(nuevaFechaCita + 'T00:00:00');
+                const fechaFinObj = new Date((nuevaFechaFinCita || nuevaFechaCita) + 'T00:00:00');
+
+                if (fechaFinObj < fechaInicioObj) {
+                  setErrorMsg('La fecha de fin no puede ser anterior a la fecha de inicio.');
+                  setLoading(false);
+                  return;
+                }
+
+                let fechaActualObj = new Date(fechaInicioObj);
+                while (fechaActualObj <= fechaFinObj) {
+                  const fechaStrActual = fechaActualObj.toISOString().split('T')[0];
+                  const payloadRango = {
+                    ...payloadBase,
+                    fechaStr: fechaStrActual,
+                    fecha: fechaStrActual
+                  };
+                  await addDoc(collection(db, "bloqueos"), payloadRango);
+                  fechaActualObj.setDate(fechaActualObj.getDate() + 1);
+                }
+                setSuccessMsg('¡Bloqueos en rango guardados con éxito!');
               } else {
-                // CREAR un NUEVO bloqueo en Firestore
-                await addDoc(collection(db, "bloqueos"), payloadBloqueo);
+                // CREAR BLOQUEO PARA UN SOLO DÍA
+                const payloadUnico = {
+                  ...payloadBase,
+                  fechaStr: nuevaFechaCita,
+                  fecha: nuevaFechaCita
+                };
+                await addDoc(collection(db, "bloqueos"), payloadUnico);
                 setSuccessMsg('¡Bloqueo guardado con éxito!');
               }
 
-              // Cerrar el modal y limpiar selección de inmediato
               setModalBloqueoAbierto(false);
               setCitaSeleccionada(null);
+              setEsRangoBloqueo(false);
               setTimeout(() => setSuccessMsg(''), 3000);
             } catch (error) {
               console.error("Error al guardar el bloqueo:", error);
@@ -2166,18 +2252,20 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
       let duracionTotal = minFin - minInicio;
       if (duracionTotal <= 0) duracionTotal += 1440;
 
-      const payloadBloqueo = {
-        barberoId: authUser.uid,
-        motivo: nuevoMotivoBloqueo || 'No disponible',
-        fechaStr: nuevaFechaCita,
-        fecha: nuevaFechaCita,
-        horaInicio: nuevaHoraCita,
-        hora: nuevaHoraCita,
-        horaFin: nuevaHoraFinCita,
-        duracionTotal,
-        esBloqueo: true,
-        creadoEn: new Date().toISOString()
-      };
+   const payloadBloqueo = {
+  barberoId: authUser.uid, // <-- Vital para que solo le pertenezca a este profesional
+  motivo: nuevoMotivoBloqueo || 'No disponible',
+  fechaStr: fechaStrActual,
+  fecha: fechaStrActual,
+  horaInicio: nuevaHoraCita,
+  hora: nuevaHoraCita,
+  horaFin: nuevaHoraFinCita,
+  duracionTotal,
+  esBloqueo: true,
+  creadoEn: new Date().toISOString()
+};
+
+await addDoc(collection(db, "bloqueos"), payloadBloqueo);
 
       if (citaSeleccionada?.id) {
         // EDITAR bloqueo existente
