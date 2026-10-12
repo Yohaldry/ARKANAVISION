@@ -219,6 +219,19 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
     return realH * 60 + m;
   };
 
+  const abrirModalEdicionBloqueo = (itemCita) => {
+  setCitaSeleccionada(itemCita);
+  
+  // Rellenar estados del modal con los datos del bloqueo seleccionado
+  setNuevoMotivoBloqueo(itemCita.motivo || 'No disponible');
+  setNuevaFechaCita(itemCita.fechaStr || itemCita.fecha || new Date().toISOString().split('T')[0]);
+  setNuevaHoraCita(itemCita.horaInicio || itemCita.hora || '12:00 a. m.');
+  setNuevaHoraFinCita(itemCita.horaFin || '1:00 a. m.');
+  
+  // Abrir el modal de edición/gestión de bloqueo
+  setModalBloqueoAbierto(true);
+};
+
   const renderFieldView = (label, value) => {
     const isEmpty = !value || (Array.isArray(value) && value.length === 0) || String(value).trim() === '';
     return (
@@ -953,54 +966,62 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
             )}
 
             {/* Renderizado de Bloqueos (un solo cuadro continuo) y Citas */}
-            {elementosEnEstaHora.map((itemCita, cIdx) => {
-              const horaInicioRef = itemCita.horaInicio || itemCita.hora;
-              const minutosItemInicio = horaAMinutos(horaInicioRef);
-              
-              let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-              if (itemCita.esBloqueo && (itemCita.horaFin || horaInicioRef)) {
-                const minInicio = horaAMinutos(horaInicioRef);
-                const minFin = horaAMinutos(itemCita.horaFin);
-                if (minFin > minInicio) {
-                  duracionMin = minFin - minInicio;
-                } else if (minFin < minInicio) {
-                  duracionMin = (1440 - minInicio) + minFin;
-                }
-              }
+          {elementosEnEstaHora.map((itemCita, cIdx) => {
+  const horaInicioRef = itemCita.horaInicio || itemCita.hora;
+  const minutosItemInicio = horaAMinutos(horaInicioRef);
+  
+  let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+  if (itemCita.esBloqueo && (itemCita.horaFin || horaInicioRef)) {
+    const minInicio = horaAMinutos(horaInicioRef);
+    const minFin = horaAMinutos(itemCita.horaFin);
+    if (minFin > minInicio) {
+      duracionMin = minFin - minInicio;
+    } else if (minFin < minInicio) {
+      duracionMin = (1440 - minInicio) + minFin;
+    }
+  }
 
-              const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-              const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-              // 72px es la altura estándar de cada fila de 1 hora
-              const alturaTotalPixeles = (duracionMin / 60) * 72;
+  const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+  const alturaTotalPixeles = (duracionMin / 60) * 72;
 
-              return (
-                <div 
-                  key={cIdx}
-                  onClick={(e) => { e.stopPropagation(); setCitaSeleccionada(itemCita); }}
-                  className={`absolute p-2 border transition-all shadow-xs flex flex-col justify-between overflow-hidden rounded-lg ${
-                    itemCita.esBloqueo 
-                      ? 'bg-slate-200/90 border-slate-300 text-slate-700 font-medium select-none cursor-pointer hover:bg-slate-300/90' 
-                      : 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'
-                  }`}
-                  style={{ 
-                    top: `${topPercent}%`, 
-                    height: `${Math.max(alturaTotalPixeles, 46)}px`, 
-                    width: 'calc(100% - 2px)', 
-                    left: '1px', 
-                    zIndex: itemCita.esBloqueo ? 50 : 40 
-                  }}
-                >
-                  <div className="flex justify-between items-start w-full">
-                    <span className={`font-medium text-[9px] truncate ${itemCita.esBloqueo ? 'text-slate-700 line-through' : ''}`}>
-                      {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'Horario no disponible'}` : itemCita.cliente}
-                    </span>
-                    <span className={`${itemCita.esBloqueo ? 'bg-slate-300/80 border border-slate-400/50 text-slate-700 text-[8px] px-1.5 py-0.5 rounded-md font-mono' : 'text-[8px]'}`}>
-                      {itemCita.esBloqueo ? `${itemCita.horaInicio || itemCita.hora} - ${itemCita.horaFin}` : itemCita.hora}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+  return (
+    <div 
+      key={cIdx}
+      /* AQUÍ SE INTEGRA EL EVENTO ONCLICK EN LA TARJETA DEL BLOQUEO / CITA */
+      onClick={(e) => { 
+        e.stopPropagation(); 
+        if (itemCita.esBloqueo) {
+          abrirModalEdicionBloqueo(itemCita);
+        } else {
+          setCitaSeleccionada(itemCita);
+          // abrir modal de cita si tienes uno definido
+        }
+      }}
+      className={`absolute p-2 border transition-all shadow-xs flex flex-col justify-between overflow-hidden rounded-lg cursor-pointer ${
+        itemCita.esBloqueo 
+          ? 'bg-slate-200/90 border-slate-300 text-slate-700 font-medium select-none hover:bg-slate-300/90' 
+          : 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'
+      }`}
+      style={{ 
+        top: `${topPercent}%`, 
+        height: `${Math.max(alturaTotalPixeles, 46)}px`, 
+        width: 'calc(100% - 2px)', 
+        left: '1px', 
+        zIndex: itemCita.esBloqueo ? 50 : 40 
+      }}
+    >
+      <div className="flex justify-between items-start w-full pointer-events-none">
+        <span className={`font-medium text-[9px] truncate ${itemCita.esBloqueo ? 'text-slate-700 line-through' : ''}`}>
+          {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'Horario no disponible'}` : itemCita.cliente}
+        </span>
+      <span className={`${itemCita.esBloqueo ? 'bg-slate-300/80 border border-slate-400/50 text-slate-700 text-[8px] px-1 py-0.5 rounded font-mono whitespace-nowrap' : 'text-[8px] whitespace-nowrap'}`}>
+  {itemCita.esBloqueo ? `${itemCita.horaInicio || itemCita.hora} - ${itemCita.horaFin}` : itemCita.hora}
+</span>
+      </div>
+    </div>
+  );
+})}
           </div>
         );
       })}
@@ -1013,215 +1034,168 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
         </div>
       )}
 
-        {modalBloqueoAbierto && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                  🚫 Agregar Horario No Disponible
-                </h3>
-                <button onClick={() => setModalBloqueoAbierto(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
-              </div>
+ {modalBloqueoAbierto && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div>
+          <h3 className="text-xs font-black text-slate-900 uppercase flex items-center gap-1">
+            🚫 {citaSeleccionada?.id ? 'GESTIONAR BLOQUEO DE HORARIO' : 'NUEVO BLOQUEO DE HORARIO'}
+          </h3>
+          <p className="text-[10px] text-indigo-600 font-bold">{nuevoMotivoBloqueo || 'No disponible'}</p>
+        </div>
+        <button 
+          onClick={() => {
+            setModalBloqueoAbierto(false);
+            setCitaSeleccionada(null);
+          }} 
+          className="text-slate-400 font-bold cursor-pointer hover:text-slate-600 transition"
+        >
+          ✕
+        </button>
+      </div>
 
-              <div className="space-y-3 text-[11px]">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Tipo de Bloqueo:</label>
-                  <select 
-                    value={datosBloqueo.tipoRepeticion || 'unico'} 
-                    onChange={(e) => setDatosBloqueo({...datosBloqueo, tipoRepeticion: e.target.value})}
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
-                  >
-                    <option value="unico">Día único</option>
-                    <option value="rango">Rango de fechas (Continuo)</option>
-                    <option value="semanal">Días específicos de la semana (Recurrente)</option>
-                  </select>
-                </div>
+      <div className="space-y-3 text-[10px]">
+        {/* Motivo del bloqueo */}
+        <div className="space-y-1">
+          <label className="font-bold text-slate-500 uppercase text-[9px]">MOTIVO DEL BLOQUEO:</label>
+          <input 
+            type="text" 
+            value={nuevoMotivoBloqueo} 
+            onChange={(e) => setNuevoMotivoBloqueo(e.target.value)} 
+            placeholder="Ej: Almuerzo, Diligencia personal..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
+          />
+        </div>
 
-                {datosBloqueo.tipoRepeticion === 'rango' ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-bold text-slate-600 mb-1">Fecha Inicio:</label>
-                      <input 
-                        type="date" 
-                        value={datosBloqueo.fechaStr} 
-                        onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaStr: e.target.value})}
-                        className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-600 mb-1">Fecha Fin:</label>
-                      <input 
-                        type="date" 
-                        value={datosBloqueo.fechaFinRango || ''} 
-                        onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaFinRango: e.target.value})}
-                        className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Fecha:</label>
-                    <input 
-                      type="date" 
-                      value={datosBloqueo.fechaStr} 
-                      onChange={(e) => setDatosBloqueo({...datosBloqueo, fechaStr: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                    />
-                  </div>
-                )}
+        {/* Fecha del bloqueo */}
+        <div className="space-y-1">
+          <label className="font-bold text-slate-500 uppercase text-[9px]">FECHA DEL BLOQUEO:</label>
+          <input 
+            type="date" 
+            value={nuevaFechaCita} 
+            onChange={(e) => setNuevaFechaCita(e.target.value)} 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
+          />
+        </div>
 
-                {datosBloqueo.tipoRepeticion === 'semanal' && (
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Repetir durante (semanas/meses):</label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="52"
-                      value={datosBloqueo.cantidadSemanas || 1} 
-                      onChange={(e) => setDatosBloqueo({...datosBloqueo, cantidadSemanas: parseInt(e.target.value) || 1})}
-                      placeholder="Ej: 4 semanas"
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Hora Inicio:</label>
-                    <select 
-                      value={datosBloqueo.horaInicio} 
-                      onChange={(e) => setDatosBloqueo({...datosBloqueo, horaInicio: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
-                    >
-                      {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.label}>{h.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Hora Fin:</label>
-                    <select 
-                      value={datosBloqueo.horaFin} 
-                      onChange={(e) => setDatosBloqueo({...datosBloqueo, horaFin: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
-                    >
-                      {horasCalendario.map((h, i) => (
-                        <option key={i} value={h.label}>{h.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Motivo del bloqueo:</label>
-                  <input 
-                    type="text" 
-                    value={datosBloqueo.motivo} 
-                    onChange={(e) => setDatosBloqueo({...datosBloqueo, motivo: e.target.value})}
-                    placeholder="Ej: Madrugada, Descanso, Vacaciones..."
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button 
-                  onClick={() => setModalBloqueoAbierto(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-[10px] cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={async () => {
-                    const minInicio = horaAMinutos(datosBloqueo.horaInicio);
-                    const minFin = horaAMinutos(datosBloqueo.horaFin);
-                    if (minFin <= minInicio) {
-                      alert('La hora fin debe ser posterior a la hora de inicio.');
-                      return;
-                    }
-                    const duracionTotalMinutos = minFin - minInicio;
-                    const tipo = datosBloqueo.tipoRepeticion || 'unico';
-
-                    let fechasAGenerar = [];
-
-                    if (tipo === 'unico') {
-                      if (!datosBloqueo.fechaStr) {
-                        alert('Por favor selecciona una fecha.');
-                        return;
-                      }
-                      fechasAGenerar.push(datosBloqueo.fechaStr);
-                    } else if (tipo === 'rango') {
-                      if (!datosBloqueo.fechaStr || !datosBloqueo.fechaFinRango) {
-                        alert('Por favor selecciona la fecha de inicio y fin.');
-                        return;
-                      }
-                      let curr = new Date(datosBloqueo.fechaStr + 'T00:00:00');
-                      let end = new Date(datosBloqueo.fechaFinRango + 'T00:00:00');
-                      
-                      if (curr > end) {
-                        alert('La fecha de inicio no puede ser posterior a la fecha fin.');
-                        return;
-                      }
-
-                      while (curr <= end) {
-                        fechasAGenerar.push(curr.toISOString().split('T')[0]);
-                        curr.setDate(curr.getDate() + 1);
-                      }
-                    } else if (tipo === 'semanal') {
-                      if (!datosBloqueo.fechaStr) {
-                        alert('Por favor selecciona una fecha base.');
-                        return;
-                      }
-                      const semanas = datosBloqueo.cantidadSemanas || 1;
-                      let baseDate = new Date(datosBloqueo.fechaStr + 'T00:00:00');
-
-                      for (let i = 0; i < semanas; i++) {
-                        let d = new Date(baseDate);
-                        d.setDate(d.getDate() + (i * 7));
-                        fechasAGenerar.push(d.toISOString().split('T')[0]);
-                      }
-                    }
-
-                    try {
-                      const batchPromises = fechasAGenerar.map(async (fecha) => {
-                        const nuevoBloqueo = {
-                          barberoId: authUser.uid,
-                          barberoName: nombre,
-                          estado: 'bloqueado',
-                          esBloqueo: true,
-                          fecha: fecha,
-                          fechaStr: fecha,
-                          hora: datosBloqueo.horaInicio,
-                          horaInicio: datosBloqueo.horaInicio,
-                          horaFin: datosBloqueo.horaFin,
-                          duracionTotal: duracionTotalMinutos,
-                          motivo: datosBloqueo.motivo || 'No disponible',
-                          clienteNombre: 'BLOQUEADO',
-                          createdAt: new Date().toISOString()
-                        };
-
-                        // Guardar estrictamente en la colección "bloqueos"
-                        await addDoc(collection(db, 'bloqueos'), nuevoBloqueo);
-                      });
-
-                      await Promise.all(batchPromises);
-
-                      setSuccessMsg(`Se han registrado ${fechasAGenerar.length} bloqueos correctamente.`);
-                      setModalBloqueoAbierto(false);
-                      setTimeout(() => setSuccessMsg(''), 3000);
-                    } catch (error) {
-                      console.error(error);
-                      setErrorMsg('Error al guardar los bloqueos en la base de datos.');
-                    }
-                  }}
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl transition text-[10px] shadow-sm cursor-pointer"
-                >
-                  Guardar Bloqueo(s)
-                </button>
-              </div>
-            </div>
+        {/* Horas Inicio y Fin */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="font-bold text-slate-500 uppercase text-[9px]">HORA INICIO:</label>
+            <select 
+              value={nuevaHoraCita} 
+              onChange={(e) => setNuevaHoraCita(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
+            >
+              {horasCalendario.map((h, i) => (
+                <option key={i} value={h.label}>{h.label}</option>
+              ))}
+            </select>
           </div>
+
+          <div className="space-y-1">
+            <label className="font-bold text-slate-500 uppercase text-[9px]">HORA FIN:</label>
+            <select 
+              value={nuevaHoraFinCita} 
+              onChange={(e) => setNuevaHoraFinCita(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
+            >
+              {horasCalendario.map((h, i) => (
+                <option key={i} value={h.label}>{h.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Acciones del Modal */}
+      <div className="flex gap-2 pt-2">
+        {/* El botón de Eliminar SOLO se muestra cuando se está EDITANDO un bloqueo existente */}
+        {citaSeleccionada?.id && (
+          <button 
+            type="button"
+            onClick={async () => {
+              try {
+                setLoading(true);
+                await deleteDoc(doc(db, "bloqueos", citaSeleccionada.id));
+                setModalBloqueoAbierto(false);
+                setCitaSeleccionada(null);
+                setSuccessMsg('¡Bloqueo eliminado!');
+                setTimeout(() => setSuccessMsg(''), 3000);
+              } catch (error) {
+                console.error("Error al eliminar el bloqueo:", error);
+                setErrorMsg("No se pudo eliminar el bloqueo.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition"
+          >
+            🗑️ Eliminar
+          </button>
         )}
+
+        {/* Botón de Guardar / Editar según el caso */}
+        <button 
+          type="button"
+          onClick={async () => {
+            try {
+              setLoading(true);
+
+              const minInicio = horaAMinutos(nuevaHoraCita);
+              const minFin = horaAMinutos(nuevaHoraFinCita);
+              let duracionTotal = minFin - minInicio;
+              if (duracionTotal <= 0) duracionTotal += 1440;
+
+              const payloadBloqueo = {
+                barberoId: authUser.uid,
+                motivo: nuevoMotivoBloqueo || 'No disponible',
+                fechaStr: nuevaFechaCita,
+                fecha: nuevaFechaCita,
+                horaInicio: nuevaHoraCita,
+                hora: nuevaHoraCita,
+                horaFin: nuevaHoraFinCita,
+                duracionTotal,
+                esBloqueo: true,
+                creadoEn: new Date().toISOString()
+              };
+
+              if (citaSeleccionada?.id) {
+                // EDITAR bloqueo existente
+                await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadBloqueo);
+                setSuccessMsg('¡Bloqueo actualizado con éxito!');
+              } else {
+                // CREAR un NUEVO bloqueo en Firestore
+                await addDoc(collection(db, "bloqueos"), payloadBloqueo);
+                setSuccessMsg('¡Bloqueo guardado con éxito!');
+              }
+
+              // Cerrar el modal y limpiar selección de inmediato
+              setModalBloqueoAbierto(false);
+              setCitaSeleccionada(null);
+              setTimeout(() => setSuccessMsg(''), 3000);
+            } catch (error) {
+              console.error("Error al guardar el bloqueo:", error);
+              setErrorMsg('Ocurrió un error al guardar el bloqueo.');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          disabled={loading}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase shadow-xs flex items-center justify-center gap-1 cursor-pointer transition"
+        >
+          {loading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            citaSeleccionada?.id ? '✓ GUARDAR CAMBIOS' : '✓ GUARDAR'
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {modalNuevaCitaAbierto && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2180,47 +2154,83 @@ const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
                     >
                       🗑️ Eliminar
                     </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setModalLoading(true);
-                        try {
-                          const minInicio = horaAMinutos(nuevaHoraCita, true);
-                          const minFin = horaAMinutos(nuevaHoraFinCita, true);
-                          if (minFin <= minInicio) {
-                            alert('La hora fin debe ser posterior a la hora de inicio.');
-                            setModalLoading(false);
-                            return;
-                          }
-                          const duracionTotal = minFin - minInicio;
+                   <button 
+  type="button"
+  onClick={async (e) => {
+    e.stopPropagation(); // Evita que el evento burbujee a otros elementos
+    try {
+      setLoading(true);
 
-                          const bloqueoRef = doc(db, 'bloqueos', citaSeleccionada.id);
-                          await updateDoc(bloqueoRef, {
-                            fecha: nuevaFechaCita,
-                            fechaStr: nuevaFechaCita,
-                            horaInicio: nuevaHoraCita,
-                            hora: nuevaHoraCita,
-                            horaFin: nuevaHoraFinCita,
-                            motivo: nuevoMotivoBloqueo,
-                            duracionTotal: duracionTotal
-                          });
+      const minInicio = horaAMinutos(nuevaHoraCita);
+      const minFin = horaAMinutos(nuevaHoraFinCita);
+      let duracionTotal = minFin - minInicio;
+      if (duracionTotal <= 0) duracionTotal += 1440;
 
-                          setSuccessMsg('Bloqueo actualizado correctamente');
-                          setCitaSeleccionada(null);
-                          setTimeout(() => setSuccessMsg(''), 3000);
-                        } catch (err) {
-                          console.error(err);
-                          setErrorMsg('Error al actualizar el bloqueo');
-                          setTimeout(() => setErrorMsg(''), 3000);
-                        } finally {
-                          setModalLoading(false);
-                        }
-                      }}
-                      disabled={modalLoading}
-                      className="flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-blue-600 text-white hover:bg-blue-700 border border-blue-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center justify-center gap-1"
-                    >
-                      {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Editar / Guardar</>}
-                    </button>
+      const payloadBloqueo = {
+        barberoId: authUser.uid,
+        motivo: nuevoMotivoBloqueo || 'No disponible',
+        fechaStr: nuevaFechaCita,
+        fecha: nuevaFechaCita,
+        horaInicio: nuevaHoraCita,
+        hora: nuevaHoraCita,
+        horaFin: nuevaHoraFinCita,
+        duracionTotal,
+        esBloqueo: true,
+        creadoEn: new Date().toISOString()
+      };
+
+      if (citaSeleccionada?.id) {
+        // EDITAR bloqueo existente
+        await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadBloqueo);
+        setSuccessMsg('¡Bloqueo actualizado con éxito!');
+      } else {
+        // CREAR un NUEVO bloqueo en rango de fechas
+        const fechaInicioObj = new Date(nuevaFechaCita + 'T00:00:00');
+        const fechaFinObj = new Date((nuevaFechaFinCita || nuevaFechaCita) + 'T00:00:00');
+
+        if (fechaFinObj < fechaInicioObj) {
+          setErrorMsg('La fecha de fin no puede ser anterior a la fecha de inicio.');
+          setLoading(false);
+          return;
+        }
+
+        let fechaActualObj = new Date(fechaInicioObj);
+        while (fechaActualObj <= fechaFinObj) {
+          const fechaStrActual = fechaActualObj.toISOString().split('T')[0];
+          
+          const payloadRango = {
+            ...payloadBloqueo,
+            fechaStr: fechaStrActual,
+            fecha: fechaStrActual
+          };
+
+          await addDoc(collection(db, "bloqueos"), payloadRango);
+          fechaActualObj.setDate(fechaActualObj.getDate() + 1);
+        }
+
+        setSuccessMsg('¡Bloqueos guardados con éxito!');
+      }
+
+      // CERRAR EL MODAL Y ASEGURAR QUE CITA SELECCIONADA QUEDE EN NULL
+      setModalBloqueoAbierto(false);
+      setCitaSeleccionada(null);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (error) {
+      console.error("Error al guardar el bloqueo:", error);
+      setErrorMsg('Ocurrió un error al guardar el bloqueo.');
+    } finally {
+      setLoading(false);
+    }
+  }}
+  disabled={loading}
+  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase shadow-xs flex items-center justify-center gap-1 cursor-pointer transition"
+>
+  {loading ? (
+    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+  ) : (
+    citaSeleccionada?.id ? '✓ GUARDAR CAMBIOS' : '✓ GUARDAR'
+  )}
+</button>
                   </div>
                 ) : esFinalizada ? (
                   <button
