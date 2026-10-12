@@ -32,6 +32,8 @@ const zonasBogotaDisponibles = [
 ];
 
 export default function PanelProfesionales() {
+
+
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dragOverInfo, setDragOverInfo] = useState({ diaStr: null, horaTexto: null, x: 0, y: 0 });
@@ -42,6 +44,8 @@ export default function PanelProfesionales() {
   const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
+
+
 
   const primerCargaRef = useRef(true);
   const fileInputRef = useRef(null);
@@ -75,38 +79,37 @@ export default function PanelProfesionales() {
     hora: '12:00 a. m.'
   });
 
-  
-
   const actualizarBloqueoArrastrado = async (bloqueo, nuevaFechaStr, nuevaHoraInicio, nuevaHoraFin) => {
-  try {
-    const bloqueoId = bloqueo.id || bloqueo.uid;
-    if (!bloqueoId) return;
+    try {
+      const bloqueoId = bloqueo.id || bloqueo.uid;
+      if (!bloqueoId) return;
 
-    const minInicio = convertirHoraAMinutos(nuevaHoraInicio, true);
-    const minFin = convertirHoraAMinutos(nuevaHoraFin, true);
-    let duracionTotal = minFin - minInicio;
-    if (duracionTotal <= 0) duracionTotal += 1440;
+      const minInicio = convertirHoraAMinutos(nuevaHoraInicio, true);
+      const minFin = convertirHoraAMinutos(nuevaHoraFin, true);
+      let duracionTotal = minFin - minInicio;
+      if (duracionTotal <= 0) duracionTotal += 1440;
 
-    const bloqueoRef = doc(db, "citas", bloqueoId);
-    
-    const datosActualizados = {
-      fechaStr: nuevaFechaStr,
-      fecha: nuevaFechaStr,
-      hora: nuevaHoraInicio,
-      horaFin: nuevaHoraFin,
-      duracionTotal: duracionTotal
-    };
+      const bloqueoRef = doc(db, "bloqueos", bloqueoId);
+      
+      const datosActualizados = {
+        fechaStr: nuevaFechaStr,
+        fecha: nuevaFechaStr,
+        horaInicio: nuevaHoraInicio,
+        hora: nuevaHoraInicio,
+        horaFin: nuevaHoraFin,
+        duracionTotal: duracionTotal
+      };
 
-    await updateDoc(bloqueoRef, datosActualizados);
+      await updateDoc(bloqueoRef, datosActualizados);
 
-    setCitasFirestore(prev => 
-      prev.map(c => ((c.id || c.uid) === bloqueoId ? { ...c, ...datosActualizados } : c))
-    );
-  } catch (error) {
-    console.error("Error al actualizar el bloqueo arrastrado:", error);
-    alert("Hubo un error al mover el bloqueo. Inténtalo de nuevo.");
-  }
-};
+      setCitasFirestore(prev => 
+        prev.map(c => ((c.id || c.uid) === bloqueoId ? { ...c, ...datosActualizados } : c))
+      );
+    } catch (error) {
+      console.error("Error al actualizar el bloqueo arrastrado:", error);
+      alert("Hubo un error al mover el bloqueo. Inténtalo de nuevo.");
+    }
+  };
 
   const handleCerrarSesion = () => {
     if (document.getElementById('modal-salir-arkana')) return;
@@ -186,6 +189,20 @@ export default function PanelProfesionales() {
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
 
+  const [modalHorarioSemanalAbierto, setModalHorarioSemanalAbierto] = useState(false);
+const [horarioSemanal, setHorarioSemanal] = useState({
+  lunes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+  martes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+  miercoles: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+  jueves: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+  viernes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+  sabado: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+  domingo: { abierto: false, apertura: '8:00 a. m.', cierre: '7:00 p. m.' }
+});
+
+  const [horaInicioLaboral, setHoraInicioLaboral] = useState('8:00 a. m.');
+const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
+
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
     const limpio = horaStr.trim().toUpperCase().replace(/\./g, '');
@@ -250,14 +267,12 @@ export default function PanelProfesionales() {
     return diasDelMes.slice(Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)), Math.max(0, Math.min(idx - 3, diasDelMes.length - 7)) + 7);
   };
 
-  // 1. Funciones para responder a la solicitud del establecimiento
   const aceptarVinculacion = async () => {
     try {
       const profRef = doc(db, 'profesionales', authUser.uid);
       await updateDoc(profRef, {
         estadoVinculacion: 'aceptado'
       });
-      // Actualizar estado local opcionalmente
       setSuccessMsg('¡Te has vinculado exitosamente al establecimiento!');
     } catch (err) {
       console.error("Error al aceptar:", err);
@@ -277,7 +292,13 @@ export default function PanelProfesionales() {
     }
   };
 
-useEffect(() => {
+  // EFECTO PRINCIPAL CORREGIDO (Aquí se cargan citas y los bloqueos exclusivamente de la colección "bloqueos")
+  useEffect(() => {
+    let unsubFirestoreStatus = () => {};
+    let unsubServicios = () => {};
+    let unsubCitas = () => {};
+    let unsubBloqueos = () => {};
+
     const calcTime = () => {
       const now = new Date();
       setCurrentTimeMinutes(Math.max(0, Math.min(100, ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100)));
@@ -285,15 +306,11 @@ useEffect(() => {
     calcTime();
     const t = setInterval(calcTime, 30000);
 
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      let unsubFirestoreStatus = () => {};
-      let unsubServicios = () => {};
-      let unsubCitas = () => {};
+    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setAuthUser(currentUser);
 
-      if (user) {
-        setAuthUser(user);
-
-        unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', user.uid), (docSnap) => {
+        unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', currentUser.uid), (docSnap) => {
           if (docSnap.exists()) {
             const d = docSnap.data();
             setBarberData(d);
@@ -304,11 +321,11 @@ useEffect(() => {
             setDescripcion(d.descripcion || '');
             setFoto(d.foto || '');
             setTelefono(d.telefono || '');
-            setCorreoPerfil(d.correo || user.email || '');
+            setCorreoPerfil(d.correo || currentUser.email || '');
             setPorcentaje(d.porcentaje !== undefined && d.porcentaje !== null ? d.porcentaje : '');
             setZonasTrabajo(d.zonasTrabajo || []);
           } else {
-            setCorreoPerfil(user.email || '');
+            setCorreoPerfil(currentUser.email || '');
           }
         }, (error) => {
           console.error("Error al verificar estado del profesional:", error);
@@ -316,7 +333,8 @@ useEffect(() => {
 
         const nombreBarberoActual = nombre;
         
-        const qServicios = query(collection(db, 'servicios'), where('barberoId', '==', user.uid));
+        // 1. Cargar Servicios
+        const qServicios = query(collection(db, 'servicios'), where('barberoId', '==', currentUser.uid));
         unsubServicios = onSnapshot(qServicios, (servSnap) => {
           const listaServicios = [];
           servSnap.forEach(docServ => {
@@ -325,14 +343,25 @@ useEffect(() => {
           setServiciosFirebase(listaServicios);
         });
 
-        unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
-          const citasServer = [];
+        let citasTemp = [];
+        let bloqueosTemp = [];
+
+        const actualizarEstadoGlobal = () => {
+          setCitasFirestore([...citasTemp, ...bloqueosTemp]);
+        };
+
+        // 2. Cargar Citas normales (excluyendo bloqueos)
+        const qCitas = query(collection(db, 'citas'), where('barberoId', '==', currentUser.uid));
+        unsubCitas = onSnapshot(qCitas, (snapshot) => {
+          citasTemp = [];
           let idsActuales = citasFirestore.map(c => c.id);
 
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            const coincideId = data.barberoId === user.uid;
+            const coincideId = data.barberoId === currentUser.uid;
             const coincideNombre = (nombreBarberoActual && data.barberoName && data.barberoName.toLowerCase().trim() === nombreBarberoActual.toLowerCase().trim());
+
+            if (data.estado === 'bloqueado' || data.esBloqueo === true) return;
 
             if (coincideId || coincideNombre || !data.barberoId) {
               let horaBD = (data.hora || '').trim();
@@ -358,20 +387,19 @@ useEffect(() => {
               const horaNormalizada = matchHora ? matchHora.label : (horaBD || '12:00 a. m.');
               const estado = (data.estado || 'pendiente').toLowerCase();
               
-              if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado' && estado !== 'bloqueado') {
+              if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado') {
                 reproducirSonidoAlerta();
               }
 
               let colorClase = 'bg-indigo-50 border-indigo-200 text-indigo-950 font-semibold shadow-xs';
               if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
               if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-400 font-normal';
-              if (estado === 'bloqueado') colorClase = 'bg-rose-100 border-rose-300 text-rose-800 font-bold';
               if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
               
-              citasServer.push({
+              citasTemp.push({
                 ...data,
                 id: docSnap.id, 
-                cliente: data.clienteNombre || 'BLOQUEADO', 
+                cliente: data.clienteNombre || 'CLIENTE', 
                 clienteTelefono: data.telefono || data.clienteTelefono || '',
                 clienteEmail: data.clienteEmail || '', 
                 servicio: data.servicio || 'Servicio General',
@@ -381,45 +409,45 @@ useEffect(() => {
                 fechaStr: data.fecha || '', 
                 estado, 
                 color: colorClase, 
-                esBloqueo: estado === 'bloqueado',
-                motivo: data.motivo || ''
+                esBloqueo: false
               });
             }
           });
 
-          // Generación automática de notificaciones basadas en los movimientos y cambios de estado
-          const listaNotif = citasServer.map(c => {
-            let texto = '';
-            let icono = '✨';
-            
-            if (c.esBloqueo) {
-              texto = `Horario bloqueado: ${c.motivo || 'No disponible'} (${c.fechaStr})`;
-              icono = '🚫';
-            } else if (c.estado === 'confirmada' || c.estado === 'confirmado') {
-              texto = `Cita confirmada: ${c.cliente} - ${c.servicio} (${c.hora})`;
-              icono = '✅';
-            } else if (c.estado === 'finalizada' || c.estado === 'finalizado') {
-              texto = `Servicio finalizado: ${c.cliente} (${c.servicio})`;
-              icono = '🏁';
-            } else if (c.estado === 'cancelada' || c.estado === 'cancelado') {
-              texto = `Cita cancelada de ${c.cliente}`;
-              icono = '❌';
-            } else {
-              texto = `Nuevo servicio / cita: ${c.cliente} (${c.servicio})`;
-              icono = '📅';
-            }
+          actualizarEstadoGlobal();
+        });
 
-            return {
-              id: c.id,
-              texto,
-              icono,
-              fecha: c.fechaStr || 'Hoy'
-            };
+        // 3. Cargar Bloqueos EXCLUSIVAMENTE de la colección "bloqueos"
+        const qBloqueos = query(collection(db, 'bloqueos'), where('barberoId', '==', currentUser.uid));
+        unsubBloqueos = onSnapshot(qBloqueos, (snapBloq) => {
+          bloqueosTemp = [];
+          snapBloq.forEach(docBloq => {
+            const bData = docBloq.data();
+            bloqueosTemp.push({
+              id: docBloq.id,
+              ...bData,
+              cliente: 'BLOQUEADO',
+              clienteNombre: 'BLOQUEADO',
+              servicio: 'Bloqueo de Horario',
+              estado: 'bloqueado',
+              esBloqueo: true,
+              fechaStr: bData.fechaStr || bData.fecha,
+              hora: bData.horaInicio || bData.hora,
+             color: 'bg-slate-100/90 border-slate-300 text-slate-700 font-medium select-none cursor-pointer backdrop-blur-xs hover:bg-slate-200/90'
+            });
           });
+
+          // Generación automática de notificaciones
+          const listaNotif = bloqueosTemp.map(b => ({
+            id: b.id,
+            texto: `Horario bloqueado: ${b.motivo || 'No disponible'} (${b.fechaStr})`,
+            icono: '🚫',
+            fecha: b.fechaStr || 'Hoy'
+          }));
           setNotificaciones(listaNotif.reverse());
 
+          actualizarEstadoGlobal();
           primerCargaRef.current = false;
-          setCitasFirestore(citasServer);
         });
 
       } else { 
@@ -429,16 +457,18 @@ useEffect(() => {
         setNotificaciones([]);
       }
       setAuthLoading(false);
-
-      return () => {
-        unsubFirestoreStatus();
-        unsubServicios();
-        unsubCitas();
-      };
     });
 
     const safety = setTimeout(() => setAuthLoading(false), 2000);
-    return () => { unsubAuth(); clearTimeout(safety); clearInterval(t); };
+    return () => { 
+      unsubAuth(); 
+      clearTimeout(safety); 
+      clearInterval(t); 
+      unsubFirestoreStatus();
+      unsubServicios();
+      unsubCitas();
+      unsubBloqueos();
+    };
   }, [nombre]);
 
   const [serviciosModalCita, setServiciosModalCita] = useState([]);
@@ -626,91 +656,85 @@ useEffect(() => {
         </div>
 
         <div className="flex items-center gap-2 relative">
-          {/* Botón de Notificaciones (Campanita) */}
           <div className="relative">
            <button 
-      onClick={() => setNotificacionesAbiertas(!notificacionesAbiertas)}
-      className="p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100 border border-blue-200 text-blue-600 cursor-pointer relative transition-all shadow-2xs flex items-center justify-center active:scale-95"
-      title="Notificaciones"
-    >
-      <span className="text-sm">🔔</span>
-      {notificaciones.length > 0 && (
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-full text-[8px] font-black flex items-center justify-center shadow-xs animate-pulse">
-          {notificaciones.length}
-        </span>
-      )}
-    </button>
-            {/* Panel Desplegable de Notificaciones */}
-            {/* Notificación especial de Solicitud de Establecimiento (si está pendiente) */}
+              onClick={() => setNotificacionesAbiertas(!notificacionesAbiertas)}
+              className="p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100 border border-blue-200 text-blue-600 cursor-pointer relative transition-all shadow-2xs flex items-center justify-center active:scale-95"
+              title="Notificaciones"
+            >
+              <span className="text-sm">🔔</span>
+              {notificaciones.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-full text-[8px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                  {notificaciones.length}
+                </span>
+              )}
+            </button>
 
            {notificacionesAbiertas && (
-  <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-slate-800">
-    <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-      <span className="text-[10px] font-black uppercase text-slate-900">Notificaciones de Actividad</span>
-      <button 
-        onClick={() => setNotificacionesAbiertas(false)}
-        className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-      >
-        ✕
-      </button>
-    </div>
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-slate-800">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+                  <span className="text-[10px] font-black uppercase text-slate-900">Notificaciones de Actividad</span>
+                  <button 
+                    onClick={() => setNotificacionesAbiertas(false)}
+                    className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
 
-    <div className="max-h-64 overflow-y-auto space-y-1.5">
-      
-      {/* Tarjeta de Solicitud de Vinculación Pendiente */}
-      {barberData?.establecimientoId && barberData?.estadoVinculacion === 'pendiente' && (
-        <div className="p-2 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 flex items-center justify-between gap-2 text-[10px] shadow-2xs">
-          <div className="flex items-center gap-2 truncate">
-            <span className="text-xs p-1 bg-white rounded-lg border border-blue-100 shadow-2xs shrink-0">🏢</span>
-            <div className="truncate">
-              <p className="font-black text-blue-950 leading-tight">Solicitud de Vinculación</p>
-              <p className="text-slate-600 truncate mt-0.5">
-                <strong className="text-slate-900">{barberData.establecimientoNombre || 'Establecimiento'}</strong> te invitó.
-              </p>
-            </div>
-          </div>
+                <div className="max-h-64 overflow-y-auto space-y-1.5">
+                  {barberData?.establecimientoId && barberData?.estadoVinculacion === 'pendiente' && (
+                    <div className="p-2 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 flex items-center justify-between gap-2 text-[10px] shadow-2xs">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-xs p-1 bg-white rounded-lg border border-blue-100 shadow-2xs shrink-0">🏢</span>
+                        <div className="truncate">
+                          <p className="font-black text-blue-950 leading-tight">Solicitud de Vinculación</p>
+                          <p className="text-slate-600 truncate mt-0.5">
+                            <strong className="text-slate-900">{barberData.establecimientoNombre || 'Establecimiento'}</strong> te invitó.
+                          </p>
+                        </div>
+                      </div>
 
-          <div className="flex items-center gap-1 shrink-0">
-            <button 
-              onClick={aceptarVinculacion}
-              className="w-6 h-6 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-black flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 text-xs"
-              title="Aceptar"
-            >
-              ✓
-            </button>
-            <button 
-              onClick={rechazarVinculacion}
-              className="w-6 h-6 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-600 border border-rose-200 font-black flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 text-xs"
-              title="Rechazar"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button 
+                          onClick={aceptarVinculacion}
+                          className="w-6 h-6 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-black flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 text-xs"
+                          title="Aceptar"
+                        >
+                          ✓
+                        </button>
+                        <button 
+                          onClick={rechazarVinculacion}
+                          className="w-6 h-6 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-600 border border-rose-200 font-black flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 text-xs"
+                          title="Rechazar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-      {/* Listado de Notificaciones Normales */}
-      {notificaciones.length === 0 && (!barberData?.establecimientoId || barberData?.estadoVinculacion !== 'pendiente') ? (
-        <div className="py-6 text-center text-slate-400 text-[10px] italic">
-          No hay notificaciones recientes.
-        </div>
-      ) : (
-        notificaciones.map((notif) => (
-          <div 
-            key={notif.id} 
-            className="p-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50/50 transition flex items-start gap-2 text-[10px]"
-          >
-            <span className="text-sm shrink-0">{notif.icono}</span>
-            <div className="flex-1">
-              <p className="font-semibold text-slate-800 leading-tight">{notif.texto}</p>
-              <span className="text-[8px] text-slate-400 mt-0.5 block">{notif.fecha}</span>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  </div>
-)}
+                  {notificaciones.length === 0 && (!barberData?.establecimientoId || barberData?.estadoVinculacion !== 'pendiente') ? (
+                    <div className="py-6 text-center text-slate-400 text-[10px] italic">
+                      No hay notificaciones recientes.
+                    </div>
+                  ) : (
+                    notificaciones.map((notif) => (
+                      <div 
+                        key={notif.id} 
+                        className="p-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50/50 transition flex items-start gap-2 text-[10px]"
+                      >
+                        <span className="text-sm shrink-0">{notif.icono}</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-800 leading-tight">{notif.texto}</p>
+                          <span className="text-[8px] text-slate-400 mt-0.5 block">{notif.fecha}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <button onClick={() => setActiveTab('estadisticas')} className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 cursor-pointer">
@@ -723,354 +747,271 @@ useEffect(() => {
         {successMsg && <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] flex gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />{successMsg}</div>}
         {errorMsg && <div className="mb-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-[10px] flex gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-red-600" />{errorMsg}</div>}
 
-        {activeTab === 'agenda' && (
-          <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
-            <div className="shrink-0 space-y-1.5">
-              <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
-                    <input 
-                      type="date" 
-                      value={fechaSeleccionada.toISOString().split('T')[0]} 
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
-                        }
-                      }}
-                      className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-                    <button 
-                      type="button"
-                      onClick={() => setVistaCalendario('diario')}
-                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                    >
-                      1 Día
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setVistaCalendario('3dias')}
-                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                    >
-                      3 Días
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setVistaCalendario('semanal')}
-                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                    >
-                      7 Días
-                    </button>
-                  </div>
+       {activeTab === 'agenda' && (
+        <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
+          <div className="shrink-0 space-y-1.5">
+            <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
+                  <input 
+                    type="date" 
+                    value={fechaSeleccionada.toISOString().split('T')[0]} 
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
+                      }
+                    }}
+                    className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
+                  />
                 </div>
-              </div>
 
-              <div className="relative flex justify-end items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFechaSeleccionada(new Date())}
-                  className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
-                >
-                  📍 Hoy
-                </button>
-
-                <button 
-                  onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
-                  className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
-                </button>
-
-                {menuAgendaAbierto && (
-                  <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
-                    <button 
-                      onClick={() => {
-                        setMenuAgendaAbierto(false);
-                        setModalNuevaCitaAbierto(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      ✨ Cita nueva
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setMenuAgendaAbierto(false);
-                        setModalBloqueoAbierto(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
-                    >
-                      🚫 Horario no disponible
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+                  <button 
+                    type="button"
+                    onClick={() => setVistaCalendario('diario')}
+                    className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                  >
+                    1 Día
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setVistaCalendario('3dias')}
+                    className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                  >
+                    3 Días
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setVistaCalendario('semanal')}
+                    className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                  >
+                    7 Días
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
-              <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
-                <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
-                  <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                    <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
-                    {diasVisibles.map((d, i) => {
-                      const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-                      const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
+            <div className="relative flex justify-end items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFechaSeleccionada(new Date())}
+                className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
+              >
+                📍 Hoy
+              </button>
 
-                      return (
-                        <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
-                          <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
-                            esHoy 
-                              ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
-                              : esSeleccionado 
-                                ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
-                                : 'text-slate-700 hover:bg-blue-100/50'
-                          }`}>
-                            <span className="text-xs font-bold leading-none">{d.num}</span>
-                            <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+              <button 
+                onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
+                className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
+              </button>
+
+              {menuAgendaAbierto && (
+                <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
+                  <button 
+                    onClick={() => {
+                      setMenuAgendaAbierto(false);
+                      setModalNuevaCitaAbierto(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    ✨ Cita nueva
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setMenuAgendaAbierto(false);
+                      setModalBloqueoAbierto(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
+                  >
+                    🚫 Horario no disponible
+                  </button>
                 </div>
+              )}
+            </div>
+          </div>
 
-                <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
-                  {dragOverInfo.horaTexto && (
-                    <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
-                         style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
-                      📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
-                    </div>
-                  )}
-
-                  {diasVisibles.some(d => d.fechaObj.toDateString() === new Date().toDateString()) && (
-                    <div 
-                      className="absolute right-0 z-50 flex items-center pointer-events-none transition-all duration-300" 
-                      style={{ 
-                        top: `${currentTimeMinutes}%`,
-                        left: `${(diasVisibles.findIndex(d => d.fechaObj.toDateString() === new Date().toDateString()) + 1) * (100 / (diasVisibles.length + 1))}%`,
-                        width: `${100 / (diasVisibles.length + 1)}%`
-                      }}
-                    >
-                      <div className="px-1.5 bg-rose-500 text-white text-[8px] font-black tracking-tighter text-center py-0.5 rounded-full shadow-md border border-rose-300">
-                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
-                      </div>
-                      <div className="flex-1 border-t-2 border-rose-500 shadow-sm"></div>
-                    </div>
-                  )}
-
-                  {horasCalendario.map((itemHora, idx) => {
-                    const [fH, fM] = itemHora.val24.split(':').map(Number);
-                    const minutosFilaInicio = fH * 60 + fM;
-                    const minutosFilaFin = minutosFilaInicio + 60;
-
-                    const convertirHoraAMinutos = (horaStr, esBloqueo = false) => {
-                      if (!horaStr) return 0;
-                      let clean = horaStr.toString().toUpperCase().trim();
-                      
-                      let isPM = clean.includes('PM') || clean.includes('P.M.') || clean.includes('P. M.');
-                      let isAM = clean.includes('AM') || clean.includes('A.M.') || clean.includes('A. M.');
-
-                      let timePart = clean.replace(/[^0-9:]/g, '').trim();
-                      let parts = timePart.split(':');
-                      let hours = parseInt(parts[0], 10) || 0;
-                      let minutes = parseInt(parts[1], 10) || 0;
-                      
-                      if (!isPM && !isAM) {
-                        if (hours >= 13 && hours <= 23) {
-                          isPM = true;
-                        } else if (hours >= 1 && hours <= 7 && !clean.includes('AM')) {
-                          hours += 12; 
-                        }
-                      }
-
-                      if (isPM && hours < 12) {
-                        hours += 12;
-                      } else if (isAM && hours === 12) {
-                        hours = 0;
-                      }
-                      
-                      return hours * 60 + minutes;
-                    };
-
-                    const minutosAHoraTexto = (totalMinutos) => {
-                      const minutosNorm = ((totalMinutos % 1440) + 1440) % 1440;
-                      const h24 = Math.floor(minutosNorm / 60);
-                      const min = minutosNorm % 60;
-                      const ampm = h24 >= 12 ? 'p. m.' : 'a. m.';
-                      const h12 = h24 % 12 || 12;
-                      return `${h12}:${String(min).padStart(2, '0')} ${ampm}`;
-                    };
+          <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
+            <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
+              <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
+                <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+                  <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
+                  {diasVisibles.map((d, i) => {
+                    const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+                    const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
                     return (
-                      <div key={idx} className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px] relative" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                        <div className="border-r border-blue-200 px-2 font-sans text-[10px] font-semibold text-blue-700 flex flex-col items-center justify-start pt-2 text-center sticky left-0 z-30 bg-blue-50/95 shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">
-                          <span>{itemHora.label.toLowerCase()}</span>
+                      <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
+                        <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
+                          esHoy 
+                            ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
+                            : esSeleccionado 
+                              ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
+                              : 'text-slate-700 hover:bg-blue-100/50'
+                        }`}>
+                          <span className="text-xs font-bold leading-none">{d.num}</span>
+                          <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
                         </div>
-
-                        {diasVisibles.map((dia, dIdx) => {
-                          const fechaStr = dia.fechaObj.toISOString().split('T')[0];
-
-                          const citasEnEstaHora = citasFirestore.filter(c => {
-                            if (c.fechaStr !== fechaStr || !c.hora || c.esBloqueo) return false;
-                            const minutosCitaInicio = convertirHoraAMinutos(c.hora, false);
-                            return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
-                          });
-
-                          const bloqueosEnEstaHora = citasFirestore.filter(c => {
-                            if (c.fechaStr !== fechaStr || !c.hora || !c.esBloqueo) return false;
-                            const minutosBloqueoInicio = convertirHoraAMinutos(c.hora, true);
-                            return minutosBloqueoInicio >= minutosFilaInicio && minutosBloqueoInicio < minutosFilaFin;
-                          });
-
-                          const elementosEnEstaHora = [...bloqueosEnEstaHora, ...citasEnEstaHora];
-
-                          return (
-                            <div 
-                              key={dIdx} 
-                              className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch overflow-visible transition-colors ${
-                                dragOverInfo.diaStr === fechaStr ? 'bg-blue-100/50' : 'hover:bg-blue-50/20'
-                              }`}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const offsetY = e.clientY - rect.top;
-                                const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                                const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                                const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                                const horaFormateada = minutosAHoraTexto(totalMinutosNuevos);
-
-                                setDragOverInfo({
-                                  diaStr: fechaStr,
-                                  horaTexto: `${dia.nombre.toUpperCase()} ${dia.num} a las ${horaFormateada}`,
-                                  y: e.clientY
-                                });
-                              }}
-                              onDragLeave={() => setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 })}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                setDragOverInfo({ diaStr: null, horaTexto: null, y: 0 });
-                                const citaId = e.dataTransfer.getData("text/plain");
-                                if (!citaId) return;
-                                const elementoArrastrado = citasFirestore.find(c => (c.id || c.uid) === citaId);
-                                if (!elementoArrastrado) return;
-
-                                if (!elementoArrastrado.esBloqueo) {
-                                  const estadoCita = (elementoArrastrado.estado || '').toLowerCase();
-                                  if (estadoCita === 'finalizada' || estadoCita === 'finalizado') return;
-                                }
-
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const offsetY = e.clientY - rect.top;
-                                const porcentajeY = Math.max(0, Math.min(1, offsetY / rect.height));
-                                const minutosRelativos = Math.round((porcentajeY * 60) / 5) * 5;
-                                const totalMinutosNuevos = minutosFilaInicio + minutosRelativos;
-
-                                const nuevaHoraFormateada = minutosAHoraTexto(totalMinutosNuevos);
-                                
-                                if (elementoArrastrado.esBloqueo && elementoArrastrado.horaFin) {
-                                  const minInicioAntiguo = convertirHoraAMinutos(elementoArrastrado.hora, true);
-                                  const minFinAntiguo = convertirHoraAMinutos(elementoArrastrado.horaFin, true);
-                                  let duracionBloqueo = minFinAntiguo - minInicioAntiguo;
-                                  if (duracionBloqueo < 0) duracionBloqueo += 1440;
-
-                                  const nuevoMinFin = totalMinutosNuevos + duracionBloqueo;
-                                  const nuevaHoraFinFormateada = minutosAHoraTexto(nuevoMinFin);
-
-                                  actualizarBloqueoArrastrado(elementoArrastrado, fechaStr, nuevaHoraFormateada, nuevaHoraFinFormateada);
-                                } else {
-                                  actualizarCitaArrastrada(elementoArrastrado, fechaStr, nuevaHoraFormateada);
-                                }
-                              }}
-                            >
-                              {elementosEnEstaHora.length > 0 ? (
-                                elementosEnEstaHora.map((itemCita, cIdx) => {
-                                  const minutosItemInicio = convertirHoraAMinutos(itemCita.hora, itemCita.esBloqueo);
-                                  const citaKey = itemCita.id || itemCita.uid;
-                                  
-                                  const estadoCita = (itemCita.estado || '').toLowerCase();
-                                  const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
-
-                                  let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-                                  if (itemCita.esBloqueo && itemCita.horaFin) {
-                                    const minFin = convertirHoraAMinutos(itemCita.horaFin, true);
-                                    if (minFin > minutosItemInicio) {
-                                      duracionMin = minFin - minutosItemInicio;
-                                    } else if (minFin < minutosItemInicio) {
-                                      duracionMin = (1440 - minutosItemInicio) + minFin;
-                                    }
-                                  }
-
-                                  const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-                                  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-                                  const alturaTotalPixeles = (duracionMin / 60) * 72;
-
-                                  const totalCol = elementosEnEstaHora.length;
-                                  const widthPercent = totalCol > 1 ? `${100 / totalCol}%` : '100%';
-                                  const leftPercent = totalCol > 1 ? `${cIdx * (100 / totalCol)}%` : '0px';
-
-                                  return (
-                                    <div 
-                                      key={cIdx}
-                                      draggable={!esFinalizada}
-                                      onDragStart={(e) => {
-                                        if (esFinalizada) {
-                                          e.preventDefault();
-                                          return;
-                                        }
-                                        e.dataTransfer.setData("text/plain", citaKey);
-                                      }}
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        abrirModalCita(itemCita); 
-                                      }} 
-                                      style={{ 
-                                        top: `${topPercent}%`, 
-                                        height: itemCita.esBloqueo ? `${Math.max(alturaTotalPixeles, 46)}px` : `${Math.max((duracionMin / 60) * 100, 46)}%`, 
-                                        minHeight: '46px', 
-                                        zIndex: itemCita.esBloqueo ? 30 : 40,
-                                        width: `calc(${widthPercent} - 2px)`,
-                                        left: `calc(${leftPercent} + 1px)`
-                                      }}
-                                      className={`absolute p-2 border transition-all duration-200 shadow-sm flex flex-col justify-between overflow-hidden rounded-lg ${
-                                        itemCita.esBloqueo 
-                                          ? 'bg-rose-50 text-rose-900 border-rose-200 font-semibold cursor-grab active:cursor-grabbing select-none' 
-                                          : esFinalizada
-                                            ? 'bg-slate-100 text-slate-400 border-slate-200 font-normal cursor-pointer select-none opacity-70'
-                                            : `cursor-grab active:cursor-grabbing hover:shadow-md ${itemCita.color || 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'}`
-                                      }`}
-                                    >
-                                      <div className="flex justify-between items-center pointer-events-none gap-1">
-                                        <span className="font-bold truncate text-[9px] tracking-tight block">
-                                          {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'NO DISPONIBLE'}` : (itemCita.cliente || itemCita.clienteNombre)}
-                                        </span>
-                                        <span className="text-[8px] font-mono opacity-70 whitespace-nowrap">{itemCita.hora}</span>
-                                      </div>
-
-                                      {!itemCita.esBloqueo && (
-                                        <div className="flex justify-between items-end pointer-events-none text-[8px] opacity-85 font-medium">
-                                          <span className="truncate">{itemCita.servicio}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <div className="text-center text-blue-200/40 text-[10px] h-full flex items-center justify-center"></div>
-                              )}
-                            </div>
-                          );
-                        })}
                       </div>
                     );
                   })}
                 </div>
               </div>
+
+              <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+                {dragOverInfo.horaTexto && (
+                  <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
+                       style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
+                    📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
+                  </div>
+                )}
+
+                {/* Bucle de celdas de la agenda */}
+{horasCalendario.map((itemHora, idx) => {
+  const [fH, fM] = itemHora.val24.split(':').map(Number);
+  const minutosFilaInicio = fH * 60 + fM;
+  const minutosFilaFin = minutosFilaInicio + 60;
+
+  return (
+    <div 
+      key={idx} 
+      className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px]" 
+      style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}
+    >
+      {/* Columna lateral de la hora */}
+      {diasVisibles.map((dia, dIdx) => {
+        const diasSemanaNombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        const nombreDiaSemana = diasSemanaNombres[dia.fechaObj.getDay()];
+        const configDiaActual = (barberData?.horarioSemanal || horarioSemanal)?.[nombreDiaSemana] || { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' };
+        
+        const estaCerradoHoy = !configDiaActual.abierto;
+        const minInicioLab = horaAMinutos(configDiaActual.apertura || '8:00 a. m.');
+        const minFinLab = horaAMinutos(configDiaActual.cierre || '7:00 p. m.');
+        const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
+
+        if (dIdx === 0) {
+          return (
+            <div 
+              key={`hora-${idx}`}
+              className={`border-r border-blue-200 px-2 font-sans text-[10px] font-semibold flex flex-col items-center justify-start pt-2 sticky left-0 z-30 transition-colors ${
+                esFueraDeHorario 
+                  ? 'bg-slate-200/60 text-slate-400 line-through' 
+                  : 'bg-blue-50/95 text-blue-700'
+              }`}
+            >
+              <span>{itemHora.label.toLowerCase()}</span>
+            </div>
+          );
+        }
+        return null;
+      })}
+
+      {/* Celdas de días para cada hora */}
+      {diasVisibles.map((dia, dIdx) => {
+        const fechaStr = dia.fechaObj.toISOString().split('T')[0];
+        const diasSemanaNombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        const nombreDiaSemana = diasSemanaNombres[dia.fechaObj.getDay()];
+        const configDiaActual = (barberData?.horarioSemanal || horarioSemanal)?.[nombreDiaSemana] || { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' };
+
+        const estaCerradoHoy = !configDiaActual.abierto;
+        const minInicioLab = horaAMinutos(configDiaActual.apertura || '8:00 a. m.');
+        const minFinLab = horaAMinutos(configDiaActual.cierre || '7:00 p. m.');
+        const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
+
+        // Citas normales que inician en esta hora
+        const citasEnEstaHora = citasFirestore.filter(c => {
+          const fDoc = c.fechaStr || c.fecha;
+          if (fDoc !== fechaStr || !c.hora || c.esBloqueo) return false;
+          const minutosCitaInicio = horaAMinutos(c.hora);
+          return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
+        });
+
+        // Bloqueos que INICIAN exactamente en esta hora (para dibujar un único recuadro continuo hacia abajo)
+        const bloqueosInicianAqui = citasFirestore.filter(c => {
+          const fDoc = c.fechaStr || c.fecha;
+          if (fDoc !== fechaStr || !c.esBloqueo) return false;
+          const horaRef = c.horaInicio || c.hora;
+          if (!horaRef) return false;
+          const minutosBloqInicio = horaAMinutos(horaRef);
+          return minutosBloqInicio >= minutosFilaInicio && minutosBloqInicio < minutosFilaFin;
+        });
+
+        const elementosEnEstaHora = [...bloqueosInicianAqui, ...citasEnEstaHora];
+
+        return (
+          <div 
+            key={dIdx} 
+            className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch transition-colors ${
+              esFueraDeHorario ? 'bg-slate-100/80' : 'bg-white'
+            }`}
+          >
+            {/* Si es fuera de horario o día cerrado y no hay nada encima */}
+            {esFueraDeHorario && elementosEnEstaHora.length === 0 && (
+              <div className="absolute inset-0 bg-slate-200/30 pointer-events-none" />
+            )}
+
+            {/* Renderizado de Bloqueos (un solo cuadro continuo) y Citas */}
+            {elementosEnEstaHora.map((itemCita, cIdx) => {
+              const horaInicioRef = itemCita.horaInicio || itemCita.hora;
+              const minutosItemInicio = horaAMinutos(horaInicioRef);
+              
+              let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+              if (itemCita.esBloqueo && (itemCita.horaFin || horaInicioRef)) {
+                const minInicio = horaAMinutos(horaInicioRef);
+                const minFin = horaAMinutos(itemCita.horaFin);
+                if (minFin > minInicio) {
+                  duracionMin = minFin - minInicio;
+                } else if (minFin < minInicio) {
+                  duracionMin = (1440 - minInicio) + minFin;
+                }
+              }
+
+              const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+              const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+              // 72px es la altura estándar de cada fila de 1 hora
+              const alturaTotalPixeles = (duracionMin / 60) * 72;
+
+              return (
+                <div 
+                  key={cIdx}
+                  onClick={(e) => { e.stopPropagation(); setCitaSeleccionada(itemCita); }}
+                  className={`absolute p-2 border transition-all shadow-xs flex flex-col justify-between overflow-hidden rounded-lg ${
+                    itemCita.esBloqueo 
+                      ? 'bg-slate-200/90 border-slate-300 text-slate-700 font-medium select-none cursor-pointer hover:bg-slate-300/90' 
+                      : 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'
+                  }`}
+                  style={{ 
+                    top: `${topPercent}%`, 
+                    height: `${Math.max(alturaTotalPixeles, 46)}px`, 
+                    width: 'calc(100% - 2px)', 
+                    left: '1px', 
+                    zIndex: itemCita.esBloqueo ? 50 : 40 
+                  }}
+                >
+                  <div className="flex justify-between items-start w-full">
+                    <span className={`font-medium text-[9px] truncate ${itemCita.esBloqueo ? 'text-slate-700 line-through' : ''}`}>
+                      {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'Horario no disponible'}` : itemCita.cliente}
+                    </span>
+                    <span className={`${itemCita.esBloqueo ? 'bg-slate-300/80 border border-slate-400/50 text-slate-700 text-[8px] px-1.5 py-0.5 rounded-md font-mono' : 'text-[8px]'}`}>
+                      {itemCita.esBloqueo ? `${itemCita.horaInicio || itemCita.hora} - ${itemCita.horaFin}` : itemCita.hora}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+})}
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {modalBloqueoAbierto && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1245,15 +1186,22 @@ useEffect(() => {
                       const batchPromises = fechasAGenerar.map(async (fecha) => {
                         const nuevoBloqueo = {
                           barberoId: authUser.uid,
+                          barberoName: nombre,
                           estado: 'bloqueado',
+                          esBloqueo: true,
                           fecha: fecha,
+                          fechaStr: fecha,
                           hora: datosBloqueo.horaInicio,
+                          horaInicio: datosBloqueo.horaInicio,
                           horaFin: datosBloqueo.horaFin,
                           duracionTotal: duracionTotalMinutos,
-                          motivo: datosBloqueo.motivo,
-                          clienteNombre: 'BLOQUEADO'
+                          motivo: datosBloqueo.motivo || 'No disponible',
+                          clienteNombre: 'BLOQUEADO',
+                          createdAt: new Date().toISOString()
                         };
-                        return addDoc(collection(db, 'citas'), nuevoBloqueo);
+
+                        // Guardar estrictamente en la colección "bloqueos"
+                        await addDoc(collection(db, 'bloqueos'), nuevoBloqueo);
                       });
 
                       await Promise.all(batchPromises);
@@ -1565,7 +1513,6 @@ useEffect(() => {
                   <form onSubmit={(e) => {
                     if (pestanaActiva === 'internos') {
                       e.preventDefault();
-                      const formFinal = { ...formServicio, duracion: 'interno' };
                     }
                     handleGuardarServicio(e);
                   }} className="space-y-3 text-[10px]">
@@ -1733,9 +1680,14 @@ useEffect(() => {
                 <h3 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-1.5">
                   <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Perfil Profesional
                 </h3>
-                <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition">
-                  <Edit3 className="w-3 h-3" /> Editar
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setModalHorarioSemanalAbierto(true)} className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition">
+                    🕒 Horarios
+                  </button>
+                  <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition">
+                    <Edit3 className="w-3 h-3" /> Editar
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2 text-[10px]">
@@ -1772,6 +1724,78 @@ useEffect(() => {
                 </div>
               </div>
             </div>
+
+            {/* Modal para Editar Horarios Semanales */}
+            {modalHorarioSemanalAbierto && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h3 className="text-xs font-black text-slate-900 uppercase">🕒 Horario Semanal</h3>
+                    <button onClick={() => setModalHorarioSemanalAbierto(false)} className="text-slate-400 font-bold cursor-pointer">✕</button>
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1 text-[10px]">
+                    {['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'].map((diaKey) => {
+                      const configDia = horarioSemanal[diaKey] || { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' };
+                      return (
+                        <div key={diaKey} className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-200 gap-2">
+                          <div className="flex items-center gap-2 shrink-0 w-24">
+                            <input 
+                              type="checkbox" 
+                              checked={configDia.abierto} 
+                              onChange={(e) => setHorarioSemanal({ ...horarioSemanal, [diaKey]: { ...configDia, abierto: e.target.checked } })}
+                              className="rounded text-indigo-600 cursor-pointer"
+                            />
+                            <span className="capitalize font-bold text-slate-700">{diaKey}</span>
+                          </div>
+
+                          {configDia.abierto ? (
+                            <div className="flex items-center gap-1 flex-1 justify-end">
+                              <select 
+                                value={configDia.apertura}
+                                onChange={(e) => setHorarioSemanal({ ...horarioSemanal, [diaKey]: { ...configDia, apertura: e.target.value } })}
+                                className="bg-white border border-slate-200 rounded-lg p-1 text-[9px] font-medium text-slate-800"
+                              >
+                                {horasCalendario.map((h, i) => <option key={i} value={h.label}>{h.label}</option>)}
+                              </select>
+                              <span className="text-slate-400">a</span>
+                              <select 
+                                value={configDia.cierre}
+                                onChange={(e) => setHorarioSemanal({ ...horarioSemanal, [diaKey]: { ...configDia, cierre: e.target.value } })}
+                                className="bg-white border border-slate-200 rounded-lg p-1 text-[9px] font-medium text-slate-800"
+                              >
+                                {horasCalendario.map((h, i) => <option key={i} value={h.label}>{h.label}</option>)}
+                              </select>
+                            </div>
+                          ) : (
+                            <span className="text-red-500 font-bold italic pr-2">Cerrado</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => setModalHorarioSemanalAbierto(false)} className="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-[10px]">Cancelar</button>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await updateDoc(doc(db, 'profesionales', authUser.uid), { horarioSemanal });
+                          setSuccessMsg('¡Horario semanal actualizado correctamente!');
+                          setModalHorarioSemanalAbierto(false);
+                          setTimeout(() => setSuccessMsg(''), 3000);
+                        } catch (err) {
+                          setErrorMsg('Error al guardar el horario.');
+                        }
+                      }}
+                      className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-[10px] uppercase shadow-xs"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {isModalOpen && (
               <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
@@ -2141,7 +2165,7 @@ useEffect(() => {
                       onClick={async () => {
                         if (window.confirm('¿Estás seguro de eliminar este bloqueo?')) {
                           try {
-                            await deleteDoc(doc(db, 'citas', citaSeleccionada.id));
+                            await deleteDoc(doc(db, 'bloqueos', citaSeleccionada.id));
                             setSuccessMsg('Bloqueo eliminado correctamente');
                             setCitaSeleccionada(null);
                             setTimeout(() => setSuccessMsg(''), 3000);
@@ -2170,10 +2194,11 @@ useEffect(() => {
                           }
                           const duracionTotal = minFin - minInicio;
 
-                          const citaRef = doc(db, 'citas', citaSeleccionada.id);
-                          await updateDoc(citaRef, {
+                          const bloqueoRef = doc(db, 'bloqueos', citaSeleccionada.id);
+                          await updateDoc(bloqueoRef, {
                             fecha: nuevaFechaCita,
                             fechaStr: nuevaFechaCita,
+                            horaInicio: nuevaHoraCita,
                             hora: nuevaHoraCita,
                             horaFin: nuevaHoraFinCita,
                             motivo: nuevoMotivoBloqueo,
