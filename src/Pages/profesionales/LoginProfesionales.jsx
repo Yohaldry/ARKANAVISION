@@ -5,6 +5,7 @@ import {
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase'; // Ajusta la ruta a tu archivo firebase.js si es necesario
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function LoginProfesionales() {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -27,6 +28,18 @@ export default function LoginProfesionales() {
   const [tipoTrabajador, setTipoTrabajador] = useState('establecimiento'); // 'establecimiento' o 'empleado'
   const [establecimiento, setEstablecimiento] = useState('');
   const [porcentajeEmpleado, setPorcentajeEmpleado] = useState('');
+
+
+// Dentro de tu componente LoginProfesionales:
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // Si ya hay una sesión activa, redirige de inmediato al panel
+      window.location.href = '/panelprofesionales';
+    }
+  });
+  return () => unsubscribe();
+}, []);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);

@@ -1055,109 +1055,109 @@ useEffect(() => {
 
   return (
     <>
-      <div className="bg-gradient-to-br from-white via-sky-50/40 to-blue-50/60 border border-blue-200 p-4 rounded-2xl mb-3 shadow-sm relative overflow-hidden">
+     <div className="bg-gradient-to-br from-white via-sky-50/40 to-blue-50/60 border border-blue-200 p-3 rounded-xl mb-2.5 shadow-2xs relative overflow-hidden">
         
-        {/* Cabecera */}
-        <div className="flex justify-between items-center gap-2 mb-3">
-          <span className="text-slate-500 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-            <Calendar size={12} className="text-blue-600" /> Mi Ganancia Manual • <span className="text-slate-800 capitalize">{obtenerTextoFechaRecuadro()}</span>
+  {/* Cabecera compacta */}
+  <div className="flex justify-between items-center gap-2 mb-2">
+    <span className="text-slate-500 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 truncate">
+      <Calendar size={11} className="text-blue-600 shrink-0" /> Ganancia Manual • <span className="text-slate-800 capitalize truncate">{obtenerTextoFechaRecuadro()}</span>
+    </span>
+    <button 
+      type="button"
+      onClick={() => {
+        setInputMetaValor(tieneMetaDefinida ? metaActual.toString() : '');
+        setModalMetaAbierto(true);
+      }}
+      className={`text-[8px] px-2 py-0.5 rounded-lg font-bold uppercase transition cursor-pointer shadow-2xs flex items-center gap-1 shrink-0 ${
+        tieneMetaDefinida ? 'bg-blue-100 hover:bg-blue-200 text-blue-800' : 'bg-amber-100 hover:bg-amber-200 text-amber-800 animate-pulse'
+      }`}
+    >
+      🎯 {tieneMetaDefinida ? `Meta: $${metaActual.toLocaleString()}` : 'Configurar Meta'}
+    </button>
+  </div>
+
+  {/* Contenido Principal Compacto */}
+  <div className="flex items-center justify-between gap-2">
+    
+    {/* Columna Izquierda: Ganancias y Estado */}
+    <div className="space-y-0.5 flex-1 min-w-0">
+      <div className="flex items-baseline gap-1">
+        <h2 className="text-xl sm:text-2xl font-black text-blue-950 truncate">
+          ${gananciaBarbero.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        </h2>
+        <span className="text-blue-700 font-bold text-[10px] shrink-0">COP</span>
+      </div>
+
+      <div className="text-[9px] font-bold">
+        {!tieneMetaDefinida ? (
+          <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
+            ⚠️ Sin meta establecida
           </span>
-          <button 
-            type="button"
-            onClick={() => {
-              setInputMetaValor(tieneMetaDefinida ? metaActual.toString() : '');
-              setModalMetaAbierto(true);
-            }}
-            className={`text-[9px] px-2.5 py-1 rounded-lg font-bold uppercase transition cursor-pointer shadow-2xs flex items-center gap-1 ${
-              tieneMetaDefinida ? 'bg-blue-100 hover:bg-blue-200 text-blue-800' : 'bg-amber-100 hover:bg-amber-200 text-amber-800 animate-pulse'
-            }`}
-          >
-            🎯 {tieneMetaDefinida ? `Meta: $${metaActual.toLocaleString()}` : 'Configurar Meta'}
-          </button>
-        </div>
+        ) : diferenciaMeta >= 0 ? (
+          <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block truncate">
+            🎉 +${diferenciaMeta.toLocaleString()} sobre la meta
+          </span>
+        ) : (
+          <span className="text-blue-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 inline-block truncate">
+            ⏳ Faltan ${Math.abs(diferenciaMeta).toLocaleString()}
+          </span>
+        )}
+      </div>
 
-        {/* Contenido Principal */}
-        <div className="flex items-center justify-between gap-3">
-          
-          {/* Columna Izquierda: Ganancias y Estado de Meta */}
-          <div className="space-y-1">
-            <div className="flex items-baseline gap-1.5">
-              <h2 className="text-2xl sm:text-3xl font-black text-blue-950">
-                ${gananciaBarbero.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </h2>
-              <span className="text-blue-700 font-bold text-xs">COP</span>
-            </div>
+      <div className="text-[9px] text-slate-500 flex items-center gap-1 font-medium pt-0.5">
+        <span>Caja total:</span>
+        <span className="text-slate-800 font-bold">${totalWallet.toLocaleString()} COP</span>
+      </div>
+    </div>
 
-            <div className="text-[10px] font-bold">
-              {!tieneMetaDefinida ? (
-                <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                  ⚠️ Aún no has establecido tu meta diaria
-                </span>
-              ) : diferenciaMeta >= 0 ? (
-                <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  🎉 ¡Meta superada por +${diferenciaMeta.toLocaleString()} COP!
-                </span>
-              ) : (
-                <span className="text-blue-600 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100">
-                  ⏳ Faltan ${Math.abs(diferenciaMeta).toLocaleString()} COP para la meta
-                </span>
-              )}
-            </div>
+    {/* Columna Derecha: Círculo de Progreso Reducido */}
+    <div 
+      className="relative flex flex-col items-center cursor-pointer group shrink-0" 
+      onClick={() => {
+        setInputMetaValor(tieneMetaDefinida ? metaActual.toString() : '');
+        setModalMetaAbierto(true);
+      }} 
+      title="Haz clic para cambiar tu meta diaria"
+    >
+      {/* Globo flotante dinámico */}
+      <div className={`absolute -top-6 text-[7px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap animate-bounce border ${
+        !tieneMetaDefinida ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-blue-600 text-white border-sky-300'
+      }`}>
+        {obtenerMensajeDinamico(porcentajeProgreso, tieneMetaDefinida)}
+      </div>
 
-            <div className="text-[10px] text-slate-500 flex items-center gap-1 font-medium pt-0.5">
-              <span>Producido total caja:</span>
-              <span className="text-slate-800 font-bold">${totalWallet.toLocaleString()} COP</span>
-            </div>
-          </div>
+      <div className="relative w-16 h-16 flex items-center justify-center mt-1">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r={radio} stroke="currentColor" strokeWidth="6" className="text-blue-100" fill="transparent" />
+          <circle
+            cx="40"
+            cy="40"
+            r={radio}
+            stroke="url(#gradientAzul)"
+            strokeWidth="6"
+            strokeDasharray={circunferencia}
+            strokeDashoffset={desplazamientoStroke}
+            strokeLinecap="round"
+            fill="transparent"
+            className="transition-all duration-700 ease-out"
+          />
+          <defs>
+            <linearGradient id="gradientAzul" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0ea5e9" />
+              <stop offset="100%" stopColor="#2563eb" />
+            </linearGradient>
+          </defs>
+        </svg>
 
-          {/* Columna Derecha: Círculo de Progreso Interactivo */}
-          <div 
-            className="relative flex flex-col items-center cursor-pointer group" 
-            onClick={() => {
-              setInputMetaValor(tieneMetaDefinida ? metaActual.toString() : '');
-              setModalMetaAbierto(true);
-            }} 
-            title="Haz clic para cambiar tu meta diaria"
-          >
-            {/* Globo flotante dinámico */}
-            <div className={`absolute -top-7 text-[8px] font-black px-2.5 py-0.5 rounded-full shadow-md whitespace-nowrap animate-bounce border ${
-              !tieneMetaDefinida ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-blue-600 text-white border-sky-300'
-            }`}>
-              {obtenerMensajeDinamico(porcentajeProgreso, tieneMetaDefinida)}
-            </div>
-
-            <div className="relative w-20 h-20 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r={radio} stroke="currentColor" strokeWidth="7" className="text-blue-100" fill="transparent" />
-                <circle
-                  cx="40"
-                  cy="40"
-                  r={radio}
-                  stroke="url(#gradientAzul)"
-                  strokeWidth="7"
-                  strokeDasharray={circunferencia}
-                  strokeDashoffset={desplazamientoStroke}
-                  strokeLinecap="round"
-                  fill="transparent"
-                  className="transition-all duration-700 ease-out"
-                />
-                <defs>
-                  <linearGradient id="gradientAzul" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#0ea5e9" />
-                    <stop offset="100%" stopColor="#2563eb" />
-                  </linearGradient>
-                </defs>
-              </svg>
-
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-xs font-black text-blue-950">{tieneMetaDefinida ? `${Math.round(porcentajeProgreso)}%` : '0%'}</span>
-                <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">Progreso</span>
-              </div>
-            </div>
-          </div>
-
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-[11px] font-black text-blue-950">{tieneMetaDefinida ? `${Math.round(porcentajeProgreso)}%` : '0%'}</span>
+          <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Progreso</span>
         </div>
       </div>
+    </div>
+
+  </div>
+</div>
 
       {/* Modal Interactivo para Configurar la Meta Diaria y Consejo Financiero */}
       {modalMetaAbierto && (

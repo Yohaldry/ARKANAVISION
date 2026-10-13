@@ -323,8 +323,10 @@ const objetoFecha = typeof fechaActualEval === 'string'
     }
   };
 
+  
+
   // EFECTO PRINCIPAL CORREGIDO (Aquí se cargan citas y los bloqueos exclusivamente de la colección "bloqueos")
-  useEffect(() => {
+useEffect(() => {
     let unsubFirestoreStatus = () => {};
     let unsubServicios = () => {};
     let unsubCitas = () => {};
@@ -341,10 +343,11 @@ const objetoFecha = typeof fechaActualEval === 'string'
       if (currentUser) {
         setAuthUser(currentUser);
 
+        // 1. Escuchar datos del Perfil del Profesional
         unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', currentUser.uid), (docSnap) => {
           if (docSnap.exists()) {
             const d = docSnap.data();
-            setBarberData(d);
+            setBarberData({ id: docSnap.id, ...d });
             setNombre(d.nombre || 'Profesional'); 
             setCiudad(d.ciudad || 'Bogotá D.C.');
             setExperiencia(d.experiencia || '1 a 3 años'); 
@@ -358,13 +361,14 @@ const objetoFecha = typeof fechaActualEval === 'string'
           } else {
             setCorreoPerfil(currentUser.email || '');
           }
+          // Se quita la pantalla de carga una vez los datos están listos en pantalla
+          setAuthLoading(false);
         }, (error) => {
           console.error("Error al verificar estado del profesional:", error);
+          setAuthLoading(false);
         });
 
-        const nombreBarberoActual = nombre;
-        
-        // 1. Cargar Servicios
+        // 2. Cargar Servicios del Profesional
         const qServicios = query(collection(db, 'servicios'), where('barberoId', '==', currentUser.uid));
         unsubServicios = onSnapshot(qServicios, (servSnap) => {
           const listaServicios = [];
@@ -381,7 +385,7 @@ const objetoFecha = typeof fechaActualEval === 'string'
           setCitasFirestore([...citasTemp, ...bloqueosTemp]);
         };
 
-        // 2. Cargar Citas normales (excluyendo bloqueos)
+        // 3. Cargar Citas normales
         const qCitas = query(collection(db, 'citas'), where('barberoId', '==', currentUser.uid));
         unsubCitas = onSnapshot(qCitas, (snapshot) => {
           citasTemp = [];
@@ -389,66 +393,58 @@ const objetoFecha = typeof fechaActualEval === 'string'
 
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            const coincideId = data.barberoId === currentUser.uid;
-            const coincideNombre = (nombreBarberoActual && data.barberoName && data.barberoName.toLowerCase().trim() === nombreBarberoActual.toLowerCase().trim());
-
             if (data.estado === 'bloqueado' || data.esBloqueo === true) return;
 
-            if (coincideId || coincideNombre || !data.barberoId) {
-              let horaBD = (data.hora || '').trim();
-              
-              if (horaBD.includes(':') && !horaBD.toLowerCase().includes('m') && !horaBD.toLowerCase().includes('a')) {
-                const partes = horaBD.split(':');
+            let horaBD = (data.hora || '').trim();
+            const limpiarYNormalizarHora = (str) => {
+              if (!str) return '12:00 a. m.';
+              let limpio = str.toLowerCase().trim();
+              if (limipo.includes(':') && !limipo.includes('m') && !limipo.includes('a')) {
+                const partes = limpio.split(':');
                 let hNum = parseInt(partes[0], 10);
                 const mNum = partes[1] || '00';
                 if (!isNaN(hNum)) {
                   const ampm = hNum >= 12 ? 'p. m.' : 'a. m.';
                   const h12 = hNum % 12 || 12;
-                  horaBD = `${h12}:${mNum.substring(0, 2)} ${ampm}`;
+                  return `${h12}:${mNum.substring(0, 2)} ${ampm}`;
                 }
               }
+              const match = horasCalendario.find(h => h.val24 === str || h.label.toLowerCase() === limpio);
+              return match ? match.label : (horaBD || '12:00 a. m.');
+            };
 
-              const matchHora = horasCalendario.find(h => 
-                h.val24 === data.hora || 
-                h.label.toLowerCase() === horaBD.toLowerCase() ||
-                horaBD.toLowerCase().includes(h.val24) ||
-                horaBD.toLowerCase().replace(/\s+/g, '').includes(h.label.toLowerCase().replace(/\s+/g, ''))
-              );
+            const horaNormalizada = limpiarYNormalizarHora(horaBD);
+            const estado = (data.estado || '').toLowerCase().trim();
 
-              const horaNormalizada = matchHora ? matchHora.label : (horaBD || '12:00 a. m.');
-              const estado = (data.estado || 'pendiente').toLowerCase();
-              
-              if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado') {
-                reproducirSonidoAlerta();
-              }
-
-              let colorClase = 'bg-indigo-50 border-indigo-200 text-indigo-950 font-semibold shadow-xs';
-              if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
-              if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-400 font-normal';
-              if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
-              
-              citasTemp.push({
-                ...data,
-                id: docSnap.id, 
-                cliente: data.clienteNombre || 'CLIENTE', 
-                clienteTelefono: data.telefono || data.clienteTelefono || '',
-                clienteEmail: data.clienteEmail || '', 
-                servicio: data.servicio || 'Servicio General',
-                hora: horaNormalizada, 
-                horaFin: data.horaFin || '',
-                duracionTotal: data.duracionTotal || 45,
-                fechaStr: data.fecha || '', 
-                estado, 
-                color: colorClase, 
-                esBloqueo: false
-              });
+            if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado') {
+              reproducirSonidoAlerta();
             }
-          });
 
+            let colorClase = 'bg-indigo-50 border-indigo-200 text-indigo-950 font-semibold shadow-xs';
+            if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
+            if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-500 font-normal';
+            if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
+
+            citasTemp.push({
+              ...data,
+              id: docSnap.id, 
+              cliente: data.clienteNombre || data.cliente || 'CLIENTE', 
+              clienteTelefono: data.telefono || data.clienteTelefono || '',
+              clienteEmail: data.clienteEmail || '', 
+              servicio: data.servicio || 'Servicio General',
+              hora: horaNormalizada, 
+              horaFin: data.horaFin || '',
+              duracionTotal: data.duracionTotal || 45,
+              fechaStr: data.fecha || data.fechaStr || '', 
+              estado, 
+              color: colorClase, 
+              esBloqueo: false
+            });
+          });
           actualizarEstadoGlobal();
         });
 
-        // 3. Cargar Bloqueos EXCLUSIVAMENTE de la colección "bloqueos"
+        // 4. Cargar Bloqueos
         const qBloqueos = query(collection(db, 'bloqueos'), where('barberoId', '==', currentUser.uid));
         unsubBloqueos = onSnapshot(qBloqueos, (snapBloq) => {
           bloqueosTemp = [];
@@ -464,11 +460,10 @@ const objetoFecha = typeof fechaActualEval === 'string'
               esBloqueo: true,
               fechaStr: bData.fechaStr || bData.fecha,
               hora: bData.horaInicio || bData.hora,
-             color: 'bg-slate-100/90 border-slate-300 text-slate-700 font-medium select-none cursor-pointer backdrop-blur-xs hover:bg-slate-200/90'
+              color: 'bg-slate-100/90 border-slate-300 text-slate-700 font-medium select-none cursor-pointer backdrop-blur-xs hover:bg-slate-200/90'
             });
           });
 
-          // Generación automática de notificaciones
           const listaNotif = bloqueosTemp.map(b => ({
             id: b.id,
             texto: `Horario bloqueado: ${b.motivo || 'No disponible'} (${b.fechaStr})`,
@@ -476,7 +471,6 @@ const objetoFecha = typeof fechaActualEval === 'string'
             fecha: b.fechaStr || 'Hoy'
           }));
           setNotificaciones(listaNotif.reverse());
-
           actualizarEstadoGlobal();
           primerCargaRef.current = false;
         });
@@ -486,11 +480,12 @@ const objetoFecha = typeof fechaActualEval === 'string'
         setCitasFirestore([]); 
         setServiciosFirebase([]);
         setNotificaciones([]);
+        setAuthLoading(false);
+        window.location.href = '/loginprofesionales';
       }
-      setAuthLoading(false);
     });
 
-    const safety = setTimeout(() => setAuthLoading(false), 2000);
+    const safety = setTimeout(() => setAuthLoading(false), 2500);
     return () => { 
       unsubAuth(); 
       clearTimeout(safety); 
@@ -500,7 +495,7 @@ const objetoFecha = typeof fechaActualEval === 'string'
       unsubCitas();
       unsubBloqueos();
     };
-  }, [nombre]);
+  }, []);
 
   const [serviciosModalCita, setServiciosModalCita] = useState([]);
 const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId === authUser?.uid);
@@ -952,9 +947,20 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
         const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
 
         // Citas normales que inician en esta hora
+       {/* Citas normales que inician en esta hora */}
         const citasEnEstaHora = citasFirestore.filter(c => {
-          const fDoc = c.fechaStr || c.fecha;
+          // Depuración para ver en consola qué citas existen y por qué se filtran
+          console.log("Cita en Firestore:", c, "Fecha buscada:", fechaStr);
+
+          const rawFecha = c.fechaStr || c.fecha || '';
+          const fDoc = rawFecha.toString().split('T')[0].trim();
+          
           if (fDoc !== fechaStr || !c.hora || c.esBloqueo) return false;
+          
+          const estado = (c.estado || '').toLowerCase().trim();
+          const esValido = estado === '' || estado === 'finalizada' || estado === 'confirmada';
+          if (!esValido) return false;
+
           const minutosCitaInicio = horaAMinutos(c.hora);
           return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
         });
