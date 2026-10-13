@@ -32,12 +32,34 @@ export default function LoginProfesionales() {
 
 // Dentro de tu componente LoginProfesionales:
 useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
     if (user) {
-      // Si ya hay una sesión activa, redirige de inmediato al panel
-      window.location.href = '/panelprofesionales';
+      try {
+        // 1. Revisar si el UID pertenece a un establecimiento
+        const estDocRef = doc(db, 'establecimientos', user.uid);
+        const estDocSnap = await getDoc(estDocRef);
+
+        if (estDocSnap.exists()) {
+          window.location.href = '/panelestablecimientos';
+          return;
+        }
+
+        // 2. Revisar si el UID pertenece a un profesional
+        const profDocRef = doc(db, 'profesionales', user.uid);
+        const profDocSnap = await getDoc(profesionalDocRef = profDocRef); // o profDocRef
+        const profSnap = await getDoc(profDocRef);
+
+        if (profSnap.exists()) {
+          window.location.href = '/panelprofesionales';
+          return;
+        }
+
+      } catch (error) {
+        console.error("Error al verificar el tipo de usuario:", error);
+      }
     }
   });
+
   return () => unsubscribe();
 }, []);
 

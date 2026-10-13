@@ -67,6 +67,12 @@ export default function PanelEstablecimientos() {
   const [tipoAccionModal, setTipoAccionModal] = useState('cita'); 
   const [motivoBloqueo, setMotivoBloqueo] = useState('');
 
+  const [citaSeleccionada, setCitaSeleccionada] = useState(null); // Almacena el objeto de la cita activa
+const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
+const [estadoTemporal, setEstadoTemporal] = useState('');
+const [mostrarConfirmacionEstado, setMostrarConfirmacionEstado] = useState(false);
+const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
+
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
     const limpio = horaStr.trim().toUpperCase().replace(/\./g, '');
@@ -80,6 +86,18 @@ export default function PanelEstablecimientos() {
     if (esAM && realH === 12) realH = 0;
     return realH * 60 + m;
   };
+
+  const obtenerColorEstado = (estado) => {
+  const est = (estado || '').toLowerCase().trim();
+  if (est === 'cancelada' || est === 'cancelado' || est === 'inasistente') {
+    return 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-700'; // Rojo
+  }
+  if (est === 'finalizada' || est === 'finalizado' || est === 'confirmada' || est === 'confirmado') {
+    return 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-700'; // Verde
+  }
+  // Estado activo por defecto (pendiente, activa, etc.)
+  return 'bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 text-white border-blue-700'; // Azul Eléctrico
+};
 
   const handleGuardarBloqueoRango = async (e) => {
     e.preventDefault();
@@ -325,6 +343,16 @@ export default function PanelEstablecimientos() {
   const agendaContainerRef = useRef(null);
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        // Si no hay sesión, redirige al inicio o al login correspondiente
+        window.location.href = '/'; 
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+useEffect(() => {
     let unsubVinculados = () => {};
     let unsubCitas = () => {};
     let unsubServicios = () => {};
@@ -427,6 +455,7 @@ export default function PanelEstablecimientos() {
         }
       } else {
         setAuthUser(null);
+        window.location.href = '/loginestablecimientos'; // Redirige al login si no hay sesión
       }
       setAuthLoading(false);
     });
@@ -906,7 +935,6 @@ export default function PanelEstablecimientos() {
                                   return minCita >= minutosFilaInicio && minCita < minutosFilaFin;
                                 });
 
-                                // Filtramos bloqueos que inician exactamente en esta hora para renderizarlos sin recorte
                                 const bloqueosInicianAqui = bloqueos.filter(b => {
                                   const coincideBarbero = String(b.barberoId) === String(prof.id) || 
                                     (b.barberoName && prof.nombre && b.barberoName.toLowerCase().trim() === prof.nombre.toLowerCase().trim());
@@ -953,7 +981,6 @@ export default function PanelEstablecimientos() {
                                       </div>
                                     )}
 
-                                    {/* Bloqueo continuo por encima de las celdas de las horas en rango */}
                                     {bloqueosInicianAqui.map((bloq, bIdx) => {
                                       const minInicio = horaAMinutos(bloq.horaInicio || bloq.hora);
                                       const minFin = bloq.horaFin ? horaAMinutos(bloq.horaFin) : minInicio + 60;
@@ -970,7 +997,7 @@ export default function PanelEstablecimientos() {
                                           className="absolute left-0.5 right-0.5 z-30 bg-slate-200/95 border border-slate-400 text-slate-700 font-bold p-1.5 rounded-md shadow-md flex flex-col justify-between hover:bg-slate-300 transition-all cursor-pointer backdrop-blur-2xs"
                                           style={{
                                             top: '2px',
-                                            height: `${alturaPx - 4}px`
+                                            height: `${alturaPx}px`
                                           }}
                                           title={`🚫 ${bloq.motivo || 'Bloqueado'} (${bloq.horaInicio || bloq.hora} - ${bloq.horaFin || 'Fin'})`}
                                         >
@@ -1000,9 +1027,12 @@ export default function PanelEstablecimientos() {
                                             key={cIdx}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleAbrirModalCita(prof, itemHora.label, e);
+                                              // Aquí se conecta con el modal de edición/gestión que creamos previamente
+                                              setCitaSeleccionada(item);
+                                              setEstadoTemporal(item.estado);
+                                              setModalDetalleAbierto(true);
                                             }}
-                                            className={`p-1 border rounded-md flex flex-col justify-center ${colorClase} h-full overflow-hidden shadow-2xs z-10`}
+                                            className={`p-1 border rounded-md flex flex-col justify-center ${colorClase} h-full overflow-hidden shadow-2xs z-10 cursor-pointer`}
                                             title={`${item.cliente} - ${item.servicio} (${item.hora})`}
                                           >
                                             <div className="flex items-center justify-between gap-0.5 min-w-0">
@@ -1494,7 +1524,175 @@ export default function PanelEstablecimientos() {
           </div>
         </div>
       )}
+{modalDetalleAbierto && citaSeleccionada && (
+  <div className="fixed inset-0 z-[99999] flex justify-end bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+    
+    {/* Contenedor deslizante desde la derecha */}
+    <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 overflow-y-auto">
+      
+      <div>
+        {/* BARRA SUPERIOR DINÁMICA DE FECHA Y ESTADO */}
+        <div className={`p-4 border-b flex items-center justify-between shadow-md transition-colors duration-300 ${obtenerColorEstado(citaSeleccionada.estado)}`}>
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90 flex items-center gap-1">
+              📅 {citaSeleccionada.fechaStr || 'Fecha no especificada'}
+            </span>
+            <h3 className="text-sm font-black uppercase tracking-wide">
+              {citaSeleccionada.estado ? `Estado: ${citaSeleccionada.estado}` : 'Cita Activa'}
+            </h3>
+          </div>
+          
+          <button 
+            type="button"
+            onClick={() => setModalDetalleAbierto(false)}
+            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-xs backdrop-blur-xs transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
 
+        {/* Cabecera del Cliente */}
+        <div className="p-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+          <div>
+            <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider">Detalles de la Cita</span>
+            <h2 className="text-base font-black text-slate-900 leading-tight">{citaSeleccionada.cliente}</h2>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-700 shadow-2xs">
+            ⏰ {citaSeleccionada.hora || 'Sin Hora'}
+          </span>
+        </div>
+
+        {/* Formulario de Edición */}
+        <div className="p-5 space-y-4">
+          
+          {/* Información de Contacto */}
+          <div className="bg-sky-50/60 border border-sky-100 p-3 rounded-xl space-y-1">
+            <p className="text-xs text-slate-700"><strong>Teléfono:</strong> {citaSeleccionada.clienteTelefono || 'No registrado'}</p>
+            <p className="text-xs text-slate-700"><strong>Correo:</strong> {citaSeleccionada.clienteEmail || 'No registrado'}</p>
+          </div>
+
+          {/* Servicio y Total a Pagar */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Servicio Contratado</label>
+            <input 
+              type="text"
+              value={citaSeleccionada.servicio || ''}
+              onChange={(e) => setCitaSeleccionada({...citaSeleccionada, servicio: e.target.value})}
+              className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-900">Total a Pagar:</span>
+            <span className="text-sm font-black text-emerald-700">
+              ${(citaSeleccionada.precio || 0).toLocaleString()} COP
+            </span>
+          </div>
+
+          {/* Modificar Fecha y Hora */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Fecha</label>
+              <input 
+                type="date"
+                value={citaSeleccionada.fechaStr || ''}
+                onChange={(e) => setCitaSeleccionada({...citaSeleccionada, fechaStr: e.target.value})}
+                className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Hora</label>
+              <input 
+                type="text"
+                value={citaSeleccionada.hora || ''}
+                onChange={(e) => setCitaSeleccionada({...citaSeleccionada, hora: e.target.value})}
+                className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Cambiar Estado con Select */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Estado de la Cita</label>
+            <select
+              value={estadoTemporal}
+              onChange={(e) => {
+                const valor = e.target.value;
+                if (valor === 'cancelada' || valor === 'inasistente') {
+                  setNuevoEstadoSeleccionado(valor);
+                  setMostrarConfirmacionEstado(true);
+                } else {
+                  setEstadoTemporal(valor);
+                  setCitaSeleccionada({...citaSeleccionada, estado: valor});
+                }
+              }}
+              className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none cursor-pointer"
+            >
+              <option value="activa">Activa</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="finalizada">Finalizada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="inasistente">Inasistente</option>
+            </select>
+          </div>
+
+          {/* Alerta de Confirmación cuando cambia a Cancelada o Inasistente */}
+          {mostrarConfirmacionEstado && (
+            <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl animate-in fade-in">
+              <p className="text-xs font-bold text-rose-900 mb-2">
+                ¿Confirmas cambiar el estado a <span className="uppercase text-rose-700 font-black">{nuevoEstadoSeleccionado}</span>?
+              </p>
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setEstadoTemporal(nuevoEstadoSeleccionado);
+                    setCitaSeleccionada({...citaSeleccionada, estado: nuevoEstadoSeleccionado});
+                    setMostrarConfirmacionEstado(false);
+                  }}
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs py-1.5 rounded-lg font-bold transition cursor-pointer"
+                >
+                  Sí, cambiar
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setMostrarConfirmacionEstado(false)}
+                  className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 rounded-lg font-bold transition cursor-pointer"
+                >
+                  No, mantener
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Botones de Acción Inferiores */}
+      <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
+        <button 
+          type="button"
+          onClick={() => setModalDetalleAbierto(false)}
+          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 rounded-xl font-bold transition cursor-pointer"
+        >
+          Cerrar
+        </button>
+        <button 
+          type="button"
+          onClick={() => {
+            // Guardar cambios en Firestore
+            // actualizarCitaEnFirestore(citaSeleccionada);
+            setModalDetalleAbierto(false);
+          }}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded-xl font-bold shadow-md transition cursor-pointer"
+        >
+          Guardar Cambios
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
     </div>
   );
 }

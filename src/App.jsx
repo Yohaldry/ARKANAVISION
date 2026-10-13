@@ -54,6 +54,42 @@ const ProtectedProfRoute = ({ children }) => {
   return isAuth ? children : <Navigate to="/loginprofesionales" replace />;
 };
 
+// Ruta protegida para establecimientos: asegura que solo usuarios autenticados accedan al panel
+const ProtectedEstablecimientoRoute = ({ children }) => {
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isAuth, setIsAuth] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuth(!!user);
+      setCheckingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (checkingAuth) {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center animate-in fade-in duration-300 select-none">
+        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-blue-200 shadow-xl flex items-center justify-center p-2.5 mb-4 animate-pulse">
+          <img 
+            src="https://res.cloudinary.com/dtkirmtfq/image/upload/v1791241981/Visarka/mxmsobksbvrii384mlja.png" 
+            alt="VISARKA" 
+            className="w-full h-full object-contain"
+          />
+        </div>
+        <h1 className="text-slate-900 text-xs font-black uppercase tracking-widest">VISARKA</h1>
+        <p className="text-blue-600 text-[10px] font-mono tracking-wider mt-1">Verificando acceso al establecimiento...</p>
+        <div className="w-32 h-1 bg-blue-100 rounded-full mt-6 overflow-hidden">
+          <div className="w-full h-full bg-blue-600 animate-[indeterminate_1s_infinite_linear]"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Nota: Cambia "/loginestablecimientos" por la ruta real de tu login de establecimientos si es diferente
+  return isAuth ? children : <Navigate to="/" replace />;
+};
+
 function App() {
   return (
     <Router>
@@ -82,7 +118,17 @@ function App() {
         />
 
         <Route path="/loginprofesionales" element={<LoginProfesionales />} />
-        <Route path="/panelestablecimientos" element={<PanelEstablecimientos />} />
+        
+        {/* Panel de establecimientos protegido */}
+        <Route 
+          path="/panelestablecimientos" 
+          element={
+            <ProtectedEstablecimientoRoute>
+              <PanelEstablecimientos />
+            </ProtectedEstablecimientoRoute>
+          } 
+        />
+        
         <Route path="/agendaestablecimiento" element={<AgendaEstablecimiento />} />
 
         {/* Ruta dinámica para que cada cliente reserve con su barbero respectivo */}
