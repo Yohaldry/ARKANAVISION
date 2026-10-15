@@ -352,6 +352,11 @@ export default function Servicios({ authUser }) {
                     <option value="30">30 Min</option>
                     <option value="45">45 Min</option>
                     <option value="60">60 Min</option>
+                    <option value="70">70 Min</option>
+                    <option value="80">80 Min</option>
+                    <option value="90">90 Min</option>
+                    <option value="100">100 Min</option>
+                    <option value="120">120 Min</option>
                   </select>
                 </div>
               </div>

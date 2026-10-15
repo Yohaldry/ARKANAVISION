@@ -5,7 +5,7 @@ import {
   Loader2, Eye, EyeOff, LogOut, X, Share2, Copy, Image as ImageIcon, Trash2, ChevronDown, FileText, Check
 } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where  } from 'firebase/firestore';
+import { doc, updateDoc, collection, setDoc, onSnapshot, addDoc, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../components/firebase';
 import Wallet from './Wallet'
 import Comunidad from './Comunidad';
@@ -32,8 +32,6 @@ const zonasBogotaDisponibles = [
 ];
 
 export default function PanelProfesionales() {
-
-
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dragOverInfo, setDragOverInfo] = useState({ diaStr: null, horaTexto: null, x: 0, y: 0 });
@@ -44,8 +42,6 @@ export default function PanelProfesionales() {
   const [vistaCalendario, setVistaCalendario] = useState('semanal');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
-
-
 
   const primerCargaRef = useRef(true);
   const fileInputRef = useRef(null);
@@ -70,7 +66,6 @@ export default function PanelProfesionales() {
   });
 
   const [porcentaje, setPorcentaje] = useState('');
-
   const [datosNuevaCita, setDatosNuevaCita] = useState({
     clienteNombre: '',
     telefono: '',
@@ -188,38 +183,45 @@ export default function PanelProfesionales() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
 
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [nuevaFechaFinCita, setNuevaFechaFinCita] = useState('');
+  const [esRangoBloqueo, setEsRangoBloqueo] = useState(false);
 
+  const [modalHorarioSemanalAbierto, setModalHorarioSemanalAbierto] = useState(false);
+  const [horarioSemanal, setHorarioSemanal] = useState({
+    lunes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+    martes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+    miercoles: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+    jueves: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+    viernes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+    sabado: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
+    domingo: { abierto: false, apertura: '8:00 a. m.', cierre: '7:00 p. m.' }
+  });
 
+  const [horaInicioLaboral, setHoraInicioLaboral] = useState('8:00 a. m.');
+  const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
 
-const [notificaciones, setNotificaciones] = useState([]);
-const [nuevaFechaFinCita, setNuevaFechaFinCita] = useState('');
-const [esRangoBloqueo, setEsRangoBloqueo] = useState(false);
+  const idEstablecimientoVinculado = barberData?.establecimientoId || barberData?.establecimiento || null;
 
-const [modalHorarioSemanalAbierto, setModalHorarioSemanalAbierto] = useState(false);
-const [horarioSemanal, setHorarioSemanal] = useState({
-  lunes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
-  martes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
-  miercoles: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
-  jueves: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
-  viernes: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
-  sabado: { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' },
-  domingo: { abierto: false, apertura: '8:00 a. m.', cierre: '7:00 p. m.' }
+const serviciosDisponiblesParaElegir = serviciosFirebase.filter(s => {
+  if (!idEstablecimientoVinculado) {
+    return String(s.barberoId || '') === String(authUser?.uid);
+  }
+  
+  const idBarberoServ = String(s.barberoId || '');
+  const idEstServ = String(s.establecimientoId || s.idEstablecimiento || s.uid || '');
+  const idEstVinculadoStr = String(idEstablecimientoVinculado);
+  const idAuthUserStr = String(authUser?.uid || '');
+
+  return idBarberoServ === idAuthUserStr || 
+         idBarberoServ === idEstVinculadoStr || 
+         idEstServ === idEstVinculadoStr;
 });
 
-const [horaInicioLaboral, setHoraInicioLaboral] = useState('8:00 a. m.');
-const [horaFinLaboral, setHoraFinLaboral] = useState('7:00 p. m.');
-// Obtener el horario específico de este profesional
-
-// 1. Obtén la fecha que estás evaluando (reemplaza 'fechaSeleccionada' por la variable de fecha real que use tu componente)
-const fechaActualEval = fechaSeleccionada || new Date(); 
-
-// 2. Si la fecha es un string (ej: "2026-10-12"), asegúrate de convertirla a objeto Date:
-const objetoFecha = typeof fechaActualEval === 'string' 
-  ? new Date(fechaActualEval + 'T00:00:00') 
-  : (fechaActualEval instanceof Date ? fechaActualEval : new Date());
-
-
-
+  const fechaActualEval = fechaSeleccionada || new Date(); 
+  const objetoFecha = typeof fechaActualEval === 'string' 
+    ? new Date(fechaActualEval + 'T00:00:00') 
+    : (fechaActualEval instanceof Date ? fechaActualEval : new Date());
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
@@ -238,17 +240,13 @@ const objetoFecha = typeof fechaActualEval === 'string'
   };
 
   const abrirModalEdicionBloqueo = (itemCita) => {
-  setCitaSeleccionada(itemCita);
-  
-  // Rellenar estados del modal con los datos del bloqueo seleccionado
-  setNuevoMotivoBloqueo(itemCita.motivo || 'No disponible');
-  setNuevaFechaCita(itemCita.fechaStr || itemCita.fecha || new Date().toISOString().split('T')[0]);
-  setNuevaHoraCita(itemCita.horaInicio || itemCita.hora || '12:00 a. m.');
-  setNuevaHoraFinCita(itemCita.horaFin || '1:00 a. m.');
-  
-  // Abrir el modal de edición/gestión de bloqueo
-  setModalBloqueoAbierto(true);
-};
+    setCitaSeleccionada(itemCita);
+    setNuevoMotivoBloqueo(itemCita.motivo || 'No disponible');
+    setNuevaFechaCita(itemCita.fechaStr || itemCita.fecha || new Date().toISOString().split('T')[0]);
+    setNuevaHoraCita(itemCita.horaInicio || itemCita.hora || '12:00 a. m.');
+    setNuevaHoraFinCita(itemCita.horaFin || '1:00 a. m.');
+    setModalBloqueoAbierto(true);
+  };
 
   const renderFieldView = (label, value) => {
     const isEmpty = !value || (Array.isArray(value) && value.length === 0) || String(value).trim() === '';
@@ -279,9 +277,7 @@ const objetoFecha = typeof fechaActualEval === 'string'
       gain.connect(audioCtx.destination);
       osc.start(); 
       osc.stop(audioCtx.currentTime + 0.5);
-    } catch (e) {
-      // Ignorar restricciones de audio automático
-    }
+    } catch (e) {}
   };
 
   const y = fechaSeleccionada.getFullYear();
@@ -323,10 +319,8 @@ const objetoFecha = typeof fechaActualEval === 'string'
     }
   };
 
-  
-
-  // EFECTO PRINCIPAL CORREGIDO (Aquí se cargan citas y los bloqueos exclusivamente de la colección "bloqueos")
-useEffect(() => {
+  // EFECTO PRINCIPAL
+  useEffect(() => {
     let unsubFirestoreStatus = () => {};
     let unsubServicios = () => {};
     let unsubCitas = () => {};
@@ -339,37 +333,75 @@ useEffect(() => {
     calcTime();
     const t = setInterval(calcTime, 30000);
 
-    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setAuthUser(currentUser);
+    const unsubAuth = onAuthStateChanged(auth, async (userAuth) => {
+      if (userAuth) {
+        setAuthUser(userAuth);
+        const currentUserId = userAuth.uid;
 
-        // 1. Escuchar datos del Perfil del Profesional
-        unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', currentUser.uid), (docSnap) => {
-          if (docSnap.exists()) {
-            const d = docSnap.data();
-            setBarberData({ id: docSnap.id, ...d });
-            setNombre(d.nombre || 'Profesional'); 
-            setCiudad(d.ciudad || 'Bogotá D.C.');
-            setExperiencia(d.experiencia || '1 a 3 años'); 
-            setEspecialidad(d.especialidad || 'Fade & Visagismo');
-            setDescripcion(d.descripcion || '');
-            setFoto(d.foto || '');
-            setTelefono(d.telefono || '');
-            setCorreoPerfil(d.correo || currentUser.email || '');
-            setPorcentaje(d.porcentaje !== undefined && d.porcentaje !== null ? d.porcentaje : '');
-            setZonasTrabajo(d.zonasTrabajo || []);
-          } else {
-            setCorreoPerfil(currentUser.email || '');
-          }
-          // Se quita la pantalla de carga una vez los datos están listos en pantalla
-          setAuthLoading(false);
-        }, (error) => {
-          console.error("Error al verificar estado del profesional:", error);
-          setAuthLoading(false);
-        });
+       // DENTRO DEL useEffect:
 
-        // 2. Cargar Servicios del Profesional
-        const qServicios = query(collection(db, 'servicios'), where('barberoId', '==', currentUser.uid));
+unsubFirestoreStatus = onSnapshot(doc(db, 'profesionales', currentUserId), async (docSnap) => {
+  if (docSnap.exists()) {
+    const d = docSnap.data();
+    setBarberData({ id: docSnap.id, ...d });
+    setNombre(d.nombre || 'Profesional'); 
+    setCiudad(d.ciudad || 'Bogotá D.C.');
+    setExperiencia(d.experiencia || '1 a 3 años'); 
+    setEspecialidad(d.especialidad || 'Fade & Visagismo');
+    setDescripcion(d.descripcion || '');
+    setFoto(d.foto || '');
+    setTelefono(d.telefono || '');
+    setCorreoPerfil(d.correo || userAuth.email || '');
+    setPorcentaje(d.porcentaje !== undefined && d.porcentaje !== null ? d.porcentaje : '');
+    setZonasTrabajo(d.zonasTrabajo || []);
+
+    // Traer servicios del establecimiento vinculado si existe
+    const establecimientoVinculadoId = d.establecimientoId || d.establecimiento;
+
+    if (establecimientoVinculadoId) {
+      try {
+        const estRef = doc(db, 'establecimientos', establecimientoVinculadoId);
+        const estSnap = await getDoc(estRef);
+
+        if (estSnap.exists()) {
+          const estData = estSnap.data();
+          const serviciosEstablecimiento = estData.servicios || [];
+          
+          console.log("Servicios obtenidos directamente del documento del establecimiento:", serviciosEstablecimiento);
+
+          // Mapeamos los servicios del array para darles una estructura/ID compatible
+          const serviciosFormateados = serviciosEstablecimiento.map((serv, index) => ({
+            id: serv.id || `est_serv_${index}`,
+            nombre: serv.nombre || serv.name || 'Servicio Establecimiento',
+            precio: serv.precio || (serv.precioNum ? `$${serv.precioNum}` : '$0'),
+            precioNum: serv.precioNum || parseInt(String(serv.precio || '').replace(/[^0-9]/g, ''), 10) || 0,
+            duracion: serv.duracion || '45 min',
+            color: serv.color || '#8b5cf6',
+            barberoId: establecimientoVinculadoId,
+            esDelEstablecimiento: true
+          }));
+
+          // Guardamos en el estado mezclando los servicios locales con los del establecimiento
+          setServiciosFirebase(prev => {
+            // Evitar duplicados si ya existen
+            const locales = prev.filter(s => !s.esDelEstablecimiento);
+            return [...locales, ...serviciosFormateados];
+          });
+        }
+      } catch (errEst) {
+        console.error("Error al obtener documento del establecimiento:", errEst);
+      }
+    }
+  } else {
+    setCorreoPerfil(userAuth.email || '');
+  }
+  setAuthLoading(false);
+}, (error) => {
+  console.error("Error al verificar estado del profesional:", error);
+  setAuthLoading(false);
+});
+
+        const qServicios = query(collection(db, 'servicios'), where('barberoId', '==', currentUserId));
         unsubServicios = onSnapshot(qServicios, (servSnap) => {
           const listaServicios = [];
           servSnap.forEach(docServ => {
@@ -385,67 +417,59 @@ useEffect(() => {
           setCitasFirestore([...citasTemp, ...bloqueosTemp]);
         };
 
-        // 3. Cargar Citas normales
-        const qCitas = query(collection(db, 'citas'), where('barberoId', '==', currentUser.uid));
-        unsubCitas = onSnapshot(qCitas, (snapshot) => {
+        unsubCitas = onSnapshot(collection(db, 'citas'), (snapshot) => {
           citasTemp = [];
-          let idsActuales = citasFirestore.map(c => c.id);
-
-          snapshot.forEach((docSnap) => {
+          snapshot.forEach(docSnap => {
             const data = docSnap.data();
-            if (data.estado === 'bloqueado' || data.esBloqueo === true) return;
+            const idBarberoCita = String(data.barberoId || '').trim();
+            const idUserActual = String(currentUserId).trim();
+            
+            const coincideId = idBarberoCita === idUserActual;
+            const coincideNombre = data.barberoName && nombre && (
+              data.barberoName.toLowerCase().includes(nombre.toLowerCase().trim()) ||
+              nombre.toLowerCase().includes(data.barberoName.toLowerCase().trim())
+            );
+            const perteneceEstablecimiento = data.establecimientoId && String(data.establecimientoId) === idUserActual;
+
+            if (!coincideId && !coincideNombre && !perteneceEstablecimiento) return;
 
             let horaBD = (data.hora || '').trim();
-            const limpiarYNormalizarHora = (str) => {
-              if (!str) return '12:00 a. m.';
-              let limpio = str.toLowerCase().trim();
-              if (limipo.includes(':') && !limipo.includes('m') && !limipo.includes('a')) {
-                const partes = limpio.split(':');
-                let hNum = parseInt(partes[0], 10);
-                const mNum = partes[1] || '00';
-                if (!isNaN(hNum)) {
-                  const ampm = hNum >= 12 ? 'p. m.' : 'a. m.';
-                  const h12 = hNum % 12 || 12;
-                  return `${h12}:${mNum.substring(0, 2)} ${ampm}`;
-                }
+            if (horaBD.includes(':') && !horaBD.toLowerCase().includes('m') && !horaBD.toLowerCase().includes('a')) {
+              const partes = horaBD.split(':');
+              let hNum = parseInt(partes[0], 10);
+              const mNum = partes[1] || '00';
+              if (!isNaN(hNum)) {
+                const ampm = hNum >= 12 ? 'p. m.' : 'a. m.';
+                const h12 = hNum % 12 || 12;
+                horaBD = `${h12}:${mNum.substring(0, 2)} ${ampm}`;
               }
-              const match = horasCalendario.find(h => h.val24 === str || h.label.toLowerCase() === limpio);
-              return match ? match.label : (horaBD || '12:00 a. m.');
-            };
-
-            const horaNormalizada = limpiarYNormalizarHora(horaBD);
-            const estado = (data.estado || '').toLowerCase().trim();
-
-            if (!primerCargaRef.current && !idsActuales.includes(docSnap.id) && estado !== 'cancelada' && estado !== 'cancelado') {
-              reproducirSonidoAlerta();
             }
 
-            let colorClase = 'bg-indigo-50 border-indigo-200 text-indigo-950 font-semibold shadow-xs';
-            if (estado === 'confirmada' || estado === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-200 text-emerald-950 font-semibold shadow-xs';
-            if (estado === 'finalizada' || estado === 'finalizado') colorClase = 'bg-slate-100 border-slate-200 text-slate-500 font-normal';
-            if (estado === 'cancelada' || estado === 'cancelado') colorClase = 'bg-rose-50 border-rose-200 text-rose-700 font-normal opacity-75';
+            const matchHora = horasCalendario.find(h => 
+              h.val24 === data.hora || 
+              h.label.toLowerCase() === horaBD.toLowerCase() ||
+              horaBD.toLowerCase().includes(h.val24)
+            );
+
+            const horaNormalizada = matchHora ? matchHora.label : (horaBD || '12:00 a. m.');
+            const estado = (data.estado || 'pendiente').toLowerCase();
 
             citasTemp.push({
               ...data,
-              id: docSnap.id, 
-              cliente: data.clienteNombre || data.cliente || 'CLIENTE', 
-              clienteTelefono: data.telefono || data.clienteTelefono || '',
-              clienteEmail: data.clienteEmail || '', 
+              id: docSnap.id,
+              cliente: data.clienteNombre || data.cliente || 'CLIENTE',
               servicio: data.servicio || 'Servicio General',
-              hora: horaNormalizada, 
-              horaFin: data.horaFin || '',
-              duracionTotal: data.duracionTotal || 45,
-              fechaStr: data.fecha || data.fechaStr || '', 
-              estado, 
-              color: colorClase, 
-              esBloqueo: false
+              hora: horaNormalizada,
+              fechaStr: data.fecha || data.fechaStr || '',
+              estado,
+              esBloqueo: false,
+              motivo: data.motivo || ''
             });
           });
           actualizarEstadoGlobal();
         });
 
-        // 4. Cargar Bloqueos
-        const qBloqueos = query(collection(db, 'bloqueos'), where('barberoId', '==', currentUser.uid));
+        const qBloqueos = query(collection(db, 'bloqueos'), where('barberoId', '==', currentUserId));
         unsubBloqueos = onSnapshot(qBloqueos, (snapBloq) => {
           bloqueosTemp = [];
           snapBloq.forEach(docBloq => {
@@ -498,22 +522,25 @@ useEffect(() => {
   }, []);
 
   const [serviciosModalCita, setServiciosModalCita] = useState([]);
-const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId === authUser?.uid);
-  const abrirModalCita = (cita) => {
-    setCitaSeleccionada(cita);
-    setNuevaFechaCita(cita.fechaStr || cita.fecha || '');
-    setNuevaHoraCita(cita.hora || '');
-    setNuevaHoraFinCita(cita.horaFin || 'No disponible');
-    setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
-    
-    if (cita.servicios && Array.isArray(cita.servicios)) {
-      setServiciosModalCita(cita.servicios);
-    } else if (cita.servicio) {
-      setServiciosModalCita([{ nombre: cita.servicio, precio: cita.monto || cita.precioTotal || '$0' }]);
-    } else {
-      setServiciosModalCita([]);
-    }
-  };
+  const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId === authUser?.uid);
+
+const abrirModalCita = (cita) => {
+  setCitaSeleccionada(cita);
+  setNuevaFechaCita(cita.fechaStr || cita.fecha || '');
+  setNuevaHoraCita(cita.hora || '');
+  setNuevaHoraFinCita(cita.horaFin || 'No disponible');
+  setNuevoMotivoBloqueo(cita.motivo || 'No disponible');
+  
+  if (cita.serviciosArray && Array.isArray(cita.serviciosArray) && cita.serviciosArray.length > 0) {
+    setServiciosModalCita(cita.serviciosArray);
+  } else if (cita.servicios && Array.isArray(cita.servicios) && cita.servicios.length > 0) {
+    setServiciosModalCita(cita.servicios);
+  } else if (cita.servicio) {
+    setServiciosModalCita([{ nombre: cita.servicio, precio: cita.monto || cita.precioTotal || '$0' }]);
+  } else {
+    setServiciosModalCita([]);
+  }
+};
 
   const actualizarCitaArrastrada = async (cita, nuevaFechaStr, nuevaHoraExacta) => {
     try {
@@ -666,7 +693,7 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-mono flex flex-col justify-between pb-36 relative select-none">
-     <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+      <header className="w-full bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-blue-200 flex items-center justify-center shadow-sm p-1">
             <img 
@@ -683,7 +710,7 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
 
         <div className="flex items-center gap-2 relative">
           <div className="relative">
-           <button 
+            <button 
               onClick={() => setNotificacionesAbiertas(!notificacionesAbiertas)}
               className="p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100 border border-blue-200 text-blue-600 cursor-pointer relative transition-all shadow-2xs flex items-center justify-center active:scale-95"
               title="Notificaciones"
@@ -696,7 +723,7 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
               )}
             </button>
 
-           {notificacionesAbiertas && (
+            {notificacionesAbiertas && (
               <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-slate-800">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
                   <span className="text-[10px] font-black uppercase text-slate-900">Notificaciones de Actividad</span>
@@ -773,582 +800,428 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
         {successMsg && <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] flex gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />{successMsg}</div>}
         {errorMsg && <div className="mb-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-[10px] flex gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-red-600" />{errorMsg}</div>}
 
-       {activeTab === 'agenda' && (
-        <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
-          <div className="shrink-0 space-y-1.5">
-            <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
-                  <input 
-                    type="date" 
-                    value={fechaSeleccionada.toISOString().split('T')[0]} 
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
-                      }
-                    }}
-                    className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
-                  />
-                </div>
+        {activeTab === 'agenda' && (
+          <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-5rem)] space-y-2 overflow-hidden text-blue-950 pb-1">
+            <div className="shrink-0 space-y-1.5">
+              <div className="bg-gradient-to-b from-blue-50 to-blue-100/70 border border-blue-300/80 rounded-2xl p-2.5 shadow-[0_4px_12px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase text-blue-800">📅 Mes / Día:</span>
+                    <input 
+                      type="date" 
+                      value={fechaSeleccionada.toISOString().split('T')[0]} 
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setFechaSeleccionada(new Date(e.target.value + 'T00:00:00'));
+                        }
+                      }}
+                      className="bg-blue-50/80 border border-blue-300 rounded-xl px-2.5 py-1 text-[10px] font-bold text-blue-950 outline-none focus:border-blue-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] transition-all"
+                    />
+                  </div>
 
-                <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-                  <button 
-                    type="button"
-                    onClick={() => setVistaCalendario('diario')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                  >
-                    1 Día
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setVistaCalendario('3dias')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                  >
-                    3 Días
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setVistaCalendario('semanal')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
-                  >
-                    7 Días
-                  </button>
+                  <div className="flex items-center gap-1 bg-blue-200/60 p-1 rounded-xl border border-blue-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+                    <button 
+                      type="button"
+                      onClick={() => setVistaCalendario('diario')}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'diario' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                    >
+                      1 Día
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setVistaCalendario('3dias')}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === '3dias' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                    >
+                      3 Días
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setVistaCalendario('semanal')}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 cursor-pointer ${vistaCalendario === 'semanal' ? 'bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] scale-105' : 'text-blue-800 hover:text-blue-950'}`}
+                    >
+                      7 Días
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              <div className="relative flex justify-end items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFechaSeleccionada(new Date())}
+                  className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
+                >
+                  📍 Hoy
+                </button>
+
+                <button 
+                  onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
+                  className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
+                </button>
+
+                {menuAgendaAbierto && (
+                  <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
+                    <button 
+                      onClick={() => {
+                        setMenuAgendaAbierto(false);
+                        setModalNuevaCitaAbierto(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      ✨ Cita nueva
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setMenuAgendaAbierto(false);
+                        setModalBloqueoAbierto(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
+                    >
+                      🚫 Horario no disponible
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="relative flex justify-end items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setFechaSeleccionada(new Date())}
-                className="bg-gradient-to-b from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-900 border border-blue-400/80 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_5px_rgba(37,99,235,0.2)] active:scale-95 flex items-center gap-1"
-              >
-                📍 Hoy
-              </button>
+            <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
+              <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
+                <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
+                  <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
+                    <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
+                    {diasVisibles.map((d, i) => {
+                      const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
+                      const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
 
-              <button 
-                onClick={() => setMenuAgendaAbierto(!menuAgendaAbierto)}
-                className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border border-blue-800 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase flex items-center gap-1.5 shadow-[0_3px_8px_rgba(37,99,235,0.35)] transition-all active:scale-95 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-100" /> Opciones de Agenda <ChevronDown className="w-3 h-3 text-blue-100" />
-              </button>
-
-              {menuAgendaAbierto && (
-                <div className="absolute right-0 top-10 z-50 bg-blue-50 border border-blue-300 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.12)] p-1.5 w-56 text-blue-950 animate-in fade-in zoom-in-95 duration-150">
-                  <button 
-                    onClick={() => {
-                      setMenuAgendaAbierto(false);
-                      setModalNuevaCitaAbierto(true);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-blue-100 hover:text-blue-900 transition-colors flex items-center gap-2 cursor-pointer"
-                  >
-                    ✨ Cita nueva
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setMenuAgendaAbierto(false);
-                      setModalBloqueoAbierto(true);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-2 text-rose-600 cursor-pointer"
-                  >
-                    🚫 Horario no disponible
-                  </button>
+                      return (
+                        <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
+                          <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
+                            esHoy 
+                              ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
+                              : esSeleccionado 
+                                ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
+                                : 'text-slate-700 hover:bg-blue-100/50'
+                          }`}>
+                            <span className="text-xs font-bold leading-none">{d.num}</span>
+                            <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
 
-          <div className="relative w-full h-full flex-1 min-h-[75vh] flex flex-col select-none rounded-2xl border border-blue-200 bg-white mb-2 text-slate-900 shadow-sm">
-            <div className="bg-white relative w-full h-full flex flex-col flex-1 overflow-y-auto overflow-x-hidden rounded-2xl">
-              <div className="sticky top-0 z-45 bg-blue-50/95 backdrop-blur-md flex-shrink-0 shadow-[0_12px_24px_-4px_rgba(37,99,235,0.3)] border-b-2 border-blue-300">
-                <div className="grid text-center text-[11px] font-medium uppercase tracking-wider text-blue-900 py-1" style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}>
-                  <div className="text-left pl-4 py-3 text-blue-600 font-bold text-[10px] border-r border-blue-200 bg-blue-100 sticky left-0 z-50 flex items-center shadow-[4px_0_12px_-2px_rgba(37,99,235,0.15)]">Hora</div>
-                  {diasVisibles.map((d, i) => {
-                    const esHoy = d.fechaObj.toDateString() === new Date().toDateString();
-                    const esSeleccionado = d.fechaObj.toDateString() === fechaSeleccionada.toDateString();
+                <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
+                  {dragOverInfo.horaTexto && (
+                    <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
+                         style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
+                      📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
+                    </div>
+                  )}
+
+                  {horasCalendario.map((itemHora, idx) => {
+                    const [fH, fM] = itemHora.val24.split(':').map(Number);
+                    const minutosFilaInicio = fH * 60 + fM;
+                    const minutosFilaFin = minutosFilaInicio + 60;
 
                     return (
-                      <div key={i} className="py-2.5 px-1 border-r border-blue-200/70 last:border-r-0 flex flex-col items-center justify-center transition-all bg-blue-50/95">
-                        <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center ${
-                          esHoy 
-                            ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20' 
-                            : esSeleccionado 
-                              ? 'bg-blue-100 text-blue-950 font-bold border border-blue-300' 
-                              : 'text-slate-700 hover:bg-blue-100/50'
-                        }`}>
-                          <span className="text-xs font-bold leading-none">{d.num}</span>
-                          <span className="text-[8px] font-normal leading-tight opacity-75">{d.nombre.toLowerCase()}</span>
-                        </div>
+                      <div 
+                        key={idx} 
+                        className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px]" 
+                        style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}
+                      >
+                        {diasVisibles.map((dia, dIdx) => {
+                          const diasSemanaNombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                          const nombreDiaSemana = diasSemanaNombres[dia.fechaObj.getDay()];
+                          const configDiaActual = (barberData?.horarioSemanal || horarioSemanal)?.[nombreDiaSemana] || { abierto: true, apertura: '6:00 a. m.', cierre: '10:00 p. m.' };
+
+                          const estaCerradoHoy = !configDiaActual.abierto;
+                          const minInicioLab = horaAMinutos(configDiaActual.apertura || '6:00 a. m.');
+                          const minFinLab = horaAMinutos(configDiaActual.cierre || '10:00 p. m.');
+                          const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
+
+                          if (dIdx === 0) {
+                            return (
+                              <div 
+                                key={`hora-${idx}`}
+                                className={`border-r border-blue-200 px-2 font-sans text-[10px] font-semibold flex flex-col items-center justify-start pt-2 sticky left-0 z-30 transition-colors ${
+                                  esFueraDeHorario 
+                                    ? 'bg-slate-200/60 text-slate-400 line-through' 
+                                    : 'bg-blue-50/95 text-blue-700'
+                                }`}
+                              >
+                                <span>{itemHora.label.toLowerCase()}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
+
+                        {diasVisibles.map((dia, dIdx) => {
+                          const fechaStr = dia.fechaObj.toISOString().split('T')[0];
+                          const diasSemanaNombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                          const nombreDiaSemana = diasSemanaNombres[dia.fechaObj.getDay()];
+                          const configDiaActual = (barberData?.horarioSemanal || horarioSemanal)?.[nombreDiaSemana] || { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' };
+
+                          const estaCerradoHoy = !configDiaActual.abierto;
+                          const minInicioLab = horaAMinutos(configDiaActual.apertura || '8:00 a. m.');
+                          const minFinLab = horaAMinutos(configDiaActual.cierre || '7:00 p. m.');
+                          const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
+
+                          const citasEnEstaHora = citasFirestore.filter(c => {
+                            const rawFecha = c.fechaStr || c.fecha || '';
+                            const fDoc = rawFecha.toString().split('T')[0].trim();
+                            if (fDoc !== fechaStr || !c.hora || c.esBloqueo) return false;
+                            
+                            const estado = (c.estado || '').toLowerCase().trim();
+                            const esValido = estado === '' || estado === 'pendiente' || estado === 'activo' || estado === 'finalizada' || estado === 'confirmada';
+                            if (!esValido) return false;
+
+                            const minutosCitaInicio = horaAMinutos(c.hora);
+                            return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
+                          });
+
+                          const bloqueosInicianAqui = citasFirestore.filter(c => {
+                            const fDoc = c.fechaStr || c.fecha;
+                            if (fDoc !== fechaStr || !c.esBloqueo) return false;
+                            const horaRef = c.horaInicio || c.hora;
+                            if (!horaRef) return false;
+                            const minutosBloqInicio = horaAMinutos(horaRef);
+                            return minutosBloqInicio >= minutosFilaInicio && minutosBloqInicio < minutosFilaFin;
+                          });
+
+                          const elementosEnEstaHora = [...bloqueosInicianAqui, ...citasEnEstaHora];
+
+                          return (
+                            <div 
+                              key={dIdx} 
+                              className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch transition-colors ${
+                                esFueraDeHorario ? 'bg-slate-100/80' : 'bg-white'
+                              }`}
+                            >
+                              {esFueraDeHorario && elementosEnEstaHora.length === 0 && (
+                                <div className="absolute inset-0 bg-slate-200/30 pointer-events-none" />
+                              )}
+
+                              {elementosEnEstaHora.map((itemCita, cIdx) => {
+                                if (itemCita.esBloqueo) {
+                                  const horaInicioRef = itemCita.horaInicio || itemCita.hora;
+                                  const minutosItemInicio = horaAMinutos(horaInicioRef);
+                                  let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
+                                  if (itemCita.horaFin || horaInicioRef) {
+                                    const minInicio = horaAMinutos(horaInicioRef);
+                                    const minFin = horaAMinutos(itemCita.horaFin);
+                                    if (minFin > minInicio) {
+                                      duracionMin = minFin - minInicio;
+                                    } else if (minFin < minInicio) {
+                                      duracionMin = (1440 - minInicio) + minFin;
+                                    }
+                                  }
+
+                                  const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
+                                  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                                  const alturaTotalPixeles = (duracionMin / 60) * 72;
+
+                                  return (
+                                    <div 
+                                      key={cIdx}
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        abrirModalEdicionBloqueo(itemCita);
+                                      }}
+                                      className="absolute p-2 border transition-all shadow-xs flex flex-col justify-between overflow-hidden rounded-lg cursor-pointer bg-slate-200/90 border-slate-300 text-slate-700 font-medium select-none hover:bg-slate-300/90"
+                                      style={{ 
+                                        top: `${topPercent}%`, 
+                                        height: `${Math.max(alturaTotalPixeles, 46)}px`, 
+                                        width: 'calc(100% - 2px)', 
+                                        left: '1px', 
+                                        zIndex: 50 
+                                      }}
+                                    >
+                                      <div className="flex justify-between items-start w-full pointer-events-none">
+                                        <span className="font-medium text-[9px] truncate text-slate-700 line-through">
+                                          🚫 {itemCita.motivo || 'Horario no disponible'}
+                                        </span>
+                                        <span className="bg-slate-300/80 border border-slate-400/50 text-slate-700 text-[8px] px-1 py-0.5 rounded font-mono whitespace-nowrap">
+                                          {itemCita.horaInicio || itemCita.hora} - {itemCita.horaFin}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                const serviciosList = itemCita.serviciosArray && itemCita.serviciosArray.length > 0 
+                                  ? itemCita.serviciosArray 
+                                  : [{ nombre: itemCita.servicio, duracion: itemCita.duracion || 30, color: '#2563eb' }];
+
+                                let acumuladorMinutosOffset = 0;
+
+                                return serviciosList.map((serv, sIdx) => {
+                                  const horaInicioRef = itemCita.horaInicio || itemCita.hora;
+                                  const minInicioBase = horaAMinutos(horaInicioRef);
+                                  const minInicioServicio = minInicioBase + acumuladorMinutosOffset;
+
+                                  const offsetMinutosEnHora = minInicioServicio - minutosFilaInicio;
+                                  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
+                                  const duracionServ = Number(serv.duracion) || 30;
+                                  const alturaTotalPixeles = (duracionServ / 60) * 72;
+
+                                  acumuladorMinutosOffset += duracionServ;
+                                  const colorFondo = serv.color || '#2563eb';
+
+                                  return (
+                                    <div 
+                                      key={`${cIdx}_${sIdx}`}
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        abrirModalCita(itemCita);
+                                        setCitaSeleccionada(itemCita);
+                                      }}
+                                      className="absolute p-1.5 border transition-all shadow-xs flex flex-col justify-between overflow-hidden rounded-lg cursor-pointer text-white"
+                                      style={{ 
+                                        top: `${topPercent}%`, 
+                                        height: `${Math.max(alturaTotalPixeles, 28)}px`, 
+                                        width: 'calc(100% - 2px)', 
+                                        left: '1px', 
+                                        zIndex: 40,
+                                        backgroundColor: colorFondo,
+                                        borderColor: 'rgba(255, 255, 255, 0.3)'
+                                      }}
+                                    >
+                                      <div className="flex justify-between items-start w-full pointer-events-none">
+                                        <span className="font-bold text-[9px] truncate text-white">
+                                          {itemCita.cliente} {serviciosList.length > 1 ? `(${sIdx + 1}/${serviciosList.length})` : ''}
+                                        </span>
+                                        <span className="text-[7.5px] whitespace-nowrap bg-black/20 px-1 rounded text-white">
+                                          {itemCita.hora}
+                                        </span>
+                                      </div>
+                                      <div className="truncate text-[9px] font-bold text-white/95">
+                                        {serv.nombre}
+                                      </div>
+                                      <div className="flex items-center justify-between text-[7.5px] font-bold text-white/90 pt-0.5 border-t border-white/20">
+                                        <span>⏱️ {duracionServ} min</span>
+                                        <span className="uppercase px-1 rounded bg-black/20 text-white border border-white/20">
+                                          {itemCita.estado || 'Pendiente'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
 
-              <div className="relative flex-1" onClick={() => menuAgendaAbierto && setMenuAgendaAbierto(false)}>
-                {dragOverInfo.horaTexto && (
-                  <div className="absolute z-40 pointer-events-none bg-blue-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-xl border border-blue-400 backdrop-blur-md"
-                       style={{ top: `${Math.max(10, dragOverInfo.y - 40)}px`, left: '50%', transform: 'translateX(-50%)' }}>
-                    📍 Mover a: <span className="underline font-bold">{dragOverInfo.horaTexto}</span>
+        {modalBloqueoAbierto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-xs font-black text-slate-900 uppercase flex items-center gap-1">
+                    🚫 {citaSeleccionada?.id ? 'GESTIONAR BLOQUEO DE HORARIO' : 'NUEVO BLOQUEO DE HORARIO'}
+                  </h3>
+                  <p className="text-[10px] text-indigo-600 font-bold">{nuevoMotivoBloqueo || 'No disponible'}</p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setModalBloqueoAbierto(false);
+                    setCitaSeleccionada(null);
+                  }} 
+                  className="text-slate-400 font-bold cursor-pointer hover:text-slate-600 transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-[10px]">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-500 uppercase text-[9px]">MOTIVO DEL BLOQUEO:</label>
+                  <input 
+                    type="text" 
+                    value={nuevoMotivoBloqueo} 
+                    onChange={(e) => setNuevoMotivoBloqueo(e.target.value)} 
+                    placeholder="Ej: Almuerzo, Diligencia personal..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
+                  />
+                </div>
+
+                {!citaSeleccionada?.id && (
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2 rounded-xl">
+                    <span className="font-bold text-slate-700 uppercase text-[9px]">¿Aplicar a varios días?</span>
+                    <input 
+                      type="checkbox" 
+                      checked={esRangoBloqueo} 
+                      onChange={(e) => setEsRangoBloqueo(e.target.checked)}
+                      className="rounded text-indigo-600 cursor-pointer w-4 h-4"
+                    />
                   </div>
                 )}
 
-                {/* Bucle de celdas de la agenda */}
-{horasCalendario.map((itemHora, idx) => {
-  const [fH, fM] = itemHora.val24.split(':').map(Number);
-  const minutosFilaInicio = fH * 60 + fM;
-  const minutosFilaFin = minutosFilaInicio + 60;
-
-  return (
-    <div 
-      key={idx} 
-      className="grid items-stretch min-h-[72px] border-b border-blue-100 text-[10px]" 
-      style={{ gridTemplateColumns: `70px repeat(${diasVisibles.length}, minmax(0, 1fr))` }}
-    >
-      {/* Columna lateral de la hora */}
-      {diasVisibles.map((dia, dIdx) => {
-        const diasSemanaNombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-        const nombreDiaSemana = diasSemanaNombres[dia.fechaObj.getDay()];
-        const configDiaActual = (barberData?.horarioSemanal || horarioSemanal)?.[nombreDiaSemana] || { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' };
-        
-        const estaCerradoHoy = !configDiaActual.abierto;
-        const minInicioLab = horaAMinutos(configDiaActual.apertura || '8:00 a. m.');
-        const minFinLab = horaAMinutos(configDiaActual.cierre || '7:00 p. m.');
-        const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
-
-        if (dIdx === 0) {
-          return (
-            <div 
-              key={`hora-${idx}`}
-              className={`border-r border-blue-200 px-2 font-sans text-[10px] font-semibold flex flex-col items-center justify-start pt-2 sticky left-0 z-30 transition-colors ${
-                esFueraDeHorario 
-                  ? 'bg-slate-200/60 text-slate-400 line-through' 
-                  : 'bg-blue-50/95 text-blue-700'
-              }`}
-            >
-              <span>{itemHora.label.toLowerCase()}</span>
-            </div>
-          );
-        }
-        return null;
-      })}
-
-      {/* Celdas de días para cada hora */}
-      {diasVisibles.map((dia, dIdx) => {
-        const fechaStr = dia.fechaObj.toISOString().split('T')[0];
-        const diasSemanaNombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-        const nombreDiaSemana = diasSemanaNombres[dia.fechaObj.getDay()];
-        const configDiaActual = (barberData?.horarioSemanal || horarioSemanal)?.[nombreDiaSemana] || { abierto: true, apertura: '8:00 a. m.', cierre: '7:00 p. m.' };
-
-        const estaCerradoHoy = !configDiaActual.abierto;
-        const minInicioLab = horaAMinutos(configDiaActual.apertura || '8:00 a. m.');
-        const minFinLab = horaAMinutos(configDiaActual.cierre || '7:00 p. m.');
-        const esFueraDeHorario = estaCerradoHoy || minutosFilaInicio < minInicioLab || minutosFilaInicio >= minFinLab;
-
-        // Citas normales que inician en esta hora
-       {/* Citas normales que inician en esta hora */}
-        const citasEnEstaHora = citasFirestore.filter(c => {
-          // Depuración para ver en consola qué citas existen y por qué se filtran
-          console.log("Cita en Firestore:", c, "Fecha buscada:", fechaStr);
-
-          const rawFecha = c.fechaStr || c.fecha || '';
-          const fDoc = rawFecha.toString().split('T')[0].trim();
-          
-          if (fDoc !== fechaStr || !c.hora || c.esBloqueo) return false;
-          
-          const estado = (c.estado || '').toLowerCase().trim();
-          const esValido = estado === '' || estado === 'finalizada' || estado === 'confirmada';
-          if (!esValido) return false;
-
-          const minutosCitaInicio = horaAMinutos(c.hora);
-          return minutosCitaInicio >= minutosFilaInicio && minutosCitaInicio < minutosFilaFin;
-        });
-
-        // Bloqueos que INICIAN exactamente en esta hora (para dibujar un único recuadro continuo hacia abajo)
-        const bloqueosInicianAqui = citasFirestore.filter(c => {
-          const fDoc = c.fechaStr || c.fecha;
-          if (fDoc !== fechaStr || !c.esBloqueo) return false;
-          const horaRef = c.horaInicio || c.hora;
-          if (!horaRef) return false;
-          const minutosBloqInicio = horaAMinutos(horaRef);
-          return minutosBloqInicio >= minutosFilaInicio && minutosBloqInicio < minutosFilaFin;
-        });
-
-        const elementosEnEstaHora = [...bloqueosInicianAqui, ...citasEnEstaHora];
-
-        return (
-          <div 
-            key={dIdx} 
-            className={`border-r border-blue-100/60 last:border-r-0 p-1 relative flex flex-row gap-0.5 items-stretch transition-colors ${
-              esFueraDeHorario ? 'bg-slate-100/80' : 'bg-white'
-            }`}
-          >
-            {/* Si es fuera de horario o día cerrado y no hay nada encima */}
-            {esFueraDeHorario && elementosEnEstaHora.length === 0 && (
-              <div className="absolute inset-0 bg-slate-200/30 pointer-events-none" />
-            )}
-
-            {/* Renderizado de Bloqueos (un solo cuadro continuo) y Citas */}
-          {elementosEnEstaHora.map((itemCita, cIdx) => {
-  const horaInicioRef = itemCita.horaInicio || itemCita.hora;
-  const minutosItemInicio = horaAMinutos(horaInicioRef);
-  
-  let duracionMin = parseInt(itemCita.duracionTotal || itemCita.duracion || 45, 10);
-  if (itemCita.esBloqueo && (itemCita.horaFin || horaInicioRef)) {
-    const minInicio = horaAMinutos(horaInicioRef);
-    const minFin = horaAMinutos(itemCita.horaFin);
-    if (minFin > minInicio) {
-      duracionMin = minFin - minInicio;
-    } else if (minFin < minInicio) {
-      duracionMin = (1440 - minInicio) + minFin;
-    }
-  }
-
-  const offsetMinutosEnHora = minutosItemInicio - minutosFilaInicio;
-  const topPercent = Math.max(0, (offsetMinutosEnHora / 60) * 100);
-  const alturaTotalPixeles = (duracionMin / 60) * 72;
-
-  return (
-    <div 
-      key={cIdx}
-      /* AQUÍ SE INTEGRA EL EVENTO ONCLICK EN LA TARJETA DEL BLOQUEO / CITA */
-      onClick={(e) => { 
-        e.stopPropagation(); 
-        if (itemCita.esBloqueo) {
-          abrirModalEdicionBloqueo(itemCita);
-        } else {
-          setCitaSeleccionada(itemCita);
-          // abrir modal de cita si tienes uno definido
-        }
-      }}
-      className={`absolute p-2 border transition-all shadow-xs flex flex-col justify-between overflow-hidden rounded-lg cursor-pointer ${
-        itemCita.esBloqueo 
-          ? 'bg-slate-200/90 border-slate-300 text-slate-700 font-medium select-none hover:bg-slate-300/90' 
-          : 'bg-blue-50/90 border-blue-200 text-blue-950 font-medium'
-      }`}
-      style={{ 
-        top: `${topPercent}%`, 
-        height: `${Math.max(alturaTotalPixeles, 46)}px`, 
-        width: 'calc(100% - 2px)', 
-        left: '1px', 
-        zIndex: itemCita.esBloqueo ? 50 : 40 
-      }}
-    >
-      <div className="flex justify-between items-start w-full pointer-events-none">
-        <span className={`font-medium text-[9px] truncate ${itemCita.esBloqueo ? 'text-slate-700 line-through' : ''}`}>
-          {itemCita.esBloqueo ? `🚫 ${itemCita.motivo || 'Horario no disponible'}` : itemCita.cliente}
-        </span>
-      <span className={`${itemCita.esBloqueo ? 'bg-slate-300/80 border border-slate-400/50 text-slate-700 text-[8px] px-1 py-0.5 rounded font-mono whitespace-nowrap' : 'text-[8px] whitespace-nowrap'}`}>
-  {itemCita.esBloqueo ? `${itemCita.horaInicio || itemCita.hora} - ${itemCita.horaFin}` : itemCita.hora}
-</span>
-      </div>
-    </div>
-  );
-})}
-          </div>
-        );
-      })}
-    </div>
-  );
-})}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-{modalBloqueoAbierto && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-    <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-        <div>
-          <h3 className="text-xs font-black text-slate-900 uppercase flex items-center gap-1">
-            🚫 {citaSeleccionada?.id ? 'GESTIONAR BLOQUEO DE HORARIO' : 'NUEVO BLOQUEO DE HORARIO'}
-          </h3>
-          <p className="text-[10px] text-indigo-600 font-bold">{nuevoMotivoBloqueo || 'No disponible'}</p>
-        </div>
-        <button 
-          type="button"
-          onClick={() => {
-            setModalBloqueoAbierto(false);
-            setCitaSeleccionada(null);
-          }} 
-          className="text-slate-400 font-bold cursor-pointer hover:text-slate-600 transition"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className="space-y-3 text-[10px]">
-        {/* Motivo del bloqueo */}
-        <div className="space-y-1">
-          <label className="font-bold text-slate-500 uppercase text-[9px]">MOTIVO DEL BLOQUEO:</label>
-          <input 
-            type="text" 
-            value={nuevoMotivoBloqueo} 
-            onChange={(e) => setNuevoMotivoBloqueo(e.target.value)} 
-            placeholder="Ej: Almuerzo, Diligencia personal..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
-          />
-        </div>
-
-        {/* Opción de Rango de Días (Solo al crear un nuevo bloqueo) */}
-        {!citaSeleccionada?.id && (
-          <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2 rounded-xl">
-            <span className="font-bold text-slate-700 uppercase text-[9px]">¿Aplicar a varios días?</span>
-            <input 
-              type="checkbox" 
-              checked={esRangoBloqueo} 
-              onChange={(e) => setEsRangoBloqueo(e.target.checked)}
-              className="rounded text-indigo-600 cursor-pointer w-4 h-4"
-            />
-          </div>
-        )}
-
-        {/* Selector de Fechas */}
-        {!citaSeleccionada?.id && esRangoBloqueo ? (
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-500 uppercase text-[9px]">DESDE LA FECHA:</label>
-              <input 
-                type="date" 
-                value={nuevaFechaCita} 
-                onChange={(e) => setNuevaFechaCita(e.target.value)} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-bold text-slate-500 uppercase text-[9px]">HASTA LA FECHA:</label>
-              <input 
-                type="date" 
-                value={nuevaFechaFinCita} 
-                onChange={(e) => setNuevaFechaFinCita(e.target.value)} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <label className="font-bold text-slate-500 uppercase text-[9px]">FECHA DEL BLOQUEO:</label>
-            <input 
-              type="date" 
-              value={nuevaFechaCita} 
-              onChange={(e) => setNuevaFechaCita(e.target.value)} 
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
-            />
-          </div>
-        )}
-
-        {/* Horas Inicio y Fin */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <label className="font-bold text-slate-500 uppercase text-[9px]">HORA INICIO:</label>
-            <select 
-              value={nuevaHoraCita} 
-              onChange={(e) => setNuevaHoraCita(e.target.value)} 
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
-            >
-              {horasCalendario.map((h, i) => (
-                <option key={i} value={h.label}>{h.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-bold text-slate-500 uppercase text-[9px]">HORA FIN:</label>
-            <select 
-              value={nuevaHoraFinCitaSelect => nuevaHoraFinCitaSelect} // o usa tu estado existente de hora fin
-              onChange={(e) => setNuevaHoraFinCita(e.target.value)} 
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
-            >
-              {horasCalendario.map((h, i) => (
-                <option key={i} value={h.label}>{h.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Acciones del Modal */}
-      <div className="flex gap-2 pt-2">
-        {citaSeleccionada?.id && (
-          <button 
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              try {
-                setLoading(true);
-                await deleteDoc(doc(db, "bloqueos", citaSeleccionada.id));
-                setModalBloqueoAbierto(false);
-                setCitaSeleccionada(null);
-                setSuccessMsg('¡Bloqueo eliminado!');
-                setTimeout(() => setSuccessMsg(''), 3000);
-              } catch (error) {
-                console.error("Error al eliminar el bloqueo:", error);
-                setErrorMsg("No se pudo eliminar el bloqueo.");
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-            className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition"
-          >
-            🗑️ Eliminar
-          </button>
-        )}
-
-        <button 
-          type="button"
-          onClick={async (e) => {
-            e.stopPropagation();
-            try {
-              setLoading(true);
-
-              const minInicio = horaAMinutos(nuevaHoraCita);
-              const minFin = horaAMinutos(nuevaHoraFinCita);
-              let duracionTotal = minFin - minInicio;
-              if (duracionTotal <= 0) duracionTotal += 1440;
-
-              const payloadBase = {
-                barberoId: authUser.uid,
-                motivo: nuevoMotivoBloqueo || 'No disponible',
-                horaInicio: nuevaHoraCita,
-                hora: nuevaHoraCita,
-                horaFin: nuevaHoraFinCita,
-                duracionTotal,
-                esBloqueo: true,
-                creadoEn: new Date().toISOString()
-              };
-
-              if (citaSeleccionada?.id) {
-                // EDITAR bloqueo existente (un solo día)
-                const payloadEditar = {
-                  ...payloadBase,
-                  fechaStr: nuevaFechaCita,
-                  fecha: nuevaFechaCita
-                };
-                await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadEditar);
-                setSuccessMsg('¡Bloqueo actualizado con éxito!');
-              } else if (esRangoBloqueo) {
-                // CREAR BLOQUEOS EN RANGO DE DÍAS MÚLTIPLES
-                const fechaInicioObj = new Date(nuevaFechaCita + 'T00:00:00');
-                const fechaFinObj = new Date((nuevaFechaFinCita || nuevaFechaCita) + 'T00:00:00');
-
-                if (fechaFinObj < fechaInicioObj) {
-                  setErrorMsg('La fecha de fin no puede ser anterior a la fecha de inicio.');
-                  setLoading(false);
-                  return;
-                }
-
-                let fechaActualObj = new Date(fechaInicioObj);
-                while (fechaActualObj <= fechaFinObj) {
-                  const fechaStrActual = fechaActualObj.toISOString().split('T')[0];
-                  const payloadRango = {
-                    ...payloadBase,
-                    fechaStr: fechaStrActual,
-                    fecha: fechaStrActual
-                  };
-                  await addDoc(collection(db, "bloqueos"), payloadRango);
-                  fechaActualObj.setDate(fechaActualObj.getDate() + 1);
-                }
-                setSuccessMsg('¡Bloqueos en rango guardados con éxito!');
-              } else {
-                // CREAR BLOQUEO PARA UN SOLO DÍA
-                const payloadUnico = {
-                  ...payloadBase,
-                  fechaStr: nuevaFechaCita,
-                  fecha: nuevaFechaCita
-                };
-                await addDoc(collection(db, "bloqueos"), payloadUnico);
-                setSuccessMsg('¡Bloqueo guardado con éxito!');
-              }
-
-              setModalBloqueoAbierto(false);
-              setCitaSeleccionada(null);
-              setEsRangoBloqueo(false);
-              setTimeout(() => setSuccessMsg(''), 3000);
-            } catch (error) {
-              console.error("Error al guardar el bloqueo:", error);
-              setErrorMsg('Ocurrió un error al guardar el bloqueo.');
-            } finally {
-              setLoading(false);
-            }
-          }}
-          disabled={loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase shadow-xs flex items-center justify-center gap-1 cursor-pointer transition"
-        >
-          {loading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            citaSeleccionada?.id ? '✓ GUARDAR CAMBIOS' : '✓ GUARDAR'
-          )}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-        {modalNuevaCitaAbierto && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                  ✨ Registrar Cita Nueva
-                </h3>
-                <button onClick={() => setModalNuevaCitaAbierto(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
-              </div>
-
-              <div className="space-y-3 text-[11px]">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Nombre del Cliente:</label>
-                  <input 
-                    type="text" 
-                    value={datosNuevaCita.clienteNombre} 
-                    onChange={(e) => setDatosNuevaCita({...datosNuevaCita, clienteNombre: e.target.value})}
-                    placeholder="Ej: Carlos Pérez"
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Teléfono:</label>
-                  <input 
-                    type="tel" 
-                    value={datosNuevaCita.telefono} 
-                    onChange={(e) => setDatosNuevaCita({...datosNuevaCita, telefono: e.target.value})}
-                    placeholder="+57 300 0000000"
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Servicio:</label>
-                  <input 
-                    type="text" 
-                    value={datosNuevaCita.servicio} 
-                    onChange={(e) => setDatosNuevaCita({...datosNuevaCita, servicio: e.target.value})}
-                    placeholder="Ej: Corte Nocturno / VIP"
-                    className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Fecha:</label>
+                {!citaSeleccionada?.id && esRangoBloqueo ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-500 uppercase text-[9px]">DESDE LA FECHA:</label>
+                      <input 
+                        type="date" 
+                        value={nuevaFechaCita} 
+                        onChange={(e) => setNuevaFechaCita(e.target.value)} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-500 uppercase text-[9px]">HASTA LA FECHA:</label>
+                      <input 
+                        type="date" 
+                        value={nuevaFechaFinCita} 
+                        onChange={(e) => setNuevaFechaFinCita(e.target.value)} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">FECHA DEL BLOQUEO:</label>
                     <input 
                       type="date" 
-                      value={datosNuevaCita.fechaStr} 
-                      onChange={(e) => setDatosNuevaCita({...datosNuevaCita, fechaStr: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+                      value={nuevaFechaCita} 
+                      onChange={(e) => setNuevaFechaCita(e.target.value)} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 outline-none focus:border-indigo-600"
                     />
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-600 mb-1">Hora (24h):</label>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">HORA INICIO:</label>
                     <select 
-                      value={datosNuevaCita.hora} 
-                      onChange={(e) => setDatosNuevaCita({...datosNuevaCita, hora: e.target.value})}
-                      className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
+                      value={nuevaHoraCita} 
+                      onChange={(e) => setNuevaHoraCita(e.target.value)} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
+                    >
+                      {horasCalendario.map((h, i) => (
+                        <option key={i} value={h.label}>{h.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-500 uppercase text-[9px]">HORA FIN:</label>
+                    <select 
+                      value={nuevaHoraFinCita} 
+                      onChange={(e) => setNuevaHoraFinCita(e.target.value)} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-800 outline-none focus:border-indigo-600 font-medium"
                     >
                       {horasCalendario.map((h, i) => (
                         <option key={i} value={h.label}>{h.label}</option>
@@ -1359,49 +1232,341 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button 
-                  onClick={() => setModalNuevaCitaAbierto(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-[10px] cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={async () => {
-                    if (!datosNuevaCita.clienteNombre || !datosNuevaCita.servicio) {
-                      alert('El nombre del cliente y el servicio son obligatorios.');
-                      return;
-                    }
+                {citaSeleccionada?.id && (
+                  <button 
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        setLoading(true);
+                        await deleteDoc(doc(db, "bloqueos", citaSeleccionada.id));
+                        setModalBloqueoAbierto(false);
+                        setCitaSeleccionada(null);
+                        setSuccessMsg('¡Bloqueo eliminado!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      } catch (error) {
+                        console.error("Error al eliminar el bloqueo:", error);
+                        setErrorMsg("No se pudo eliminar el bloqueo.");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2.5 rounded-xl text-[10px] uppercase flex items-center justify-center gap-1 cursor-pointer transition"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                )}
 
-                    const nuevaCitaDoc = {
-                      barberoId: authUser.uid,
-                      barberoName: nombre,
-                      clienteNombre: datosNuevaCita.clienteNombre,
-                      telefono: datosNuevaCita.telefono,
-                      servicio: datosNuevaCita.servicio,
-                      fecha: datosNuevaCita.fechaStr,
-                      hora: datosNuevaCita.hora,
-                      duracionTotal: 45,
-                      estado: 'confirmada'
-                    };
-
+                <button 
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     try {
-                      await addDoc(collection(db, 'citas'), nuevaCitaDoc);
-                      setSuccessMsg('Cita creada correctamente.');
-                      setModalNuevaCitaAbierto(false);
-                      setDatosNuevaCita({ clienteNombre: '', telefono: '', servicio: '', fechaStr: new Date().toISOString().split('T')[0], hora: '12:00 a. m.' });
+                      setLoading(true);
+
+                      const minInicio = horaAMinutos(nuevaHoraCita);
+                      const minFin = horaAMinutos(nuevaHoraFinCita);
+                      let duracionTotal = minFin - minInicio;
+                      if (duracionTotal <= 0) duracionTotal += 1440;
+
+                      const payloadBase = {
+                        barberoId: authUser.uid,
+                        motivo: nuevoMotivoBloqueo || 'No disponible',
+                        horaInicio: nuevaHoraCita,
+                        hora: nuevaHoraCita,
+                        horaFin: nuevaHoraFinCita,
+                        duracionTotal,
+                        esBloqueo: true,
+                        creadoEn: new Date().toISOString()
+                      };
+
+                      if (citaSeleccionada?.id) {
+                        const payloadEditar = {
+                          ...payloadBase,
+                          fechaStr: nuevaFechaCita,
+                          fecha: nuevaFechaCita
+                        };
+                        await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadEditar);
+                        setSuccessMsg('¡Bloqueo actualizado con éxito!');
+                      } else if (esRangoBloqueo) {
+                        const fechaInicioObj = new Date(nuevaFechaCita + 'T00:00:00');
+                        const fechaFinObj = new Date((nuevaFechaFinCita || nuevaFechaCita) + 'T00:00:00');
+
+                        if (fechaFinObj < fechaInicioObj) {
+                          setErrorMsg('La fecha de fin no puede ser anterior a la fecha de inicio.');
+                          setLoading(false);
+                          return;
+                        }
+
+                        let fechaActualObj = new Date(fechaInicioObj);
+                        while (fechaActualObj <= fechaFinObj) {
+                          const fechaStrActual = fechaActualObj.toISOString().split('T')[0];
+                          const payloadRango = {
+                            ...payloadBase,
+                            fechaStr: fechaStrActual,
+                            fecha: fechaStrActual
+                          };
+                          await addDoc(collection(db, "bloqueos"), payloadRango);
+                          fechaActualObj.setDate(fechaActualObj.getDate() + 1);
+                        }
+                        setSuccessMsg('¡Bloqueos en rango guardados con éxito!');
+                      } else {
+                        const payloadUnico = {
+                          ...payloadBase,
+                          fechaStr: nuevaFechaCita,
+                          fecha: nuevaFechaCita
+                        };
+                        await addDoc(collection(db, "bloqueos"), payloadUnico);
+                        setSuccessMsg('¡Bloqueo guardado con éxito!');
+                      }
+
+                      setModalBloqueoAbierto(false);
+                      setCitaSeleccionada(null);
+                      setEsRangoBloqueo(false);
                       setTimeout(() => setSuccessMsg(''), 3000);
-                    } catch {
-                      setErrorMsg('Error al registrar la cita.');
+                    } catch (error) {
+                      console.error("Error al guardar el bloqueo:", error);
+                      setErrorMsg('Ocurrió un error al guardar el bloqueo.');
+                    } finally {
+                      setLoading(false);
                     }
                   }}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition text-[10px] shadow-sm cursor-pointer"
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase shadow-xs flex items-center justify-center gap-1 cursor-pointer transition"
                 >
-                  Crear Cita
+                  {loading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    citaSeleccionada?.id ? '✓ GUARDAR CAMBIOS' : '✓ GUARDAR'
+                  )}
                 </button>
               </div>
             </div>
           </div>
         )}
+
+      {modalNuevaCitaAbierto && (
+  <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+          ✨ Registrar Cita Nueva
+        </h3>
+        <button onClick={() => setModalNuevaCitaAbierto(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
+      </div>
+
+      <div className="space-y-3 text-[11px]">
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-bold text-slate-600 mb-1">Nombre:</label>
+            <input 
+              type="text" 
+              value={datosNuevaCita.clienteNombre || ''} 
+              onChange={(e) => setDatosNuevaCita({...datosNuevaCita, clienteNombre: e.target.value})}
+              placeholder="Ej: Carlos"
+              className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-slate-600 mb-1">Apellido:</label>
+            <input 
+              type="text" 
+              value={datosNuevaCita.clienteApellido || ''} 
+              onChange={(e) => setDatosNuevaCita({...datosNuevaCita, clienteApellido: e.target.value})}
+              placeholder="Ej: Pérez"
+              className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block font-bold text-slate-600 mb-1">Teléfono:</label>
+          <input 
+            type="tel" 
+            value={datosNuevaCita.telefono || ''} 
+            onChange={(e) => setDatosNuevaCita({...datosNuevaCita, telefono: e.target.value})}
+            placeholder="+57 300 0000000"
+            className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+          />
+        </div>
+
+        <div>
+          <label className="block font-bold text-slate-600 mb-1">Correo Electrónico:</label>
+          <input 
+            type="email" 
+            value={datosNuevaCita.correo || ''} 
+            onChange={(e) => setDatosNuevaCita({...datosNuevaCita, correo: e.target.value})}
+            placeholder="cliente@email.com"
+            className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+          />
+        </div>
+
+        {/* Sección de Servicios en Burbujas y Selector */}
+        <div className="space-y-2 pt-1 border-t border-slate-100">
+          <label className="font-bold text-slate-700 uppercase text-[9px] block">Servicios Seleccionados:</label>
+          
+          <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-slate-50 border border-slate-200 rounded-xl">
+            {(!datosNuevaCita.serviciosArray || datosNuevaCita.serviciosArray.length === 0) ? (
+              <span className="text-slate-400 italic text-[10px]">No hay servicios seleccionados.</span>
+            ) : (
+              datosNuevaCita.serviciosArray.map((s, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-950 px-2 py-1 rounded-lg font-bold text-[9px] shadow-xs">
+                  <span>{s.nombre}</span>
+                  <span className="text-indigo-600 font-normal">({s.precio})</span>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const nuevosServicios = datosNuevaCita.serviciosArray.filter((_, i) => i !== idx);
+                      setDatosNuevaCita({...datosNuevaCita, serviciosArray: nuevosServicios});
+                    }}
+                    className="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <select 
+              id="select-nuevo-servicio-cita"
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+            >
+              <option value="">-- Seleccionar servicio --</option>
+              {serviciosDisponiblesParaElegir.map((serv) => (
+                <option key={serv.id} value={serv.id}>{serv.nombre} - {serv.precio}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => {
+                const selectEl = document.getElementById('select-nuevo-servicio-cita');
+                const servId = selectEl.value;
+                if (!servId) return;
+                const servEncontrado = serviciosDisponiblesParaElegir.find(s => s.id === servId);
+                if (servEncontrado) {
+                  const actualServicios = datosNuevaCita.serviciosArray || [];
+                  setDatosNuevaCita({
+                    ...datosNuevaCita, 
+                    serviciosArray: [...actualServicios, {
+                      nombre: servEncontrado.nombre,
+                      precio: servEncontrado.precio,
+                      precioNum: servEncontrado.precioNum || parseInt(String(servEncontrado.precio || '').replace(/[^0-9]/g, ''), 10) || 0,
+                      duracion: servEncontrado.duracion || 30,
+                      color: servEncontrado.color || '#2563eb'
+                    }]
+                  });
+                  selectEl.value = '';
+                }
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] uppercase cursor-pointer shadow-xs transition"
+            >
+              Añadir
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <div>
+            <label className="block font-bold text-slate-600 mb-1">Fecha:</label>
+            <input 
+              type="date" 
+              value={datosNuevaCita.fechaStr} 
+              onChange={(e) => setDatosNuevaCita({...datosNuevaCita, fechaStr: e.target.value})}
+              className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-slate-600 mb-1">Hora:</label>
+            <select 
+              value={datosNuevaCita.hora} 
+              onChange={(e) => setDatosNuevaCita({...datosNuevaCita, hora: e.target.value})}
+              className="w-full border border-slate-200 rounded-xl p-2 font-medium text-slate-700 bg-slate-50 text-[10px]"
+            >
+              {horasCalendario.map((h, i) => (
+                <option key={i} value={h.label}>{h.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-2 border-t border-slate-100">
+        <button 
+          onClick={() => setModalNuevaCitaAbierto(false)}
+          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-[10px] cursor-pointer"
+        >
+          Cancelar
+        </button>
+        <button 
+          onClick={async () => {
+            const nombreCompleto = `${datosNuevaCita.clienteNombre || ''} ${datosNuevaCita.clienteApellido || ''}`.trim();
+            const listaServicios = datosNuevaCita.serviciosArray || [];
+
+            if (!nombreCompleto || listaServicios.length === 0) {
+              alert('Debes ingresar el nombre del cliente y al menos un servicio.');
+              return;
+            }
+
+            const nombresServiciosStr = listaServicios.map(s => s.nombre).join(', ');
+            
+            // Cálculo del total
+            const sumaTotal = listaServicios.reduce((acc, s) => acc + (s.precioNum || 0), 0);
+            const totalFormateado = sumaTotal > 0 ? `$${sumaTotal.toLocaleString('es-CO')} COP` : '$0 COP';
+
+            // Obtener el ID del establecimiento vinculado si existe
+            const estVinculadoId = barberData?.establecimientoId || barberData?.establecimiento || null;
+
+            const nuevaCitaDoc = {
+              barberoId: authUser.uid,
+              barberoName: nombre,
+              establecimientoId: estVinculadoId || authUser.uid, // Guarda el ID del establecimiento para que lo visualice en su agenda
+              clienteNombre: nombreCompleto,
+              telefono: datosNuevaCita.telefono || '',
+              correo: datosNuevaCita.correo || '',
+              servicio: nombresServiciosStr,
+              servicios: listaServicios,
+              serviciosArray: listaServicios,
+              precioTotal: totalFormateado,
+              monto: totalFormateado,
+              fecha: datosNuevaCita.fechaStr,
+              fechaStr: datosNuevaCita.fechaStr,
+              hora: datosNuevaCita.hora,
+              duracionTotal: listaServicios.reduce((acc, s) => acc + (Number(s.duracion) || 30), 0),
+              estado: 'confirmada',
+              creadoEn: new Date().toISOString()
+            };
+
+            try {
+              await addDoc(collection(db, 'citas'), nuevaCitaDoc);
+              setSuccessMsg('¡Cita creada correctamente!');
+              setModalNuevaCitaAbierto(false);
+              setDatosNuevaCita({ 
+                clienteNombre: '', 
+                clienteApellido: '', 
+                telefono: '', 
+                correo: '', 
+                serviciosArray: [], 
+                fechaStr: new Date().toISOString().split('T')[0], 
+                hora: '12:00 a. m.' 
+              });
+              setTimeout(() => setSuccessMsg(''), 3000);
+            } catch (err) {
+              console.error("Error al registrar la cita:", err);
+              setErrorMsg('Error al registrar la cita.');
+              setTimeout(() => setErrorMsg(''), 3000);
+            }
+          }}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition text-[10px] shadow-sm cursor-pointer uppercase"
+        >
+          Crear Cita
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {activeTab === 'servicios' && (
           <div className="space-y-3 bg-white p-4 rounded-2xl shadow-sm text-slate-800">
@@ -1791,7 +1956,6 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
               </div>
             </div>
 
-            {/* Modal para Editar Horarios Semanales */}
             {modalHorarioSemanalAbierto && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
                 <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -2045,6 +2209,17 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
         const esFinalizada = estadoActual === 'finalizada' || estadoActual === 'finalizado';
         const esCancelada = estadoActual === 'cancelada' || estadoActual === 'cancelado';
 
+       const idEstablecimientoVinculado = barberData?.establecimientoId || barberData?.establecimiento || null;
+
+const serviciosDisponiblesParaElegir = serviciosFirebase.filter(s => {
+  if (idEstablecimientoVinculado) {
+    return String(s.barberoId || '') === String(idEstablecimientoVinculado) || 
+           String(s.establecimientoId || '') === String(idEstablecimientoVinculado) ||
+           String(s.uid || '') === String(idEstablecimientoVinculado);
+  }
+  return authUser ? String(s.barberoId || '') === String(authUser.uid) : false;
+});
+
         const calcularTotalDinamico = () => {
           let suma = 0;
           serviciosModalCita.forEach(s => {
@@ -2060,356 +2235,336 @@ const bloqueosDelBarbero = citasFirestore.filter(c => c.esBloqueo && c.barberoId
 
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-md space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-slate-900">
-                    {citaSeleccionada.esBloqueo ? '🚫 Gestionar Horario No Disponible' : esFinalizada ? '📋 Detalle de Cita Finalizada' : esCancelada ? '❌ Detalle de Cita Cancelada' : 'Gestionar Cita / Servicio'}
-                  </h3>
-                  <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.esBloqueo ? citaSeleccionada.motivo : 'Actualización de servicios y agenda'}</p>
-                </div>
-                <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer">✕</button>
-              </div>
+  <div className="bg-white border border-slate-200 rounded-2xl p-5 w-full max-w-md space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div>
+        <h3 className="text-xs font-black uppercase text-slate-900">
+          {citaSeleccionada.esBloqueo ? '🚫 Gestionar Horario No Disponible' : esFinalizada ? '📋 Detalle de Cita Finalizada' : esCancelada ? '❌ Detalle de Cita Cancelada' : 'Gestionar Cita / Servicio'}
+        </h3>
+        <p className="text-[9px] text-indigo-600 font-bold">{citaSeleccionada.esBloqueo ? citaSeleccionada.motivo : 'Actualización de servicios y agenda'}</p>
+      </div>
+      <button onClick={() => setCitaSeleccionada(null)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer">✕</button>
+    </div>
 
-              <div className="space-y-3 text-[10px]">
-                {citaSeleccionada.esBloqueo ? (
-                  <div className="space-y-2.5 pt-1">
-                    <div>
-                      <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Motivo del Bloqueo:</label>
-                      <input 
-                        type="text" 
-                        value={nuevoMotivoBloqueo} 
-                        onChange={e => setNuevoMotivoBloqueo(e.target.value)} 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
-                      />
-                    </div>
-                    <div>
-                      <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Fecha del Bloqueo:</label>
-                      <input 
-                        type="date" 
-                        value={nuevaFechaCita} 
-                        onChange={e => setNuevaFechaCita(e.target.value)} 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Hora Inicio:</label>
-                        <select 
-                          value={nuevaHoraCita} 
-                          onChange={e => setNuevaHoraCita(e.target.value)} 
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
-                        >
-                          {horasCalendario.map((h, i) => (
-                            <option key={i} value={h.label}>{h.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Hora Fin:</label>
-                        <select 
-                          value={nuevaHoraFinCita} 
-                          onChange={e => setNuevaHoraFinCita(e.target.value)} 
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
-                        >
-                          {horasCalendario.map((h, i) => (
-                            <option key={i} value={h.label}>{h.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
-                      <p><strong className="text-slate-500">Cliente:</strong> <span className="text-slate-900 font-bold">{citaSeleccionada.clienteNombre || citaSeleccionada.cliente}</span></p>
-                      {citaSeleccionada.clienteTelefono && <p><strong className="text-slate-500">Teléfono:</strong> <span className="text-slate-900">{citaSeleccionada.clienteTelefono}</span></p>}
-                      <p><strong className="text-slate-500">Dirección:</strong> <span className="text-slate-900">{citaSeleccionada.direccion || 'No especificada'}</span></p>
-                      <p><strong className="text-slate-500">Estado:</strong> <span className={`uppercase font-bold ${esCancelada ? 'text-rose-600' : esFinalizada ? 'text-slate-500' : 'text-emerald-600'}`}>{citaSeleccionada.estado}</span></p>
-                    </div>
-
-                    {!esFinalizada && !esCancelada && (
-                      <div className="space-y-2.5 pt-1 border-t border-slate-100">
-                        <label className="font-bold text-slate-700 uppercase text-[9px] block">Servicios Seleccionados:</label>
-                        
-                        <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                          {serviciosModalCita.length === 0 ? (
-                            <span className="text-slate-400 italic">No hay servicios seleccionados.</span>
-                          ) : (
-                            serviciosModalCita.map((s, idx) => (
-                              <span key={idx} className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-950 px-2 py-1 rounded-lg font-bold text-[9px] shadow-xs">
-                                <span>{s.nombre || s.name}</span>
-                                <span className="text-indigo-600 font-normal">({s.precio})</span>
-                                <button 
-                                  type="button" 
-                                  onClick={() => {
-                                    setServiciosModalCita(prev => prev.filter((_, i) => i !== idx));
-                                  }}
-                                  className="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer"
-                                >
-                                  ✕
-                                </button>
-                              </span>
-                            ))
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-1">
-                          <select 
-                            id="select-agregar-servicio"
-                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
-                          >
-                            <option value="">-- Añadir otro servicio --</option>
-                            {serviciosFirebase.map((serv) => (
-                              <option key={serv.id} value={serv.id}>{serv.nombre} - {serv.precio}</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const selectEl = document.getElementById('select-agregar-servicio');
-                              const servId = selectEl.value;
-                              if (!servId) return;
-                              const servEncontrado = serviciosFirebase.find(s => s.id === servId);
-                              if (servEncontrado) {
-                                setServiciosModalCita(prev => [...prev, {
-                                  nombre: servEncontrado.nombre,
-                                  precio: servEncontrado.precio,
-                                  precioNum: servEncontrado.precioNum || parseInt((servEncontrado.precio || '').replace(/[^0-9]/g, ''), 10) || 0
-                                }]);
-                                selectEl.value = '';
-                              }
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] uppercase cursor-pointer shadow-xs transition"
-                          >
-                            Añadir
-                          </button>
-                        </div>
-
-                        <div className="flex justify-between items-center bg-indigo-50/60 border border-indigo-100 p-2.5 rounded-xl font-bold">
-                          <span className="text-slate-600 uppercase text-[9px]">Total Actualizado:</span>
-                          <span className="text-indigo-600 text-[11px]">{calcularTotalDinamico()}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {!esFinalizada && !esCancelada && (
-                      <div className="space-y-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Reprogramar Fecha:</label>
-                          <input 
-                            type="date" 
-                            value={nuevaFechaCita} 
-                            onChange={e => setNuevaFechaCita(e.target.value)} 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
-                          />
-                        </div>
-                        <div>
-                          <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Reprogramar Hora:</label>
-                          <select 
-                            value={nuevaHoraCita} 
-                            onChange={e => setNuevaHoraCita(e.target.value)} 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
-                          >
-                            <option value={nuevaHoraCita}>{nuevaHoraCita} (Actual)</option>
-                            {horasCalendario.map((h, i) => (
-                              <option key={i} value={h.label}>{h.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-100">
-                {citaSeleccionada.esBloqueo ? (
-                  <div className="flex gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (window.confirm('¿Estás seguro de eliminar este bloqueo?')) {
-                          try {
-                            await deleteDoc(doc(db, 'bloqueos', citaSeleccionada.id));
-                            setSuccessMsg('Bloqueo eliminado correctamente');
-                            setCitaSeleccionada(null);
-                            setTimeout(() => setSuccessMsg(''), 3000);
-                          } catch (err) {
-                            console.error(err);
-                            setErrorMsg('Error al eliminar el bloqueo');
-                            setTimeout(() => setErrorMsg(''), 3000);
-                          }
-                        }
-                      }}
-                      className="flex-1 px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center gap-1"
-                    >
-                      🗑️ Eliminar
-                    </button>
-                   <button 
-  type="button"
-  onClick={async (e) => {
-    e.stopPropagation(); // Evita que el evento burbujee a otros elementos
-    try {
-      setLoading(true);
-
-      const minInicio = horaAMinutos(nuevaHoraCita);
-      const minFin = horaAMinutos(nuevaHoraFinCita);
-      let duracionTotal = minFin - minInicio;
-      if (duracionTotal <= 0) duracionTotal += 1440;
-
-   const payloadBloqueo = {
-  barberoId: authUser.uid, // <-- Vital para que solo le pertenezca a este profesional
-  motivo: nuevoMotivoBloqueo || 'No disponible',
-  fechaStr: fechaStrActual,
-  fecha: fechaStrActual,
-  horaInicio: nuevaHoraCita,
-  hora: nuevaHoraCita,
-  horaFin: nuevaHoraFinCita,
-  duracionTotal,
-  esBloqueo: true,
-  creadoEn: new Date().toISOString()
-};
-
-await addDoc(collection(db, "bloqueos"), payloadBloqueo);
-
-      if (citaSeleccionada?.id) {
-        // EDITAR bloqueo existente
-        await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadBloqueo);
-        setSuccessMsg('¡Bloqueo actualizado con éxito!');
-      } else {
-        // CREAR un NUEVO bloqueo en rango de fechas
-        const fechaInicioObj = new Date(nuevaFechaCita + 'T00:00:00');
-        const fechaFinObj = new Date((nuevaFechaFinCita || nuevaFechaCita) + 'T00:00:00');
-
-        if (fechaFinObj < fechaInicioObj) {
-          setErrorMsg('La fecha de fin no puede ser anterior a la fecha de inicio.');
-          setLoading(false);
-          return;
-        }
-
-        let fechaActualObj = new Date(fechaInicioObj);
-        while (fechaActualObj <= fechaFinObj) {
-          const fechaStrActual = fechaActualObj.toISOString().split('T')[0];
-          
-          const payloadRango = {
-            ...payloadBloqueo,
-            fechaStr: fechaStrActual,
-            fecha: fechaStrActual
-          };
-
-          await addDoc(collection(db, "bloqueos"), payloadRango);
-          fechaActualObj.setDate(fechaActualObj.getDate() + 1);
-        }
-
-        setSuccessMsg('¡Bloqueos guardados con éxito!');
-      }
-
-      // CERRAR EL MODAL Y ASEGURAR QUE CITA SELECCIONADA QUEDE EN NULL
-      setModalBloqueoAbierto(false);
-      setCitaSeleccionada(null);
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (error) {
-      console.error("Error al guardar el bloqueo:", error);
-      setErrorMsg('Ocurrió un error al guardar el bloqueo.');
-    } finally {
-      setLoading(false);
-    }
-  }}
-  disabled={loading}
-  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase shadow-xs flex items-center justify-center gap-1 cursor-pointer transition"
->
-  {loading ? (
-    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-  ) : (
-    citaSeleccionada?.id ? '✓ GUARDAR CAMBIOS' : '✓ GUARDAR'
-  )}
-</button>
-                  </div>
-                ) : esFinalizada ? (
-                  <button
-                    type="button"
-                    onClick={() => setCitaSeleccionada(null)}
-                    className="w-full px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-slate-800 text-white hover:bg-slate-900 border border-slate-700 transition-all cursor-pointer shadow-md active:scale-95"
-                  >
-                    Cerrar Detalle
-                  </button>
-                ) : esCancelada ? (
-                  <div className="flex gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={() => setCitaSeleccionada(null)}
-                      className="flex-1 px-3 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300 transition-all cursor-pointer"
-                    >
-                      Cerrar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => actualizarCitaFirestore('confirmada')}
-                      disabled={modalLoading}
-                      className="flex-1 px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-800 transition-all cursor-pointer shadow-md flex items-center justify-center gap-1"
-                    >
-                      {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>✨ Activar Cita</>}
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => actualizarCitaFirestore('cancelada')}
-                      disabled={modalLoading}
-                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-600 text-white hover:bg-rose-700 border border-rose-800 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
-                    >
-                      ❌ Cancelar
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => actualizarCitaFirestore('finalizada')}
-                      disabled={modalLoading}
-                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
-                    >
-                      ✅ Finalizar
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!citaSeleccionada) return;
-                        setModalLoading(true);
-                        try {
-                          const citaRef = doc(db, 'citas', citaSeleccionada.id);
-                          const nombresServicios = serviciosModalCita.map(s => s.nombre || s.name).join(', ');
-                          
-                          await updateDoc(citaRef, {
-                            fecha: nuevaFechaCita,
-                            hora: nuevaHoraCita,
-                            servicios: serviciosModalCita,
-                            servicio: nombresServicios || 'Servicio General',
-                            precioTotal: calcularTotalDinamico()
-                          });
-                          
-                          setSuccessMsg('Cita actualizada correctamente');
-                          setCitaSeleccionada(null);
-                          setTimeout(() => setSuccessMsg(''), 3000);
-                        } catch (err) {
-                          console.error(err);
-                          setErrorMsg('Error al actualizar la cita');
-                          setTimeout(() => setErrorMsg(''), 3000);
-                        } finally {
-                          setModalLoading(false);
-                        }
-                      }}
-                      disabled={modalLoading}
-                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-blue-600 text-white hover:bg-blue-700 border border-blue-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
-                    >
-                      {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Guardar</>}
-                    </button>
-                  </>
-                )}
-              </div>
+    <div className="space-y-3 text-[10px]">
+      {citaSeleccionada.esBloqueo ? (
+        <div className="space-y-2.5 pt-1">
+          <div>
+            <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Motivo del Bloqueo:</label>
+            <input 
+              type="text" 
+              value={nuevoMotivoBloqueo} 
+              onChange={e => setNuevoMotivoBloqueo(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+            />
+          </div>
+          <div>
+            <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Fecha del Bloqueo:</label>
+            <input 
+              type="date" 
+              value={nuevaFechaCita} 
+              onChange={e => setNuevaFechaCita(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Hora Inicio:</label>
+              <select 
+                value={nuevaHoraCita} 
+                onChange={e => setNuevaHoraCita(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+              >
+                {horasCalendario.map((h, i) => (
+                  <option key={i} value={h.label}>{h.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Hora Fin:</label>
+              <select 
+                value={nuevaHoraFinCita} 
+                onChange={e => setNuevaHoraFinCita(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+              >
+                {horasCalendario.map((h, i) => (
+                  <option key={i} value={h.label}>{h.label}</option>
+                ))}
+              </select>
             </div>
           </div>
+        </div>
+      ) : (
+        <>
+          <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
+            <p><strong className="text-slate-500">Cliente:</strong> <span className="text-slate-900 font-bold">{citaSeleccionada.clienteNombre || citaSeleccionada.cliente}</span></p>
+            {citaSeleccionada.clienteTelefono && <p><strong className="text-slate-500">Teléfono:</strong> <span className="text-slate-900">{citaSeleccionada.clienteTelefono}</span></p>}
+            <p><strong className="text-slate-500">Dirección:</strong> <span className="text-slate-900">{citaSeleccionada.direccion || 'No especificada'}</span></p>
+            <p><strong className="text-slate-500">Estado:</strong> <span className={`uppercase font-bold ${esCancelada ? 'text-rose-600' : esFinalizada ? 'text-slate-500' : 'text-emerald-600'}`}>{citaSeleccionada.estado}</span></p>
+          </div>
+
+          {!esFinalizada && !esCancelada && (
+            <div className="space-y-2.5 pt-1 border-t border-slate-100">
+              <label className="font-bold text-slate-700 uppercase text-[9px] block">Servicios Seleccionados:</label>
+              
+              <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                {serviciosModalCita.length === 0 ? (
+                  <span className="text-slate-400 italic">No hay servicios seleccionados.</span>
+                ) : (
+                  serviciosModalCita.map((s, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-950 px-2 py-1 rounded-lg font-bold text-[9px] shadow-xs">
+                      <span>{s.nombre || s.name}</span>
+                      <span className="text-indigo-600 font-normal">({s.precio})</span>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setServiciosModalCita(prev => prev.filter((_, i) => i !== idx));
+                        }}
+                        className="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <select 
+                  id="select-agregar-servicio"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+                >
+                  <option value="">-- Añadir otro servicio --</option>
+                  {serviciosDisponiblesParaElegir.map((serv) => (
+                    <option key={serv.id} value={serv.id}>{serv.nombre} - {serv.precio}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selectEl = document.getElementById('select-agregar-servicio');
+                    const servId = selectEl.value;
+                    if (!servId) return;
+                    const servEncontrado = serviciosDisponiblesParaElegir.find(s => s.id === servId);
+                    if (servEncontrado) {
+                      setServiciosModalCita(prev => [...prev, {
+                        nombre: servEncontrado.nombre,
+                        precio: servEncontrado.precio,
+                        precioNum: servEncontrado.precioNum || parseInt((servEncontrado.precio || '').replace(/[^0-9]/g, ''), 10) || 0
+                      }]);
+                      selectEl.value = '';
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] uppercase cursor-pointer shadow-xs transition"
+                >
+                  Añadir
+                </button>
+              </div>
+
+              <div className="flex justify-between items-center bg-indigo-50/60 border border-indigo-100 p-2.5 rounded-xl font-bold">
+                <span className="text-slate-600 uppercase text-[9px]">Total Actualizado:</span>
+                <span className="text-indigo-600 text-[11px]">{calcularTotalDinamico()}</span>
+              </div>
+            </div>
+          )}
+
+          {!esFinalizada && !esCancelada && (
+            <div className="space-y-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+              <div>
+                <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Reprogramar Fecha:</label>
+                <input 
+                  type="date" 
+                  value={nuevaFechaCita} 
+                  onChange={e => setNuevaFechaCita(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium" 
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Reprogramar Hora:</label>
+                <select 
+                  value={nuevaHoraCita} 
+                  onChange={e => setNuevaHoraCita(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-indigo-600 font-medium text-[10px]"
+                >
+                  <option value={nuevaHoraCita}>{nuevaHoraCita} (Actual)</option>
+                  {horasCalendario.map((h, i) => (
+                    <option key={i} value={h.label}>{h.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+
+    <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-100">
+      {citaSeleccionada.esBloqueo ? (
+        <div className="flex gap-2 w-full">
+          <button
+            type="button"
+            onClick={async () => {
+              if (window.confirm('¿Estás seguro de eliminar este bloqueo?')) {
+                try {
+                  await deleteDoc(doc(db, 'bloqueos', citaSeleccionada.id));
+                  setSuccessMsg('Bloqueo eliminado correctamente');
+                  setCitaSeleccionada(null);
+                  setTimeout(() => setSuccessMsg(''), 3000);
+                } catch (err) {
+                  console.error(err);
+                  setErrorMsg('Error al eliminar el bloqueo');
+                  setTimeout(() => setErrorMsg(''), 3000);
+                }
+              }
+            }}
+            className="flex-1 px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center gap-1"
+          >
+            🗑️ Eliminar
+          </button>
+          <button 
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                setLoading(true);
+
+                const minInicio = horaAMinutos(nuevaHoraCita);
+                const minFin = horaAMinutos(nuevaHoraFinCita);
+                let duracionTotal = minFin - minInicio;
+                if (duracionTotal <= 0) duracionTotal += 1440;
+
+                const payloadBloqueo = {
+                  barberoId: authUser.uid,
+                  motivo: nuevoMotivoBloqueo || 'No disponible',
+                  fechaStr: nuevaFechaCita,
+                  fecha: nuevaFechaCita,
+                  horaInicio: nuevaHoraCita,
+                  hora: nuevaHoraCita,
+                  horaFin: nuevaHoraFinCita,
+                  duracionTotal,
+                  esBloqueo: true,
+                  creadoEn: new Date().toISOString()
+                };
+
+                if (citaSeleccionada?.id) {
+                  await updateDoc(doc(db, "bloqueos", citaSeleccionada.id), payloadBloqueo);
+                  setSuccessMsg('¡Bloqueo actualizado con éxito!');
+                } else {
+                  await addDoc(collection(db, "bloqueos"), payloadBloqueo);
+                  setSuccessMsg('¡Bloqueo guardado con éxito!');
+                }
+
+                setModalBloqueoAbierto(false);
+                setCitaSeleccionada(null);
+                setTimeout(() => setSuccessMsg(''), 3000);
+              } catch (error) {
+                console.error("Error al guardar el bloqueo:", error);
+                setErrorMsg('Ocurrió un error al guardar el bloqueo.');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase shadow-xs flex items-center justify-center gap-1 cursor-pointer transition"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (citaSeleccionada?.id ? '✓ GUARDAR CAMBIOS' : '✓ GUARDAR')}
+          </button>
+        </div>
+      ) : esFinalizada ? (
+        <button
+          type="button"
+          onClick={() => setCitaSeleccionada(null)}
+          className="w-full px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-slate-800 text-white hover:bg-slate-900 border border-slate-700 transition-all cursor-pointer shadow-md active:scale-95"
+        >
+          Cerrar Detalle
+        </button>
+      ) : esCancelada ? (
+        <div className="flex gap-2 w-full">
+          <button
+            type="button"
+            onClick={() => setCitaSeleccionada(null)}
+            className="flex-1 px-3 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300 transition-all cursor-pointer"
+          >
+            Cerrar
+          </button>
+          <button
+            type="button"
+            onClick={() => actualizarCitaFirestore('confirmada')}
+            disabled={modalLoading}
+            className="flex-1 px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-800 transition-all cursor-pointer shadow-md flex items-center justify-center gap-1"
+          >
+            {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>✨ Activar Cita</>}
+          </button>
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => actualizarCitaFirestore('cancelada')}
+            disabled={modalLoading}
+            className="px-3 py-2 rounded-xl text-[10px] font-bold bg-rose-600 text-white hover:bg-rose-700 border border-rose-800 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
+          >
+            ❌ Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={() => actualizarCitaFirestore('finalizada')}
+            disabled={modalLoading}
+            className="px-3 py-2 rounded-xl text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
+          >
+            ✅ Finalizar
+          </button>
+
+        <button
+  type="button"
+  onClick={async () => {
+    if (!citaSeleccionada) return;
+    setModalLoading(true);
+    try {
+      const citaRef = doc(db, 'citas', citaSeleccionada.id);
+      const nombresServicios = serviciosModalCita.map(s => s.nombre || s.name).join(', ');
+      const totalCalculado = calcularTotalDinamico();
+      
+      const payloadCitaActualizada = {
+        fecha: nuevaFechaCita,
+        fechaStr: nuevaFechaCita,
+        hora: nuevaHoraCita,
+        servicios: serviciosModalCita,       // Usado por el panel de establecimientos
+        serviciosArray: serviciosModalCita,   // Usado por el panel profesional
+        servicio: nombresServicios || 'Servicio General',
+        precioTotal: totalCalculado,        // Formato texto (ej: "$230.000 COP")
+        monto: totalCalculado               // Formato alternativo que suelen leer los establecimientos
+      };
+
+      await updateDoc(citaRef, payloadCitaActualizada);
+      
+      // Actualizamos el estado local de inmediato
+      setCitasFirestore(prev => 
+        prev.map(c => ((c.id || c.uid) === citaSeleccionada.id ? { ...c, ...payloadCitaActualizada } : c))
+      );
+
+      setSuccessMsg('Cita actualizada correctamente');
+      setCitaSeleccionada(null);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Error al actualizar la cita');
+      setTimeout(() => setErrorMsg(''), 3000);
+    } finally {
+      setModalLoading(false);
+    }
+  }}
+  disabled={modalLoading}
+  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-blue-600 text-white hover:bg-blue-700 border border-blue-800 transition-all cursor-pointer shadow-md active:scale-95 flex items-center gap-1"
+>
+  {modalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Guardar</>}
+</button>
+        </>
+      )}
+    </div>
+  </div>
+</div>
         );
       })()}
     </div>

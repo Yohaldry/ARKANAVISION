@@ -49,7 +49,7 @@ export default function PanelEstablecimientos() {
   const [msgBusqueda, setMsgBusqueda] = useState('');
 
   const [profesionalADesvincular, setProfesionalADesvincular] = useState(null);
-  
+  const [serviciosSeleccionadosIds, setServiciosSeleccionadosIds] = useState([]);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [copiadoLink, setCopiadoLink] = useState(false);
@@ -63,15 +63,15 @@ export default function PanelEstablecimientos() {
   const [bloqueoEnEdicion, setBloqueoEnEdicion] = useState(null);
   const [modalHorarioOpen, setModalHorarioOpen] = useState(false);
   const [guardandoHorario, setGuardandoHorario] = useState(false);
-
+const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
   const [tipoAccionModal, setTipoAccionModal] = useState('cita'); 
   const [motivoBloqueo, setMotivoBloqueo] = useState('');
-
-  const [citaSeleccionada, setCitaSeleccionada] = useState(null); // Almacena el objeto de la cita activa
-const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
-const [estadoTemporal, setEstadoTemporal] = useState('');
-const [mostrarConfirmacionEstado, setMostrarConfirmacionEstado] = useState(false);
-const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
+const [dropdownServiciosOpen, setDropdownServiciosOpen] = useState(false);
+  const [citaSeleccionada, setCitaSeleccionada] = useState(null);
+  const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
+  const [estadoTemporal, setEstadoTemporal] = useState('');
+  const [mostrarConfirmacionEstado, setMostrarConfirmacionEstado] = useState(false);
+  const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
 
   const horaAMinutos = (horaStr) => {
     if (!horaStr) return 0;
@@ -88,16 +88,15 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
   };
 
   const obtenerColorEstado = (estado) => {
-  const est = (estado || '').toLowerCase().trim();
-  if (est === 'cancelada' || est === 'cancelado' || est === 'inasistente') {
-    return 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-700'; // Rojo
-  }
-  if (est === 'finalizada' || est === 'finalizado' || est === 'confirmada' || est === 'confirmado') {
-    return 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-700'; // Verde
-  }
-  // Estado activo por defecto (pendiente, activa, etc.)
-  return 'bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 text-white border-blue-700'; // Azul Eléctrico
-};
+    const est = (estado || '').toLowerCase().trim();
+    if (est === 'cancelada' || est === 'cancelado' || est === 'inasistente') {
+      return 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-700';
+    }
+    if (est === 'finalizada' || est === 'finalizado' || est === 'confirmada' || est === 'confirmado') {
+      return 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-700';
+    }
+    return 'bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 text-white border-blue-700';
+  };
 
   const handleGuardarBloqueoRango = async (e) => {
     e.preventDefault();
@@ -127,10 +126,8 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
       };
 
       if (bloqueoEnEdicion) {
-        // Actualizamos en la colección de bloqueos y en citas si existe el ID asociado
         await updateDoc(doc(db, 'bloqueos', bloqueoEnEdicion.id), objetoBloqueo);
         
-        // Buscamos si hay un registro espejo en citas para actualizarlo también
         const qCitaEspejo = query(
           collection(db, 'citas'),
           where('barberoId', '==', citaSeleccionData.prof.id),
@@ -147,10 +144,8 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
 
         setSuccessMsg('¡Bloqueo actualizado correctamente en ambas agendas!');
       } else {
-        // Guardamos en bloqueos y también en la colección 'citas' para que el profesional lo vea en su agenda visual
         await addDoc(collection(db, 'bloqueos'), objetoBloqueo);
         await addDoc(collection(db, 'citas'), objetoBloqueo);
-        
         setSuccessMsg('¡Bloqueo registrado y sincronizado con la agenda del profesional!');
       }
 
@@ -171,7 +166,6 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
     try {
       await deleteDoc(doc(db, 'bloqueos', bloqueoEnEdicion.id));
       
-      // Eliminamos también el espejo en la colección de citas del profesional
       const qCitaEspejo = query(
         collection(db, 'citas'),
         where('barberoId', '==', bloqueoEnEdicion.barberoId),
@@ -215,11 +209,18 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
 
     setGuardandoHorario(true);
     try {
-      const docRef = doc(db, 'establecimientos', authUser.uid);
-      await updateDoc(docRef, {
-        horarioSemanal: horarioSemanalTemp
-      });
+  const docRef = doc(db, 'establecimientos', user.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (!docSnap.exists()) {
+            window.location.href = '/loginestablecimientos';
+            return;
+          }
 
+          const dataEst = docSnap.data();
+          setAuthUser(user);
+          setEstablecimientoData(dataEst);
+          setServiciosEstablecimiento(dataEst.servicios || []); // <--- AQUÍ LEES LOS SERVICIOS DEL ARRAY
       setEstablecimientoData(prev => ({
         ...prev,
         horarioSemanal: horarioSemanalTemp
@@ -237,7 +238,7 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
     }
   };
 
-  const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
+const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
     if (bloqueoEspecifico) {
       setBloqueoEnEdicion(bloqueoEspecifico);
       setMotivoBloqueo(bloqueoEspecifico.motivo || '');
@@ -246,6 +247,7 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
       setCitaSeleccionData({ prof, hora: horaLabel });
       setTipoAccionModal('editarBloqueo');
       setModalCitaOpen(true);
+      setServiciosSeleccionadosIds([]);
       return;
     }
 
@@ -258,9 +260,13 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
       const porcentaje = Math.max(0, Math.min(1, clickY / cellHeight));
       const minutosCalculados = Math.round(porcentaje * 59);
       
-      const [timeStr, period] = horaLabel.split(' ');
+      // Separamos la hora y conservamos el período (a. m. / p. m.) de forma intacta
+      const partesHoraStr = horaLabel.split(' ');
+      const timeStr = partesHoraStr[0];
+      const period = partesHoraStr.slice(1).join(' ') || 'a. m.';
       let [h] = timeStr.split(':').map(Number);
-      horaFormateada = `${h}:${minutosCalculados < 10 ? '0' + minutosCalculados : minutosCalculados} ${period || ''}`;
+      
+      horaFormateada = `${h}:${minutosCalculados < 10 ? '0' + minutosCalculados : minutosCalculados} ${period}`;
     }
 
     const minFilaLabel = horaAMinutos(horaLabel);
@@ -343,16 +349,6 @@ const [nuevoEstadoSeleccionado, setNuevoEstadoSeleccionado] = useState('');
   const agendaContainerRef = useRef(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        // Si no hay sesión, redirige al inicio o al login correspondiente
-        window.location.href = '/'; 
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-useEffect(() => {
     let unsubVinculados = () => {};
     let unsubCitas = () => {};
     let unsubServicios = () => {};
@@ -360,15 +356,19 @@ useEffect(() => {
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setAuthUser(user);
         try {
+          // VALIDACIÓN DE SEGURIDAD: Comprobamos si el usuario actual existe en la colección 'establecimientos'
           const docRef = doc(db, 'establecimientos', user.uid);
           const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setEstablecimientoData(docSnap.data());
-          } else {
-            setEstablecimientoData({ nombre: 'Establecimiento Socio' });
+          
+          if (!docSnap.exists()) {
+            // Si no es dueño de establecimiento, expulsamos o redirigimos (por ejemplo al login o dashboard profesional)
+            window.location.href = '/loginestablecimientos';
+            return;
           }
+
+          setAuthUser(user);
+          setEstablecimientoData(docSnap.data());
 
           const qVinculados = query(collection(db, 'profesionales'), where('establecimientoId', '==', user.uid));
           unsubVinculados = onSnapshot(qVinculados, (snapshot) => {
@@ -424,12 +424,13 @@ useEffect(() => {
           });
 
           const qServicios = query(collection(db, 'servicios'), where('establecimientoId', '==', user.uid));
-          unsubServicios = onSnapshot(qServicios, (snapshot) => {
-            const listaServ = [];
-            snapshot.forEach(docSnap => {
-              listaServ.push({ id: docSnap.id, ...docSnap.data() });
-            });
-            setServiciosEstablecimiento(listaServ);
+         // Escuchar cambios en tiempo real del establecimiento (incluyendo sus servicios)
+          unsubServicios = onSnapshot(docRef, (docDoc) => {
+            if (docDoc.exists()) {
+              const data = docDoc.data();
+              setEstablecimientoData(data);
+              setServiciosEstablecimiento(data.servicios || []);
+            }
           });
 
           unsubBloqueos = onSnapshot(collection(db, 'bloqueos'), (snapshot) => {
@@ -455,7 +456,7 @@ useEffect(() => {
         }
       } else {
         setAuthUser(null);
-        window.location.href = '/loginestablecimientos'; // Redirige al login si no hay sesión
+        window.location.href = '/loginestablecimientos';
       }
       setAuthLoading(false);
     });
@@ -927,7 +928,7 @@ useEffect(() => {
                                   );
                                 }
 
-                                const citasEnEstaHora = citas.filter(c => {
+                               const citasInicianAqui = citas.filter(c => {
                                   const coincideBarbero = String(c.barberoId) === String(prof.id) || 
                                     (c.barberoName && prof.nombre && c.barberoName.toLowerCase().trim() === prof.nombre.toLowerCase().trim());
                                   if (!coincideBarbero || c.fechaStr !== fechaStrActual || !c.hora || c.estado === 'bloqueado') return false;
@@ -981,77 +982,67 @@ useEffect(() => {
                                       </div>
                                     )}
 
-                                    {bloqueosInicianAqui.map((bloq, bIdx) => {
-                                      const minInicio = horaAMinutos(bloq.horaInicio || bloq.hora);
-                                      const minFin = bloq.horaFin ? horaAMinutos(bloq.horaFin) : minInicio + 60;
-                                      const duracionMin = Math.max(minFin - minInicio, 30);
-                                      const alturaPx = (duracionMin / 60) * rowHeightPx;
-
-                                      return (
-                                        <div
-                                          key={`bloq_${bIdx}`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleAbrirModalCita(prof, itemHora.label, e, bloq);
-                                          }}
-                                          className="absolute left-0.5 right-0.5 z-30 bg-slate-200/95 border border-slate-400 text-slate-700 font-bold p-1.5 rounded-md shadow-md flex flex-col justify-between hover:bg-slate-300 transition-all cursor-pointer backdrop-blur-2xs"
-                                          style={{
-                                            top: '2px',
-                                            height: `${alturaPx}px`
-                                          }}
-                                          title={`🚫 ${bloq.motivo || 'Bloqueado'} (${bloq.horaInicio || bloq.hora} - ${bloq.horaFin || 'Fin'})`}
-                                        >
-                                          <div className="flex items-center justify-between gap-1">
-                                            <span className="truncate text-[9px] line-through font-extrabold text-slate-800">
-                                              🚫 {bloq.motivo || 'Horario no disponible'}
-                                            </span>
-                                            <span className="text-[8px] font-mono opacity-90 shrink-0 bg-slate-300 px-1 rounded border border-slate-400">
-                                              {bloq.horaInicio || bloq.hora} - {bloq.horaFin}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-
-                                    {citasEnEstaHora.length > 0 ? (
-                                      citasEnEstaHora.map((item, cIdx) => {
+                         {citasInicianAqui.length > 0 ? (
+                                      citasInicianAqui.map((item, cIdx) => {
                                         const estadoCita = (item.estado || '').toLowerCase();
                                         const esFinalizada = estadoCita === 'finalizada' || estadoCita === 'finalizado';
+                                        const serviciosList = item.serviciosArray && item.serviciosArray.length > 0 
+                                          ? item.serviciosArray 
+                                          : [{ nombre: item.servicio, duracion: item.duracion || 30, color: '#2563eb' }];
 
-                                        let colorClase = 'bg-blue-50 border-blue-300 text-blue-950 font-semibold';
-                                        if (estadoCita === 'confirmada' || estadoCita === 'confirmado') colorClase = 'bg-emerald-50 border-emerald-300 text-emerald-950 font-semibold';
-                                        if (esFinalizada) colorClase = 'bg-slate-100 border-slate-200 text-slate-400 opacity-70';
+                                        let acumuladorMinutosOffset = 0;
 
-                                        return (
-                                          <div 
-                                            key={cIdx}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              // Aquí se conecta con el modal de edición/gestión que creamos previamente
-                                              setCitaSeleccionada(item);
-                                              setEstadoTemporal(item.estado);
-                                              setModalDetalleAbierto(true);
-                                            }}
-                                            className={`p-1 border rounded-md flex flex-col justify-center ${colorClase} h-full overflow-hidden shadow-2xs z-10 cursor-pointer`}
-                                            title={`${item.cliente} - ${item.servicio} (${item.hora})`}
-                                          >
-                                            <div className="flex items-center justify-between gap-0.5 min-w-0">
-                                              <span className="font-bold truncate text-[8.5px] leading-none">
-                                                {item.cliente}
-                                              </span>
-                                              <span className="text-[7.5px] font-mono opacity-80 shrink-0 leading-none">{item.hora}</span>
-                                            </div>
-                                            
-                                            {rowHeightPx > 30 && (
-                                              <div className="flex items-center justify-between gap-0.5 text-[7.5px] opacity-90 font-medium pt-0.5 leading-none min-w-0">
-                                                <span className="truncate">{item.servicio}</span>
-                                                <span className="uppercase text-[6.5px] font-black px-0.5 rounded bg-white/70 border border-black/5 shrink-0">
-                                                  {item.estado ? item.estado.charAt(0) : 'C'}
+                                        return serviciosList.map((serv, sIdx) => {
+                                          const minInicioCita = horaAMinutos(item.hora) + acumuladorMinutosOffset;
+                                          const offsetMinutos = minInicioCita - minutosFilaInicio;
+                                          const topPx = Math.max(2, (offsetMinutos / 60) * rowHeightPx);
+                                          const duracionServ = Number(serv.duracion) || 30;
+                                          const alturaPxServ = Math.max(28, (duracionServ / 60) * rowHeightPx);
+                                          
+                                          acumuladorMinutosOffset += duracionServ;
+
+                                          const colorFondo = serv.color || '#2563eb';
+
+                                          return (
+                                            <div 
+                                              key={`${cIdx}_${sIdx}`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCitaSeleccionada(item);
+                                                setEstadoTemporal(item.estado);
+                                                setModalDetalleAbierto(true);
+                                              }}
+                                              className="absolute left-0.5 right-0.5 p-1 border rounded-lg flex flex-col justify-between text-white shadow-md z-20 cursor-pointer backdrop-blur-xs transition-all hover:scale-[1.01]"
+                                              style={{
+                                                top: `${topPx}px`,
+                                                height: `${alturaPxServ}px`,
+                                                backgroundColor: colorFondo,
+                                                borderColor: 'rgba(255, 255, 255, 0.3)'
+                                              }}
+                                              title={`${item.cliente} - ${serv.nombre} (${duracionServ} min)`}
+                                            >
+                                              <div className="flex items-center justify-between gap-1 min-w-0">
+                                                <span className="font-black truncate text-[9px] leading-tight text-white">
+                                                  {item.cliente} {serviciosList.length > 1 ? `(${sIdx + 1}/${serviciosList.length})` : ''}
+                                                </span>
+                                                <span className="text-[7.5px] font-mono font-bold opacity-90 shrink-0 bg-black/20 px-1 rounded text-white">
+                                                  {item.hora}
                                                 </span>
                                               </div>
-                                            )}
-                                          </div>
-                                        );
+                                              
+                                              <div className="truncate text-[9px] font-bold text-white/95">
+                                                {serv.nombre}
+                                              </div>
+
+                                              <div className="flex items-center justify-between text-[7.5px] font-bold text-white/90 pt-0.5 border-t border-white/20">
+                                                <span>⏱️ {duracionServ} min</span>
+                                                <span className="uppercase px-1 rounded bg-black/20 text-white border border-white/20">
+                                                  {item.estado || 'Pendiente'}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          );
+                                        });
                                       })
                                     ) : bloqueosInicianAqui.length === 0 && (
                                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-blue-500 text-[12px] font-bold pointer-events-none">
@@ -1342,10 +1333,10 @@ useEffect(() => {
             }`}
           >
             
-            <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-sky-500 text-white flex items-center justify-between">
+<div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-sky-500 text-white flex items-center justify-between">
               <div>
                 <h3 className="font-black uppercase text-xs tracking-wider">
-                  {tipoAccionModal === 'editarBloqueo' ? 'Gestionar Bloqueo' : 'Gestión de Horario'}
+                  {tipoAccionModal === 'editarBloqueo' ? 'Gestionar Bloqueo' : tipoAccionModal === 'cita' ? 'Nueva cita' : 'Gestión de Horario'}
                 </h3>
                 <p className="text-[9px] text-sky-100">
                   {citaSeleccionData.prof?.nombre || bloqueoEnEdicion?.barberoName}
@@ -1359,7 +1350,7 @@ useEffect(() => {
               </button>
             </div>
 
-            {tipoAccionModal === 'selector' ? (
+    {tipoAccionModal === 'selector' ? (
               <div className="p-5 flex-1 flex flex-col justify-center gap-3 text-xs">
                 <p className="text-slate-600 font-bold text-center mb-2">¿Qué deseas hacer en este horario?</p>
                 
@@ -1457,242 +1448,701 @@ useEffect(() => {
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleGuardarCitaRapida} className="p-4 flex-1 overflow-y-auto space-y-3.5 text-[11px]">
-                <div className="bg-blue-50/80 border border-blue-200 p-3 rounded-xl space-y-1">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase">Profesional Seleccionado</p>
-                  <p className="font-black text-blue-950 text-xs">{citaSeleccionData.prof?.nombre}</p>
-                  <div className="flex items-center gap-3 pt-1 text-[10px] text-blue-700 font-bold border-t border-blue-200/60">
-                    <span>📅 {fechaStrActual}</span>
-                    <span>⏰ {citaSeleccionData.hora}</span>
-                  </div>
-                </div>
+        <form 
+onSubmit={async (e) => {
+    e.preventDefault();
+    if (!citaSeleccionData.prof || !citaSeleccionData.hora) return;
 
-                <div className="space-y-1">
-                  <label className="block text-[9px] font-bold text-slate-700 uppercase">Teléfono del Cliente <span className="text-slate-400 font-normal">(Opcional)</span></label>
-                  <input 
-                    type="tel"
-                    placeholder="Ej. 3001234567"
-                    value={telefonoCliente}
-                    onChange={(e) => setTelefonoCliente(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-600 font-mono"
-                  />
-                </div>
+    // --- NORMALIZACIÓN ESTRICTA DE LA HORA ---
+    let horaRaw = String(citaSeleccionData.hora).trim();
+    // Si la hora elegida es de la tarde (ej: 3:00 p. m., 15:00, etc.)
+    // Aseguramos que guarde el formato exacto que renderiza tus filas de la tarde
+    let horaFinal = horaRaw;
+    if (horaRaw.toLowerCase().includes('p. m.') || horaRaw.toLowerCase().includes('pm')) {
+      // Normalizamos a un formato estándar de 12 horas con espacios limpios
+      const partes = horaRaw.replace(/p\.?\s*m\.?/gi, '').trim();
+      horaFinal = `${partes} p. m.`;
+    } else if (horaRaw.startsWith('13:') || horaRaw.startsWith('14:') || horaRaw.startsWith('15:') || 
+               horaRaw.startsWith('16:') || horaRaw.startsWith('17:') || horaRaw.startsWith('18:') || 
+               horaRaw.startsWith('19:') || horaRaw.startsWith('20:') || horaRaw.startsWith('21:') || 
+               horaRaw.startsWith('22:') || horaRaw.startsWith('23:')) {
+      const [hStr, mStr] = horaRaw.split(':');
+      let hNum = parseInt(hStr, 10);
+      if (hNum > 12) hNum -= 12;
+      horaFinal = `${hNum}:${mStr || '00'} p. m.`;
+    }
+    // ------------------------------------------
 
-                <div className="space-y-1.5">
-                  <label className="block text-[9px] font-bold text-slate-700 uppercase">
-                    Seleccionar Servicio <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
-                    {serviciosEstablecimiento.map((serv) => {
-                      const servId = serv.id || serv.nombre;
-                      const isSelected = String(servicioSeleccionadoId) === String(servId);
-                      return (
-                        <div 
-                          key={servId}
-                          onClick={() => setServicioSeleccionadoId(servId)}
-                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between shadow-2xs ${
-                            isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-blue-50/30 border-blue-200 text-slate-900'
-                          }`}
-                        >
-                          <p className="font-black text-xs truncate">{serv.nombre}</p>
-                          <span className="font-black text-xs">${Number(serv.precio || 0).toLocaleString()}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+    setGuardandoCita(true);
+    try {
+      const telefonoLimpio = telefonoCliente.trim();
+      const nombreLimpio = (window._clienteNombreTemp || '').trim();
+      const apellidoLimpio = (window._clienteApellidoTemp || '').trim();
+      const correoLimpio = (window._clienteCorreoTemp || '').trim();
 
-                <div className="pt-4 border-t border-slate-100 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTipoAccionModal('selector')}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl uppercase text-[10px] cursor-pointer border border-slate-200"
-                  >
-                    Volver
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={guardandoCita || serviciosEstablecimiento.length === 0}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-sky-500 text-white font-black py-2.5 rounded-xl uppercase text-[10px] cursor-pointer"
-                  >
-                    {guardandoCita ? 'Guardando...' : 'Agendar Cita'}
-                  </button>
+      let clienteIdFinal = null;
+      if (telefonoLimpio) {
+        const qCliente = query(
+          collection(db, 'clientesestablecimiento'),
+          where('establecimientoId', '==', auth.currentUser.uid),
+          where('telefono', '==', telefonoLimpio)
+        );
+        const snapCliente = await getDocs(qCliente);
+
+        if (!snapCliente.empty) {
+          clienteIdFinal = snapCliente.docs[0].id;
+        } else {
+          const nuevoClienteRef = await addDoc(collection(db, 'clientesestablecimiento'), {
+            establecimientoId: auth.currentUser.uid,
+            nombre: nombreLimpio,
+            apellido: apellidoLimpio,
+            telefono: telefonoLimpio,
+            correo: correoLimpio,
+            barberoId: citaSeleccionData.prof.id,
+            barberoName: citaSeleccionData.prof.nombre,
+            createdAt: new Date().toISOString()
+          });
+          clienteIdFinal = nuevoClienteRef.id;
+        }
+      }
+
+      const serviciosObjs = serviciosSeleccionados.map(sIdx => 
+        serviciosEstablecimiento[sIdx]
+      ).filter(Boolean);
+
+      const nombresServiciosStr = serviciosObjs.map(s => s.nombre).join(', ') || 'Servicio General';
+      const precioTotalSuma = serviciosObjs.reduce((acc, s) => acc + (Number(s.precio) || 0), 0);
+      const duracionTotalSuma = serviciosObjs.reduce((acc, s) => acc + (Number(s.duracion) || 30), 30);
+      const nombreClienteCompleto = `${nombreLimpio} ${apellidoLimpio}`.trim() || 'Cliente General';
+
+      const nuevaCita = {
+        id: 'cita_' + Date.now(),
+        establecimientoId: auth.currentUser?.uid,
+        barberoId: citaSeleccionData.prof.id,
+        barberoName: citaSeleccionData.prof.nombre,
+        cliente: nombreClienteCompleto,
+        clienteNombre: nombreLimpio,
+        clienteApellido: apellidoLimpio,
+        clienteTelefono: telefonoLimpio,
+        clienteEmail: correoLimpio,
+        clienteId: clienteIdFinal || '',
+        servicio: nombresServiciosStr,
+        serviciosArray: serviciosObjs,
+        precio: precioTotalSuma,
+        precioTotal: precioTotalSuma,
+        duracion: duracionTotalSuma,
+        hora: horaFinal, // Usamos la hora normalizada
+        fechaStr: fechaStrActual,
+        fecha: fechaStrActual,
+        estado: 'Pendiente',
+        createdAt: new Date().toISOString()
+      };
+
+      await addDoc(collection(db, 'citas'), nuevaCita);
+
+      setSuccessMsg('¡Cita registrada y cliente sincronizado correctamente!');
+      setModalCitaOpen(false);
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } catch (err) {
+      console.error("Error al registrar cita y cliente:", err);
+      setErrorMsg('No se pudo registrar la cita. Inténtalo de nuevo.');
+      setTimeout(() => setErrorMsg(''), 3500);
+    } finally {
+      setGuardandoCita(false);
+    }
+  }}
+  >
+  {/* Tarjeta de Resumen con Selector de Hora Editable */}
+  <div className="relative bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-400 p-[1px] rounded-2xl shadow-lg shadow-blue-500/10">
+    <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-2xl space-y-1">
+      <p className="text-[8px] font-black bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+        Matriz Arkana Vision
+      </p>
+      <p className="font-black text-slate-900 text-xs">{citaSeleccionData.prof?.nombre}</p>
+      <div className="flex items-center justify-between pt-1 text-[10px] text-blue-700 font-bold border-t border-sky-100">
+        <span>📅 {fechaStrActual}</span>
+        
+        {/* Selector de hora integrado con horasCalendario para evitar errores de AM/PM */}
+        <div className="flex items-center gap-1">
+          <span>⏰</span>
+          <select
+            value={citaSeleccionData.hora || ''}
+            onChange={(e) => setCitaSeleccionada ? null : setCitaSeleccionData(prev => ({ ...prev, hora: e.target.value }))}
+            className="bg-sky-50 border border-sky-200 rounded-lg px-2 py-0.5 text-[10px] font-bold text-blue-900 outline-none cursor-pointer"
+          >
+            {(horasCalendario || []).map((h, i) => (
+              <option key={i} value={h.label}>{h.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Campo Teléfono */}
+  <div className="space-y-1">
+    <label className="block text-[9px] font-bold text-slate-600 uppercase tracking-wider">Teléfono del Cliente <span className="text-blue-600">*</span></label>
+    <input 
+      type="tel"
+      required
+      placeholder="Ej. 3001234567"
+      value={telefonoCliente}
+      onChange={async (e) => {
+        const tel = e.target.value;
+        setTelefonoCliente(tel);
+        window._clienteTelefonoTemp = tel;
+
+        if (tel.trim().length >= 7 && auth?.currentUser) {
+          try {
+            const q = query(
+              collection(db, 'clientesestablecimiento'),
+              where('establecimientoId', '==', auth.currentUser.uid),
+              where('telefono', '==', tel.trim())
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const dataC = snap.docs[0].data();
+              const inputNombre = document.getElementById('inputNombreCliente');
+              const inputApellido = document.getElementById('inputApellidoCliente');
+              const inputCorreo = document.getElementById('inputCorreoCliente');
+
+              if (inputNombre) inputNombre.value = dataC.nombre || '';
+              if (inputApellido) inputApellido.value = dataC.apellido || '';
+              if (inputCorreo) inputCorreo.value = dataC.correo || '';
+
+              window._clienteNombreTemp = dataC.nombre || '';
+              window._clienteApellidoTemp = dataC.apellido || '';
+              window._clienteCorreoTemp = dataC.correo || '';
+            }
+          } catch (err) {
+            console.error("Error buscando cliente:", err);
+          }
+        }
+      }}
+      className="w-full bg-white/90 border border-sky-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono placeholder-slate-400 shadow-2xs"
+    />
+    <p className="text-[8px] text-slate-400">Autocompletado inteligente por número registrado.</p>
+  </div>
+
+  {/* Campos Nombre y Apellido */}
+  <div className="grid grid-cols-2 gap-2">
+    <div className="space-y-1">
+      <label className="block text-[9px] font-bold text-slate-600 uppercase tracking-wider">Nombre <span className="text-blue-600">*</span></label>
+      <input 
+        id="inputNombreCliente"
+        type="text"
+        required
+        placeholder="Ej. Carlos"
+        onChange={(e) => { window._clienteNombreTemp = e.target.value; }}
+        className="w-full bg-white/90 border border-sky-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-slate-400 shadow-2xs"
+      />
+    </div>
+    <div className="space-y-1">
+      <label className="block text-[9px] font-bold text-slate-600 uppercase tracking-wider">Apellido <span className="text-blue-600">*</span></label>
+      <input 
+        id="inputApellidoCliente"
+        type="text"
+        required
+        placeholder="Ej. Pérez"
+        onChange={(e) => { window._clienteApellidoTemp = e.target.value; }}
+        className="w-full bg-white/90 border border-sky-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-slate-400 shadow-2xs"
+      />
+    </div>
+  </div>
+
+  {/* Campo Correo */}
+  <div className="space-y-1">
+    <label className="block text-[9px] font-bold text-slate-600 uppercase tracking-wider">Correo Electrónico <span className="text-slate-400 font-normal">(Opcional)</span></label>
+    <input 
+      id="inputCorreoCliente"
+      type="email"
+      placeholder="correo@ejemplo.com"
+      onChange={(e) => { window._clienteCorreoTemp = e.target.value; }}
+      className="w-full bg-white/90 border border-sky-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono placeholder-slate-400 shadow-2xs"
+    />
+  </div>
+
+  {/* Select Múltiple de Servicios */}
+  <div className="space-y-2 relative">
+    <label className="block text-[9px] font-bold text-slate-600 uppercase tracking-wider">
+      Seleccionar Servicios <span className="text-blue-600">*</span>
+    </label>
+    
+    <div 
+      onClick={() => setDropdownServiciosOpen(!dropdownServiciosOpen)}
+      className="w-full bg-white/90 border border-sky-200/80 rounded-xl px-3.5 py-3 text-xs text-slate-800 cursor-pointer flex items-center justify-between shadow-xs hover:border-blue-500 transition-all"
+    >
+      <span className="font-bold text-slate-700">
+        {serviciosSeleccionados.length > 0 
+          ? `${serviciosSeleccionados.length} servicio(s) seleccionado(s)` 
+          : 'Selecciona uno o más servicios...'}
+      </span>
+      <span className="text-blue-600 text-xs font-bold transition-transform duration-300" style={{ transform: dropdownServiciosOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+        ▼
+      </span>
+    </div>
+
+    {dropdownServiciosOpen && (
+      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white/95 border border-sky-200 rounded-2xl shadow-xl z-50 max-h-48 overflow-y-auto p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+        {serviciosEstablecimiento && serviciosEstablecimiento.length > 0 ? (
+          serviciosEstablecimiento.map((serv, sIdx) => {
+            const isSelected = serviciosSeleccionados.includes(sIdx);
+            const colorServicio = serv.color || '#2563eb';
+
+            return (
+              <div 
+                key={sIdx}
+                onClick={() => {
+                  if (isSelected) {
+                    setServiciosSeleccionados(serviciosSeleccionados.filter(index => index !== sIdx));
+                  } else {
+                    setServiciosSeleccionados([...serviciosSeleccionados, sIdx]);
+                  }
+                  setDropdownServiciosOpen(false);
+                }}
+                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                  isSelected ? 'bg-gradient-to-r from-sky-50 to-blue-50 border-blue-300 font-bold text-blue-900' : 'bg-white border-transparent hover:bg-sky-50/50 text-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: colorServicio }}></span>
+                  <p className="text-xs truncate">{serv.nombre}</p>
                 </div>
-              </form>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-xs text-slate-800">${Number(serv.precio || 0).toLocaleString()}</span>
+                  {isSelected && <span className="text-blue-600 font-bold text-xs">✓</span>}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="p-3 text-center text-slate-400 text-[10px]">
+            No hay servicios disponibles en este establecimiento.
+          </div>
+        )}
+      </div>
+    )}
+
+    {serviciosSeleccionados.length > 0 && (
+      <div className="flex flex-wrap gap-1.5 pt-1">
+        {serviciosSeleccionados.map((sIdx) => {
+          const servObj = serviciosEstablecimiento[sIdx];
+          if (!servObj) return null;
+          return (
+            <div 
+              key={sIdx} 
+              className="flex items-center gap-1.5 bg-gradient-to-r from-sky-100 to-blue-100 border border-sky-300 text-blue-950 px-3 py-1 rounded-full text-[10px] font-bold shadow-2xs"
+            >
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: servObj.color || '#2563eb' }}></span>
+              <span>{servObj.nombre} (${Number(servObj.precio || 0).toLocaleString()})</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setServiciosSeleccionados(serviciosSeleccionados.filter(index => index !== sIdx));
+                }}
+                className="text-blue-700 hover:text-red-600 font-black ml-0.5 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+
+  {/* Resumen Total */}
+  <div className="bg-gradient-to-r from-sky-50 via-blue-50 to-cyan-50 border border-sky-200 p-3.5 rounded-xl flex items-center justify-between shadow-2xs">
+    <span className="text-[10px] font-black bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent uppercase tracking-wider">Total Servicios:</span>
+    <span className="text-xs font-black text-blue-700 tracking-wider">
+      ${serviciosSeleccionados.reduce((acc, sIdx) => {
+        const servObj = serviciosEstablecimiento[sIdx];
+        const precioNum = Number(String(servObj?.precio || 0).replace(/[^0-9]/g, '')) || 0;
+        return acc + precioNum;
+      }, 0).toLocaleString()} COP
+    </span>
+  </div>
+
+  {/* Botones */}
+  <div className="pt-4 border-t border-sky-100 flex gap-2">
+    <button
+      type="button"
+      onClick={() => setTipoAccionModal('selector')}
+      className="flex-1 bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 rounded-xl uppercase text-[10px] cursor-pointer border border-sky-200 transition-all shadow-2xs"
+    >
+      Volver
+    </button>
+    <button
+      type="submit"
+      disabled={guardandoCita || serviciosEstablecimiento.length === 0}
+      className="flex-1 bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-400 hover:from-blue-700 hover:to-cyan-500 text-white font-black py-2.5 rounded-xl uppercase tracking-wider text-[10px] shadow-md shadow-blue-500/25 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+    >
+      {guardandoCita ? 'Procesando...' : 'Agendar Cita'}
+    </button>
+  </div>
+</form>
             )}
 
           </div>
         </div>
       )}
-{modalDetalleAbierto && citaSeleccionada && (
-  <div className="fixed inset-0 z-[99999] flex justify-end bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
-    
-    {/* Contenedor deslizante desde la derecha */}
-    <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 overflow-y-auto">
-      
-      <div>
-        {/* BARRA SUPERIOR DINÁMICA DE FECHA Y ESTADO */}
-        <div className={`p-4 border-b flex items-center justify-between shadow-md transition-colors duration-300 ${obtenerColorEstado(citaSeleccionada.estado)}`}>
-          <div className="space-y-0.5">
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-90 flex items-center gap-1">
-              📅 {citaSeleccionada.fechaStr || 'Fecha no especificada'}
-            </span>
-            <h3 className="text-sm font-black uppercase tracking-wide">
-              {citaSeleccionada.estado ? `Estado: ${citaSeleccionada.estado}` : 'Cita Activa'}
-            </h3>
+
+      {modalDetalleAbierto && citaSeleccionada && (() => {
+  // Inicializar índices de servicios seleccionados si no existen
+  if (!window._detalleServiciosIndices && citaSeleccionada) {
+    const arrInicial = [];
+    if (citaSeleccionada.serviciosArray && Array.isArray(citaSeleccionada.serviciosArray)) {
+      citaSeleccionada.serviciosArray.forEach(servCita => {
+        const idxEncontrado = (serviciosEstablecimiento || []).findIndex(s => s.nombre === servCita.nombre);
+        if (idxEncontrado !== -1 && !arrInicial.includes(idxEncontrado)) {
+          arrInicial.push(idxEncontrado);
+        }
+      });
+    }
+    window._detalleServiciosIndices = arrInicial;
+    window._detalleDropdownOpen = false;
+  }
+
+  // Inicializar profesional temporal si no existe
+  if (window._detalleBarberoTemp === undefined && citaSeleccionada) {
+    window._detalleBarberoTemp = citaSeleccionada.barberoId || '';
+  }
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex justify-end bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 overflow-y-auto font-mono text-xs">
+        
+        <div>
+          <div className={`p-4 border-b flex items-center justify-between shadow-md transition-colors duration-300 ${obtenerColorEstado(citaSeleccionada.estado)}`}>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-90 flex items-center gap-1">
+                📅 {citaSeleccionada.fechaStr || 'Fecha no especificada'}
+              </span>
+              <h3 className="text-sm font-black uppercase tracking-wide">
+                {citaSeleccionada.estado ? `Estado: ${citaSeleccionada.estado}` : 'Cita Activa'}
+              </h3>
+            </div>
+            
+            <button 
+              type="button"
+              onClick={() => {
+                window._detalleServiciosIndices = null;
+                window._detalleBarberoTemp = undefined;
+                setModalDetalleAbierto(false);
+              }}
+              className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-xs backdrop-blur-xs transition cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
-          
+
+          <div className="p-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+            <div>
+              <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider">Detalles de la Cita</span>
+              <h2 className="text-base font-black text-slate-900 leading-tight">{citaSeleccionada.cliente}</h2>
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-700 shadow-2xs">
+              ⏰ {citaSeleccionada.hora || 'Sin Hora'}
+            </span>
+          </div>
+
+          <div className="p-5 space-y-4">
+            
+            <div className="bg-sky-50/60 border border-sky-100 p-3 rounded-xl space-y-1">
+              <p className="text-xs text-slate-700"><strong>Teléfono:</strong> {citaSeleccionada.clienteTelefono || 'No registrado'}</p>
+              <p className="text-xs text-slate-700"><strong>Correo:</strong> {citaSeleccionada.clienteEmail || 'No registrado'}</p>
+            </div>
+
+            {/* SECCIÓN CAMBIAR PROFESIONAL */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Profesional Asignado</label>
+              <select
+                value={window._detalleBarberoTemp}
+                onChange={(e) => {
+                  window._detalleBarberoTemp = e.target.value;
+                  setCitaSeleccionada({...citaSeleccionada});
+                }}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none cursor-pointer text-slate-800"
+              >
+                <option value="">Selecciona un profesional...</option>
+                {(typeof profesionales !== 'undefined' ? profesionales : (typeof empleados !== 'undefined' ? empleados : [])).map((prof) => (
+                  <option key={prof.id} value={prof.id}>
+                    {prof.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* SECCIÓN DE SERVICIOS CON BURBUJAS Y SELECTOR */}
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-slate-700 block">Servicios Seleccionados</label>
+              
+              <div 
+                onClick={() => {
+                  window._detalleDropdownOpen = !window._detalleDropdownOpen;
+                  setCitaSeleccionada({...citaSeleccionada});
+                }}
+                className="w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 cursor-pointer flex items-center justify-between shadow-xs hover:border-blue-500 transition-all"
+              >
+                <span className="font-bold text-slate-700">
+                  {window._detalleServiciosIndices.length > 0 
+                    ? `${window._detalleServiciosIndices.length} servicio(s) seleccionado(s)` 
+                    : 'Agregar o cambiar servicios...'}
+                </span>
+                <span className="text-blue-600 font-bold text-xs transition-transform duration-300" style={{ transform: window._detalleDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  ▼
+                </span>
+              </div>
+
+              {window._detalleDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-blue-200 rounded-2xl shadow-xl z-50 max-h-48 overflow-y-auto p-1.5 space-y-1 backdrop-blur-xl">
+                  {serviciosEstablecimiento && serviciosEstablecimiento.length > 0 ? (
+                    serviciosEstablecimiento.map((serv, sIdx) => {
+                      const isSelected = window._detalleServiciosIndices.includes(sIdx);
+                      const colorServicio = serv.color || '#2563eb';
+
+                      return (
+                        <div 
+                          key={sIdx}
+                          onClick={() => {
+                            if (isSelected) {
+                              window._detalleServiciosIndices = window._detalleServiciosIndices.filter(i => i !== sIdx);
+                            } else {
+                              window._detalleServiciosIndices = [...window._detalleServiciosIndices, sIdx];
+                            }
+                            window._detalleDropdownOpen = false;
+                            setCitaSeleccionada({...citaSeleccionada});
+                          }}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                            isSelected ? 'bg-sky-50 border-blue-300 font-bold text-blue-900' : 'bg-white border-transparent hover:bg-sky-50/50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: colorServicio }}></span>
+                            <p className="text-xs truncate">{serv.nombre}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-xs text-slate-800">${Number(serv.precio || 0).toLocaleString()}</span>
+                            {isSelected && <span className="text-blue-600 font-bold text-xs">✓</span>}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 text-center text-slate-400 text-[10px]">
+                      No hay servicios disponibles.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Burbujas de servicios seleccionados */}
+              {window._detalleServiciosIndices.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {window._detalleServiciosIndices.map((sIdx) => {
+                    const servObj = serviciosEstablecimiento[sIdx];
+                    if (!servObj) return null;
+                    return (
+                      <div 
+                        key={sIdx} 
+                        className="flex items-center gap-1.5 bg-gradient-to-r from-sky-100 to-blue-100 border border-sky-300 text-blue-950 px-3 py-1 rounded-full text-[10px] font-bold shadow-2xs"
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: servObj.color || '#2563eb' }}></span>
+                        <span>{servObj.nombre} (${Number(servObj.precio || 0).toLocaleString()})</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window._detalleServiciosIndices = window._detalleServiciosIndices.filter(i => i !== sIdx);
+                            setCitaSeleccionada({...citaSeleccionada});
+                          }}
+                          className="text-blue-700 hover:text-red-600 font-black ml-0.5 cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Total a Pagar Dinámico */}
+            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-900">Total a Pagar:</span>
+              <span className="text-sm font-black text-emerald-700">
+                ${window._detalleServiciosIndices.reduce((acc, sIdx) => {
+                  const servObj = serviciosEstablecimiento[sIdx];
+                  const precioNum = Number(String(servObj?.precio || 0).replace(/[^0-9]/g, '')) || 0;
+                  return acc + precioNum;
+                }, 0).toLocaleString()} COP
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Fecha</label>
+                <input 
+                  type="date"
+                  value={citaSeleccionada.fechaStr || ''}
+                  onChange={(e) => setCitaSeleccionada({...citaSeleccionada, fechaStr: e.target.value})}
+                  className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Hora</label>
+                <input 
+                  type="text"
+                  value={citaSeleccionada.hora || ''}
+                  onChange={(e) => setCitaSeleccionada({...citaSeleccionada, hora: e.target.value})}
+                  className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Estado de la Cita</label>
+              <select
+                value={estadoTemporal}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  if (valor === 'cancelada' || valor === 'inasistente') {
+                    setNuevoEstadoSeleccionado(valor);
+                    setMostrarConfirmacionEstado(true);
+                  } else {
+                    setEstadoTemporal(valor);
+                    setCitaSeleccionada({...citaSeleccionada, estado: valor});
+                  }
+                }}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none cursor-pointer"
+              >
+                <option value="activa">Activa</option>
+                <option value="confirmada">Confirmada</option>
+                <option value="finalizada">Finalizada</option>
+                <option value="cancelada">Cancelada</option>
+                <option value="inasistente">Inasistente</option>
+              </select>
+            </div>
+
+            {mostrarConfirmacionEstado && (
+              <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl animate-in fade-in">
+                <p className="text-xs font-bold text-rose-900 mb-2">
+                  ¿Confirmas cambiar el estado a <span className="uppercase text-rose-700 font-black">{nuevoEstadoSeleccionado}</span>?
+                </p>
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setEstadoTemporal(nuevoEstadoSeleccionado);
+                      setCitaSeleccionada({...citaSeleccionada, estado: nuevoEstadoSeleccionado});
+                      setMostrarConfirmacionEstado(false);
+                    }}
+                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs py-1.5 rounded-lg font-bold transition cursor-pointer"
+                  >
+                    Sí, cambiar
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setMostrarConfirmacionEstado(false)}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 rounded-lg font-bold transition cursor-pointer"
+                  >
+                    No, mantener
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* BOTÓN ELIMINAR CITA */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm("¿Estás seguro de que deseas eliminar esta cita permanentemente?")) {
+                    try {
+                      await deleteDoc(doc(db, 'citas', citaSeleccionada.id));
+                      setSuccessMsg('¡Cita eliminada correctamente!');
+                      window._detalleServiciosIndices = null;
+                      window._detalleBarberoTemp = undefined;
+                      setModalDetalleAbierto(false);
+                      setTimeout(() => setSuccessMsg(''), 3000);
+                    } catch (err) {
+                      console.error("Error al eliminar la cita:", err);
+                      setErrorMsg('No se pudo eliminar la cita.');
+                      setTimeout(() => setErrorMsg(''), 3000);
+                    }
+                  }
+                }}
+                className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold py-2.5 rounded-xl uppercase text-[10px] transition cursor-pointer"
+              >
+                Eliminar Cita
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
           <button 
             type="button"
-            onClick={() => setModalDetalleAbierto(false)}
-            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-xs backdrop-blur-xs transition cursor-pointer"
+            onClick={() => {
+              window._detalleServiciosIndices = null;
+              window._detalleBarberoTemp = undefined;
+              setModalDetalleAbierto(false);
+            }}
+            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 rounded-xl font-bold transition cursor-pointer"
           >
-            ✕
+            Cerrar
+          </button>
+          <button 
+            type="button"
+            onClick={async () => {
+              try {
+                const serviciosObjsFinales = window._detalleServiciosIndices.map(i => serviciosEstablecimiento[i]).filter(Boolean);
+                const nombresStr = serviciosObjsFinales.map(s => s.nombre).join(', ') || 'Servicio General';
+                const precioSuma = serviciosObjsFinales.reduce((acc, s) => acc + (Number(s.precio) || 0), 0);
+                const duracionSuma = serviciosObjsFinales.reduce((acc, s) => acc + (Number(s.duracion) || 30), 30);
+
+                const listaProf = typeof profesionales !== 'undefined' ? profesionales : (typeof empleados !== 'undefined' ? empleados : []);
+                const profObj = listaProf.find(p => p.id === window._detalleBarberoTemp);
+
+                const citaRef = doc(db, 'citas', citaSeleccionada.id);
+                await updateDoc(citaRef, {
+                  barberoId: window._detalleBarberoTemp || citaSeleccionada.barberoId,
+                  barberoName: profObj ? profObj.nombre : citaSeleccionada.barberoName,
+                  servicio: nombresStr,
+                  serviciosArray: serviciosObjsFinales,
+                  precio: precioSuma,
+                  precioTotal: precioSuma,
+                  duracion: duracionSuma,
+                  fecha: citaSeleccionada.fechaStr,
+                  fechaStr: citaSeleccionada.fechaStr,
+                  hora: citaSeleccionada.hora,
+                  estado: estadoTemporal || citaSeleccionada.estado
+                });
+
+                setSuccessMsg('¡Cita actualizada correctamente!');
+                window._detalleServiciosIndices = null;
+                window._detalleBarberoTemp = undefined;
+                setModalDetalleAbierto(false);
+                setTimeout(() => setSuccessMsg(''), 3000);
+              } catch (err) {
+                console.error("Error al actualizar cita:", err);
+                setErrorMsg('No se pudo actualizar la cita.');
+                setTimeout(() => setErrorMsg(''), 3000);
+              }
+            }}
+            className="flex-1 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white text-xs py-2.5 rounded-xl font-bold shadow-md transition cursor-pointer"
+          >
+            Guardar Cambios
           </button>
         </div>
 
-        {/* Cabecera del Cliente */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
-          <div>
-            <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider">Detalles de la Cita</span>
-            <h2 className="text-base font-black text-slate-900 leading-tight">{citaSeleccionada.cliente}</h2>
-          </div>
-          <span className="text-[10px] font-mono font-bold bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-700 shadow-2xs">
-            ⏰ {citaSeleccionada.hora || 'Sin Hora'}
-          </span>
-        </div>
-
-        {/* Formulario de Edición */}
-        <div className="p-5 space-y-4">
-          
-          {/* Información de Contacto */}
-          <div className="bg-sky-50/60 border border-sky-100 p-3 rounded-xl space-y-1">
-            <p className="text-xs text-slate-700"><strong>Teléfono:</strong> {citaSeleccionada.clienteTelefono || 'No registrado'}</p>
-            <p className="text-xs text-slate-700"><strong>Correo:</strong> {citaSeleccionada.clienteEmail || 'No registrado'}</p>
-          </div>
-
-          {/* Servicio y Total a Pagar */}
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Servicio Contratado</label>
-            <input 
-              type="text"
-              value={citaSeleccionada.servicio || ''}
-              onChange={(e) => setCitaSeleccionada({...citaSeleccionada, servicio: e.target.value})}
-              className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-          </div>
-
-          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-900">Total a Pagar:</span>
-            <span className="text-sm font-black text-emerald-700">
-              ${(citaSeleccionada.precio || 0).toLocaleString()} COP
-            </span>
-          </div>
-
-          {/* Modificar Fecha y Hora */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Fecha</label>
-              <input 
-                type="date"
-                value={citaSeleccionada.fechaStr || ''}
-                onChange={(e) => setCitaSeleccionada({...citaSeleccionada, fechaStr: e.target.value})}
-                className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Hora</label>
-              <input 
-                type="text"
-                value={citaSeleccionada.hora || ''}
-                onChange={(e) => setCitaSeleccionada({...citaSeleccionada, hora: e.target.value})}
-                className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Cambiar Estado con Select */}
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Estado de la Cita</label>
-            <select
-              value={estadoTemporal}
-              onChange={(e) => {
-                const valor = e.target.value;
-                if (valor === 'cancelada' || valor === 'inasistente') {
-                  setNuevoEstadoSeleccionado(valor);
-                  setMostrarConfirmacionEstado(true);
-                } else {
-                  setEstadoTemporal(valor);
-                  setCitaSeleccionada({...citaSeleccionada, estado: valor});
-                }
-              }}
-              className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none cursor-pointer"
-            >
-              <option value="activa">Activa</option>
-              <option value="confirmada">Confirmada</option>
-              <option value="finalizada">Finalizada</option>
-              <option value="cancelada">Cancelada</option>
-              <option value="inasistente">Inasistente</option>
-            </select>
-          </div>
-
-          {/* Alerta de Confirmación cuando cambia a Cancelada o Inasistente */}
-          {mostrarConfirmacionEstado && (
-            <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl animate-in fade-in">
-              <p className="text-xs font-bold text-rose-900 mb-2">
-                ¿Confirmas cambiar el estado a <span className="uppercase text-rose-700 font-black">{nuevoEstadoSeleccionado}</span>?
-              </p>
-              <div className="flex gap-2">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setEstadoTemporal(nuevoEstadoSeleccionado);
-                    setCitaSeleccionada({...citaSeleccionada, estado: nuevoEstadoSeleccionado});
-                    setMostrarConfirmacionEstado(false);
-                  }}
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs py-1.5 rounded-lg font-bold transition cursor-pointer"
-                >
-                  Sí, cambiar
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setMostrarConfirmacionEstado(false)}
-                  className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 rounded-lg font-bold transition cursor-pointer"
-                >
-                  No, mantener
-                </button>
-              </div>
-            </div>
-          )}
-
-        </div>
       </div>
-
-      {/* Botones de Acción Inferiores */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
-        <button 
-          type="button"
-          onClick={() => setModalDetalleAbierto(false)}
-          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 rounded-xl font-bold transition cursor-pointer"
-        >
-          Cerrar
-        </button>
-        <button 
-          type="button"
-          onClick={() => {
-            // Guardar cambios en Firestore
-            // actualizarCitaEnFirestore(citaSeleccionada);
-            setModalDetalleAbierto(false);
-          }}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded-xl font-bold shadow-md transition cursor-pointer"
-        >
-          Guardar Cambios
-        </button>
-      </div>
-
     </div>
-  </div>
-)}
+  );
+})()}
     </div>
   );
 }

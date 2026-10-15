@@ -48,7 +48,21 @@ const [exitoModalOpen, setExitoModalOpen] = useState(false);
   const [servicioAEliminar, setServicioAEliminar] = useState(null);
   const [barberData, setBarberData] = useState(null);
 
+  const [modalEgresosAbierto, setModalEgresosAbierto] = useState(false);
+const [modalPropinasAbierto, setModalPropinasAbierto] = useState(false);
+
+const [listaEgresos, setListaEgresos] = useState([]);
+const [listaPropinas, setListaPropinas] = useState([]);
+
+const [nuevoEgresoNombre, setNuevoEgresoNombre] = useState('');
+const [nuevoEgresoMonto, setNuevoEgresoMonto] = useState('');
+const [nuevaPropinaNota, setNuevaPropinaNota] = useState('');
+const [nuevaPropinaMonto, setNuevaPropinaMonto] = useState('');
+const [editandoEgresoId, setEditandoEgresoId] = useState(null);
+const [editandoPropinaId, setEditandoPropinaId] = useState(null);
   const [modalEditarOpen, setModalEditarOpen] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+const [errorMsg, setErrorMsg] = useState('');
   const [formEdicion, setFormEdicion] = useState({
     id: '',
     cliente: '',
@@ -86,6 +100,17 @@ const [exitoModalOpen, setExitoModalOpen] = useState(false);
       setTimerQ1(id);
     }
   };
+
+  // 1. Cálculo de los totales acumulados para los círculos
+const totalEgresosCalculado = (listaEgresos || []).reduce(
+  (acc, item) => acc + (Number(item.monto) || 0), 
+  0
+);
+
+const totalPropinasCalculado = (listaPropinas || []).reduce(
+  (acc, item) => acc + (Number(item.monto) || 0), 
+  0
+);
 
   const handleToggleQ2 = (e) => {
     e.stopPropagation();
@@ -170,6 +195,8 @@ const [exitoModalOpen, setExitoModalOpen] = useState(false);
 useEffect(() => {
   let unsubscribeServicios = null;
   let unsubscribeProfesional = null;
+  let unsubscribeEgresos = null;
+  let unsubscribePropinas = null;
 
   const unsubscribe = auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -191,6 +218,26 @@ useEffect(() => {
           ...doc.data()
         }));
         setServiciosFirebase(listaServicios);
+      });
+
+      // Listener para egresos en tiempo real
+      const qEgresos = query(
+        collection(db, "egresos"),
+        where("barberoId", "==", user.uid)
+      );
+      unsubscribeEgresos = onSnapshot(qEgresos, (snapshot) => {
+        const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setListaEgresos(lista);
+      });
+
+      // Listener para propinas en tiempo real
+      const qPropinas = query(
+        collection(db, "propinas"),
+        where("barberoId", "==", user.uid)
+      );
+      unsubscribePropinas = onSnapshot(qPropinas, (snapshot) => {
+        const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setListaPropinas(lista);
       });
 
       // Listener directo al documento del profesional usando su UID como ID de documento
@@ -234,6 +281,8 @@ useEffect(() => {
     } else {
       if (unsubscribeServicios) unsubscribeServicios();
       if (unsubscribeProfesional) unsubscribeProfesional();
+      if (unsubscribeEgresos) unsubscribeEgresos();
+      if (unsubscribePropinas) unsubscribePropinas();
       setLoading(false);
       setLoadingCitas(false);
     }
@@ -243,6 +292,8 @@ useEffect(() => {
     unsubscribe();
     if (unsubscribeServicios) unsubscribeServicios();
     if (unsubscribeProfesional) unsubscribeProfesional();
+    if (unsubscribeEgresos) unsubscribeEgresos();
+    if (unsubscribePropinas) unsubscribePropinas();
   };
 }, []);
 
@@ -1130,7 +1181,7 @@ useEffect(() => {
   </div>
 
   {/* Contenido Principal Compacto */}
-  <div className="flex items-center justify-between gap-2">
+  <div className="flex items-center justify-between gap-2 overflow-x-auto py-1">
     
     {/* Columna Izquierda: Ganancias y Estado */}
     <div className="space-y-0.5 flex-1 min-w-0">
@@ -1163,53 +1214,127 @@ useEffect(() => {
       </div>
     </div>
 
-    {/* Columna Derecha: Círculo de Progreso Reducido */}
-    <div 
-      className="relative flex flex-col items-center cursor-pointer group shrink-0" 
-      onClick={() => {
-        setInputMetaValor(tieneMetaDefinida ? metaActual.toString() : '');
-        setModalMetaAbierto(true);
-      }} 
-      title="Haz clic para cambiar tu meta diaria"
-    >
-      {/* Globo flotante dinámico */}
-      <div className={`absolute -top-6 text-[7px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap animate-bounce border ${
-        !tieneMetaDefinida ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-blue-600 text-white border-sky-300'
-      }`}>
-        {obtenerMensajeDinamico(porcentajeProgreso, tieneMetaDefinida)}
-      </div>
+    {/* Columna Derecha: Grupo de Círculos (Meta, Egresos, Propinas) */}
+    <div className="flex items-center gap-2 shrink-0">
+      
+      {/* Círculo 1: Progreso / Meta */}
+      <div 
+        className="relative flex flex-col items-center cursor-pointer group" 
+        onClick={() => {
+          setInputMetaValor(tieneMetaDefinida ? metaActual.toString() : '');
+          setModalMetaAbierto(true);
+        }} 
+        title="Haz clic para cambiar tu meta diaria"
+      >
+        <div className={`absolute -top-6 text-[7px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap animate-bounce border ${
+          !tieneMetaDefinida ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-blue-600 text-white border-sky-300'
+        }`}>
+          {obtenerMensajeDinamico(porcentajeProgreso, tieneMetaDefinida)}
+        </div>
 
-      <div className="relative w-16 h-16 flex items-center justify-center mt-1">
-        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-          <circle cx="40" cy="40" r={radio} stroke="currentColor" strokeWidth="6" className="text-blue-100" fill="transparent" />
-          <circle
-            cx="40"
-            cy="40"
-            r={radio}
-            stroke="url(#gradientAzul)"
-            strokeWidth="6"
-            strokeDasharray={circunferencia}
-            strokeDashoffset={desplazamientoStroke}
-            strokeLinecap="round"
-            fill="transparent"
-            className="transition-all duration-700 ease-out"
-          />
-          <defs>
-            <linearGradient id="gradientAzul" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0ea5e9" />
-              <stop offset="100%" stopColor="#2563eb" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-[11px] font-black text-blue-950">{tieneMetaDefinida ? `${Math.round(porcentajeProgreso)}%` : '0%'}</span>
-          <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Progreso</span>
+        <div className="relative w-14 h-14 flex items-center justify-center mt-1">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r={radio} stroke="currentColor" strokeWidth="6" className="text-blue-100" fill="transparent" />
+            <circle
+              cx="40" cy="40" r={radio}
+              stroke="url(#gradientAzul)"
+              strokeWidth="6"
+              strokeDasharray={circunferencia}
+              strokeDashoffset={desplazamientoStroke}
+              strokeLinecap="round"
+              fill="transparent"
+              className="transition-all duration-700 ease-out"
+            />
+            <defs>
+              <linearGradient id="gradientAzul" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0ea5e9" />
+                <stop offset="100%" stopColor="#2563eb" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-[10px] font-black text-blue-950">{tieneMetaDefinida ? `${Math.round(porcentajeProgreso)}%` : '0%'}</span>
+            <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Meta</span>
+          </div>
         </div>
       </div>
-    </div>
 
-  </div>
+      {/* Círculo 2: Egresos (Rojo) */}
+      <div 
+        className="relative flex flex-col items-center cursor-pointer group" 
+        onClick={() => setModalEgresosAbierto(true)}
+        title="Gestionar Egresos"
+      >
+        <div className="absolute -top-6 text-[7px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap animate-pulse bg-rose-600 text-white border border-rose-300">
+          💸 Egresos
+        </div>
+
+        <div className="relative w-14 h-14 flex items-center justify-center mt-1">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r={radio} stroke="currentColor" strokeWidth="6" className="text-rose-100" fill="transparent" />
+            <circle
+              cx="40" cy="40" r={radio}
+              stroke="url(#gradientRojo)"
+              strokeWidth="6"
+              strokeDasharray={circunferencia}
+              strokeDashoffset="15"
+              strokeLinecap="round"
+              fill="transparent"
+              className="transition-all duration-700 ease-out group-hover:scale-105"
+            />
+            <defs>
+              <linearGradient id="gradientRojo" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f43f5e" />
+                <stop offset="100%" stopColor="#e11d48" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-[8px] font-black text-rose-950">-${totalEgresosCalculado || 0}</span>
+            <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Gastos</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Círculo 3: Propinas (Verde) */}
+      <div 
+        className="relative flex flex-col items-center cursor-pointer group" 
+        onClick={() => setModalPropinasAbierto(true)}
+        title="Gestionar Propinas"
+      >
+        <div className="absolute -top-6 text-[7px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap animate-bounce bg-emerald-600 text-white border border-emerald-300">
+          ✨ Propinas
+        </div>
+
+        <div className="relative w-14 h-14 flex items-center justify-center mt-1">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r={radio} stroke="currentColor" strokeWidth="6" className="text-emerald-100" fill="transparent" />
+            <circle
+              cx="40" cy="40" r={radio}
+              stroke="url(#gradientVerde)"
+              strokeWidth="6"
+              strokeDasharray={circunferencia}
+              strokeDashoffset="15"
+              strokeLinecap="round"
+              fill="transparent"
+              className="transition-all duration-700 ease-out group-hover:scale-105"
+            />
+            <defs>
+              <linearGradient id="gradientVerde" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#059669" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-[8px] font-black text-emerald-950">+${totalPropinasCalculado || 0}</span>
+            <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Propinas</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+</div>
 </div>
 
       {/* Modal Interactivo para Configurar la Meta Diaria y Consejo Financiero */}
@@ -1994,6 +2119,339 @@ useEffect(() => {
       <div>
         <h4 className="text-sm font-bold text-slate-900">{mensajeExito || '¡Registro Exitoso!'}</h4>
         <p className="text-xs text-slate-500 mt-1"></p>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* ================= MODAL EGRESOS ================= */}
+{modalEgresosAbierto && (
+  <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4 border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 className="text-xs font-black text-rose-600 uppercase flex items-center gap-1.5">
+          💸 Gestión de Egresos
+        </h3>
+        <button 
+          onClick={() => {
+            setModalEgresosAbierto(false);
+            setEditandoEgresoId(null);
+            setNuevoEgresoNombre('');
+            setNuevoEgresoMonto('');
+          }} 
+          className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Formulario para registrar / editar egreso */}
+      <div className="bg-rose-50/50 border border-rose-100 p-3 rounded-xl space-y-2.5">
+        <h4 className="text-[10px] font-black text-rose-900 uppercase">
+          {editandoEgresoId ? '✏️ Editar Egreso' : 'Registrar Nuevo Egreso'}
+        </h4>
+        <div className="grid grid-cols-2 gap-2">
+          <input 
+            type="text" 
+            placeholder="Concepto (Ej: Insumos)" 
+            value={nuevoEgresoNombre || ''} 
+            onChange={e => setNuevoEgresoNombre(e.target.value)}
+            className="bg-white border border-rose-200 rounded-xl p-2 text-[10px] text-slate-900 outline-none font-medium"
+          />
+          <input 
+            type="number" 
+            placeholder="Monto COP" 
+            value={nuevoEgresoMonto || ''} 
+            onChange={e => setNuevoEgresoMonto(e.target.value)}
+            className="bg-white border border-rose-200 rounded-xl p-2 text-[10px] text-slate-900 outline-none font-medium"
+          />
+        </div>
+        <div className="flex gap-2">
+          {editandoEgresoId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditandoEgresoId(null);
+                setNuevoEgresoNombre('');
+                setNuevoEgresoMonto('');
+              }}
+              className="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-[10px] uppercase shadow-xs transition cursor-pointer"
+            >
+              Cancelar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={async () => {
+              if (!nuevoEgresoNombre || !nuevoEgresoMonto) {
+                alert('Ingresa el concepto y el monto del egreso.');
+                return;
+              }
+              try {
+                if (editandoEgresoId) {
+                  await updateDoc(doc(db, 'egresos', editandoEgresoId), {
+                    nombre: nuevoEgresoNombre,
+                    monto: Number(nuevoEgresoMonto)
+                  });
+                  alert('¡Egreso actualizado con éxito!');
+                  setEditandoEgresoId(null);
+                } else {
+                  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    alert('No hay una sesión activa.');
+    return;
+  }
+           await addDoc(collection(db, 'egresos'), {
+    barberoId: currentUser.uid, // ✅ Corregido
+    nombre: nuevoEgresoNombre,
+    monto: Number(nuevoEgresoMonto),
+    fechaHora: new Date().toISOString()
+  });
+  alert('¡Egreso guardado con éxito!');
+                  alert('¡Egreso guardado con éxito!');
+                }
+                setNuevoEgresoNombre('');
+                setNuevoEgresoMonto('');
+              } catch (err) {
+                console.error(err);
+                alert('Error al guardar el egreso.');
+              }
+            }}
+            className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase shadow-xs transition cursor-pointer"
+          >
+            {editandoEgresoId ? 'Actualizar Egreso' : 'Guardar Egreso'}
+          </button>
+        </div>
+      </div>
+
+      {/* Historial de Egresos con Acciones */}
+      <div className="space-y-2">
+        <h4 className="text-[10px] font-black text-slate-700 uppercase">Historial de Egresos</h4>
+        <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl">
+          <table className="w-full text-left text-[10px]">
+            <thead className="bg-slate-50 text-slate-500 uppercase sticky top-0">
+              <tr>
+                <th className="p-2">Concepto</th>
+                <th className="p-2">Monto</th>
+                <th className="p-2">Fecha / Hora</th>
+                <th className="p-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {listaEgresos && listaEgresos.length > 0 ? (
+                listaEgresos.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="p-2 font-bold text-slate-800">{item.nombre}</td>
+                    <td className="p-2 text-rose-600 font-black">-${Number(item.monto || 0).toLocaleString()}</td>
+                    <td className="p-2 text-slate-400">{item.fechaHora ? new Date(item.fechaHora).toLocaleString() : 'N/A'}</td>
+                    <td className="p-2 flex items-center justify-center gap-1.5">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setEditandoEgresoId(item.id);
+                          setNuevoEgresoNombre(item.nombre);
+                          setNuevoEgresoMonto(item.monto);
+                        }}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-lg font-bold cursor-pointer"
+                        title="Editar"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm('¿Estás seguro de eliminar este egreso?')) {
+                            try {
+                              await deleteDoc(doc(db, 'egresos', item.id));
+                              alert('Egreso eliminado');
+                            } catch (err) {
+                              console.error(err);
+                              alert('Error al eliminar');
+                            }
+                          }
+                        }}
+                        className="bg-rose-100 hover:bg-rose-200 text-rose-800 px-2 py-1 rounded-lg font-bold cursor-pointer"
+                        title="Eliminar"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="p-4 text-center text-slate-400 italic">No hay egresos registrados.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* ================= MODAL PROPINAS ================= */}
+{modalPropinasAbierto && (
+  <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4 border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 className="text-xs font-black text-emerald-600 uppercase flex items-center gap-1.5">
+          ✨ Gestión de Propinas
+        </h3>
+        <button 
+          onClick={() => {
+            setModalPropinasAbierto(false);
+            setEditandoPropinaId(null);
+            setNuevaPropinaNota('');
+            setNuevaPropinaMonto('');
+          }} 
+          className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Formulario para registrar / editar propina */}
+      <div className="bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl space-y-2.5">
+        <h4 className="text-[10px] font-black text-emerald-900 uppercase">
+          {editandoPropinaId ? '✏️ Editar Propina' : 'Registrar Nueva Propina'}
+        </h4>
+        <div className="grid grid-cols-2 gap-2">
+          <input 
+            type="text" 
+            placeholder="Cliente / Nota (Opcional)" 
+            value={nuevaPropinaNota || ''} 
+            onChange={e => setNuevaPropinaNota(e.target.value)}
+            className="bg-white border border-emerald-200 rounded-xl p-2 text-[10px] text-slate-900 outline-none font-medium"
+          />
+          <input 
+            type="number" 
+            placeholder="Monto COP" 
+            value={nuevaPropinaMonto || ''} 
+            onChange={e => setNuevaPropinaMonto(e.target.value)}
+            className="bg-white border border-emerald-200 rounded-xl p-2 text-[10px] text-slate-900 outline-none font-medium"
+          />
+        </div>
+        <div className="flex gap-2">
+          {editandoPropinaId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditandoPropinaId(null);
+                setNuevaPropinaNota('');
+                setNuevaPropinaMonto('');
+              }}
+              className="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-[10px] uppercase shadow-xs transition cursor-pointer"
+            >
+              Cancelar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={async () => {
+              if (!nuevaPropinaMonto) {
+                alert('Ingresa el monto de la propina.');
+                return;
+              }
+              try {
+                if (editandoPropinaId) {
+                  await updateDoc(doc(db, 'propinas', editandoPropinaId), {
+                    nota: nuevaPropinaNota || 'Propina general',
+                    monto: Number(nuevaPropinaMonto)
+                  });
+                  alert('¡Propina actualizada con éxito!');
+                  setEditandoPropinaId(null);
+                } else {
+                const currentUser = auth.currentUser;
+  if (!currentUser) {
+    alert('No hay una sesión activa.');
+    return;
+  }
+  await addDoc(collection(db, 'propinas'), {
+    barberoId: currentUser.uid, // ✅ Corregido
+    nota: nuevaPropinaNota || 'Propina general',
+    monto: Number(nuevaPropinaMonto),
+    fechaHora: new Date().toISOString()
+  });
+  alert('¡Propina guardada con éxito!');
+                }
+                setNuevaPropinaNota('');
+                setNuevaPropinaMonto('');
+              } catch (err) {
+                console.error(err);
+                alert('Error al guardar la propina.');
+              }
+            }}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-[10px] uppercase shadow-xs transition cursor-pointer"
+          >
+            {editandoPropinaId ? 'Actualizar Propina' : 'Guardar Propina'}
+          </button>
+        </div>
+      </div>
+
+      {/* Historial de Propinas con Acciones */}
+      <div className="space-y-2">
+        <h4 className="text-[10px] font-black text-slate-700 uppercase">Historial de Propinas</h4>
+        <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl">
+          <table className="w-full text-left text-[10px]">
+            <thead className="bg-slate-50 text-slate-500 uppercase sticky top-0">
+              <tr>
+                <th className="p-2">Nota / Cliente</th>
+                <th className="p-2">Monto</th>
+                <th className="p-2">Fecha / Hora</th>
+                <th className="p-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {listaPropinas && listaPropinas.length > 0 ? (
+                listaPropinas.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="p-2 font-bold text-slate-800">{item.nota}</td>
+                    <td className="p-2 text-emerald-600 font-black">+${Number(item.monto || 0).toLocaleString()}</td>
+                    <td className="p-2 text-slate-400">{item.fechaHora ? new Date(item.fechaHora).toLocaleString() : 'N/A'}</td>
+                    <td className="p-2 flex items-center justify-center gap-1.5">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setEditandoPropinaId(item.id);
+                          setNuevaPropinaNota(item.nota);
+                          setNuevaPropinaMonto(item.monto);
+                        }}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-lg font-bold cursor-pointer"
+                        title="Editar"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm('¿Estás seguro de eliminar esta propina?')) {
+                            try {
+                              await deleteDoc(doc(db, 'propinas', item.id));
+                              alert('Propina eliminada');
+                            } catch (err) {
+                              console.error(err);
+                              alert('Error al eliminar');
+                            }
+                          }
+                        }}
+                        className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-2 py-1 rounded-lg font-bold cursor-pointer"
+                        title="Eliminar"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="p-4 text-center text-slate-400 italic">No hay propinas registradas.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
