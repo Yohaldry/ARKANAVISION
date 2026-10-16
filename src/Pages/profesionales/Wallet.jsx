@@ -570,16 +570,18 @@ useEffect(() => {
         >
           <Percent size={14} /> Gestión Manual (%)
         </button>
-        <button
-          onClick={() => setVistaTab('domicilios')}
-          className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border cursor-pointer ${
-            vistaTab === 'domicilios'
-              ? 'bg-blue-900 text-white border-blue-950 shadow-md'
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-          }`}
-        >
-          <Home size={14} /> Domicilios 100% ({citasFinalizadas.length})
-        </button>
+{/* 
+  <button
+    onClick={() => setVistaTab('domicilios')}
+    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+      vistaTab === 'domicilios'
+        ? 'bg-blue-900 text-white border-blue-950 shadow-md'
+        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+    }`}
+  >
+    <Home size={14} /> Domicilios 100% ({citasFinalizadas.length})
+  </button>
+*/}
       </div>
 
       {vistaTab === 'manual' && (() => {
