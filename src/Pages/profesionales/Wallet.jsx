@@ -54,7 +54,8 @@ const [modalPropinasAbierto, setModalPropinasAbierto] = useState(false);
    const [citasEstablecimiento, setCitasEstablecimiento] = useState([]);
 const [listaEgresos, setListaEgresos] = useState([]);
 const [listaPropinas, setListaPropinas] = useState([]);
-
+const [modalConfirmarEstadoOpen, setModalConfirmarEstadoOpen] = useState(false);
+const [servicioAConfirmar, setServicioAConfirmar] = useState(null);
 const [nuevoEgresoNombre, setNuevoEgresoNombre] = useState('');
 const [nuevoEgresoMonto, setNuevoEgresoMonto] = useState('');
 const [nuevaPropinaNota, setNuevaPropinaNota] = useState('');
@@ -107,6 +108,24 @@ const totalEgresosCalculado = (listaEgresos || []).reduce(
   (acc, item) => acc + (Number(item.monto) || 0), 
   0
 );
+
+const confirmarEstadoCitaFinal = async () => {
+  if (!servicioAConfirmar) return;
+  try {
+    const docRef = doc(db, 'citas', servicioAConfirmar.id);
+    await updateDoc(docRef, { estado: 'confirmado' });
+    
+    setMensajeExito('¡Cita confirmada con éxito!');
+    setAlertaExito(true);
+    setTimeout(() => setAlertaExito(false), 1500);
+
+    setModalConfirmarEstadoOpen(false);
+    setServicioAConfirmar(null);
+  } catch (err) {
+    console.error("Error al confirmar la cita:", err);
+    alert('No se pudo confirmar el estado.');
+  }
+};
 
 const totalPropinasCalculado = (listaPropinas || []).reduce(
   (acc, item) => acc + (Number(item.monto) || 0), 
@@ -1596,11 +1615,11 @@ useEffect(() => {
             return fechaB - fechaA;
           })
           .map((srv, index) => {
-            // Verificamos de forma segura el estado de la cita/servicio
-            const estadoActual = (srv.estado || srv.estadoPago || 'pagado').toLowerCase();
+            const estadoActual = (srv.estado || srv.estadoPago || 'pagado').toLowerCase().trim();
             const esPendiente = estadoActual === 'pendiente';
+            const esPagado = estadoActual === 'pagado';
+            const esConfirmado = estadoActual === 'confirmado';
 
-            // Si está pendiente, se fuerza a 0; si está pagado, toma su valor real
             const totalServicio = esPendiente ? 0 : (Number(srv.precioTotal) || Number(srv.total) || 0);
             const gananciaServicio = esPendiente ? 0 : (Number(srv.valorComision) || Number(srv.ganancias) || (totalServicio * Number(srv.porcentajeValor || srv.comisionPorcentaje || 35)) / 100);
 
@@ -1609,19 +1628,21 @@ useEffect(() => {
                 key={srv.id || index}
                 className={`p-3 flex items-center justify-between transition-colors group ${
                   esPendiente 
-                    ? 'bg-amber-50/60 hover:bg-amber-50/90 border-l-4 border-l-amber-400' 
-                    : srv.esDeEstablecimiento 
-                      ? 'bg-emerald-50/50 hover:bg-emerald-50/90 border-l-4 border-l-emerald-500' 
-                      : 'hover:bg-blue-50/40'
+                    ? 'bg-amber-50/60 border-l-4 border-l-amber-400' 
+                    : esConfirmado
+                      ? 'bg-emerald-50/70 border-l-4 border-l-emerald-500'
+                      : esPagado
+                        ? 'bg-blue-50/70 border-l-4 border-l-blue-500'
+                        : 'hover:bg-blue-50/40'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <div className={`p-2 rounded-xl flex-shrink-0 border ${
                     esPendiente
                       ? 'bg-amber-100 text-amber-700 border-amber-300'
-                      : srv.esDeEstablecimiento 
-                        ? 'bg-emerald-100 text-emerald-700 border-emerald-300' 
-                        : 'bg-blue-50 text-blue-600 border-blue-200'
+                      : esConfirmado
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                        : 'bg-blue-100 text-blue-700 border-blue-300'
                   }`}>
                     <Calendar size={16} />
                   </div>
@@ -1630,18 +1651,22 @@ useEffect(() => {
                       <p className="text-xs font-bold text-slate-900">{srv.clienteNombre || srv.cliente || 'General'}</p>
                       
                       {esPendiente ? (
-                        <span className="bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-2xs tracking-wider uppercase">
+                        <span className="bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
                           Pendiente 🟡
                         </span>
-                      ) : srv.esDeEstablecimiento && (
-                        <span className="bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-2xs tracking-wider uppercase">
-                          Automático 🏢
+                      ) : esConfirmado ? (
+                        <span className="bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
+                          Confirmado 🟢
+                        </span>
+                      ) : (
+                        <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
+                          Pagado 🔵
                         </span>
                       )}
                     </div>
 
                     <p className="text-[7px] text-slate-600 font-medium">
-                      Servicio: <span className={`font-semibold ${esPendiente ? 'text-amber-800' : srv.esDeEstablecimiento ? 'text-emerald-800' : 'text-blue-700'}`}>
+                      Servicio: <span className={`font-semibold ${esPendiente ? 'text-amber-800' : esConfirmado ? 'text-emerald-800' : 'text-blue-800'}`}>
                         {srv.servicio || 'Servicio sin nombre'}
                       </span>
                     </p>
@@ -1654,23 +1679,26 @@ useEffect(() => {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right flex-shrink-0">
-                    <p className={`text-xs font-extrabold ${esPendiente ? 'text-amber-600' : srv.esDeEstablecimiento ? 'text-emerald-700' : 'text-blue-600'}`}>
+                    <p className={`text-xs font-extrabold ${esPendiente ? 'text-amber-600' : esConfirmado ? 'text-emerald-700' : 'text-blue-700'}`}>
                       {esPendiente ? '$0 COP' : `+${gananciaServicio.toLocaleString()} COP`}
                     </p>
                     <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
-                    
-                    {(srv.porcentajeValor || srv.comisionPorcentaje) && (
-                      <span className={`inline-block mt-0.5 text-[9px] px-1.5 py-0.2 rounded font-medium border ${
-                        esPendiente
-                          ? 'bg-amber-100 text-amber-800 border-amber-200'
-                          : srv.esDeEstablecimiento 
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
-                            : 'bg-blue-50 text-blue-700 border-blue-200'
-                      }`}>
-                        {srv.porcentajeValor || srv.comisionPorcentaje}%
-                      </span>
-                    )}
                   </div>
+
+                  {/* CHULITO INTERACTIVO SOLO SI ESTÁ PAGADO (AZUL) PARA PASAR A CONFIRMADO (VERDE) */}
+                  {esPagado && srv.esDeEstablecimiento && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setServicioAConfirmar(srv);
+                        setModalConfirmarEstadoOpen(true);
+                      }}
+                      title="Hacer clic para confirmar esta cita"
+                      className="w-6 h-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center shadow-sm transition-all cursor-pointer animate-pulse"
+                    >
+                      ✓
+                    </button>
+                  )}
 
                   {!srv.esDeEstablecimiento && (
                     <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
@@ -1703,8 +1731,45 @@ useEffect(() => {
         </div>
       )}
     </div>
+
+    {/* MODAL DE ALERTA CON ESTILOS VISARKA PARA CONFIRMAR CITA */}
+    {modalConfirmarEstadoOpen && servicioAConfirmar && (
+      <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+        <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-xs p-5 space-y-4 shadow-2xl text-slate-900 text-center">
+          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-inner">
+            ✓
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-blue-950 uppercase">Confirmar Cita</h3>
+            <p className="text-[11px] text-slate-500">
+              ¿Estás seguro de que la cita de <strong className="text-slate-800">{servicioAConfirmar.clienteNombre || servicioAConfirmar.cliente}</strong> está correcta para cambiar su estado a <strong className="text-emerald-700">Confirmado</strong>?
+            </p>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button 
+              type="button" 
+              onClick={() => {
+                setModalConfirmarEstadoOpen(false);
+                setServicioAConfirmar(null);
+              }}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="button" 
+              onClick={confirmarEstadoCitaFinal}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs shadow-md transition cursor-pointer uppercase tracking-wide"
+            >
+              Sí, Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
-)  : (
+)   : (
         <div className="bg-white border border-blue-100 rounded-2xl overflow-hidden shadow-sm">
           <div className="p-3 border-b border-blue-50 flex justify-between items-center bg-blue-50/50">
             <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
