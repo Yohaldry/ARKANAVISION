@@ -22,7 +22,6 @@ const Wallet = () => {
   const [fechaInicio, setFechaInicio] = useState(hoyStr);
   const [fechaFin, setFechaFin] = useState(hoyStr);
   const [quincenaActivaModal, setQuincenaActivaModal] = useState(null);
-  const [servicios, setServicios] = useState([]);
   const [serviciosFirebase, setServiciosFirebase] = useState([]); // Catálogo de servicios internos
   const [citasFinalizadas, setCitasFinalizadas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,10 +46,12 @@ const [exitoModalOpen, setExitoModalOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
   const [servicioAEliminar, setServicioAEliminar] = useState(null);
   const [barberData, setBarberData] = useState(null);
-const [citasEstablecimiento, setCitasEstablecimiento] = useState([]);
+
   const [modalEgresosAbierto, setModalEgresosAbierto] = useState(false);
 const [modalPropinasAbierto, setModalPropinasAbierto] = useState(false);
 
+ const [servicios, setServicios] = useState([]);
+   const [citasEstablecimiento, setCitasEstablecimiento] = useState([]);
 const [listaEgresos, setListaEgresos] = useState([]);
 const [listaPropinas, setListaPropinas] = useState([]);
 
@@ -497,15 +498,17 @@ useEffect(() => {
     porcentajeValor: c.comisionPorcentaje,
     fecha: c.fecha,
     hora: c.hora || '00:00',
+    estado: c.estado, // Captura correctamente el estado ('pendiente' o 'pagado')
     esDeEstablecimiento: true
   }));
 
+  // 3. Luego unes ambas listas en 'todosLosIngresos':
   const todosLosIngresos = [...servicios, ...citasComoServicios];
 
-
-  // Filtramos usando tu misma lógica de tiempo con la lista unida
+  // 4. Y por último aplicas el filtro de tiempo para obtener los 'serviciosFiltrados':
   const serviciosFiltrados = filtrarServiciosPorTiempo(todosLosIngresos);
-  
+
+ 
   const totalWallet = serviciosFiltrados.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
   
   const gananciaBarbero = serviciosFiltrados.reduce((acc, item) => {
@@ -1571,124 +1574,137 @@ useEffect(() => {
         </div>
       )}
 
-      {vistaTab === 'manual' ? (
-        <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
-          <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
-            <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-              <Calendar size={14} className="text-blue-600" /> Historial de Servicios Manuales
-            </h3>
-            <span className="text-[10px] bg-blue-100 text-blue-900 px-2.5 py-0.5 rounded-full font-extrabold border border-blue-200">
-              {serviciosFiltrados.length} servicios registrados
-            </span>
-          </div>
+     {vistaTab === 'manual' ? (
+  <div className="bg-white border border-blue-200 rounded-2xl overflow-hidden shadow-sm text-slate-800">
+    <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
+      <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+        <Calendar size={14} className="text-blue-600" /> Historial de Servicios Manuales
+      </h3>
+      <span className="text-[10px] bg-blue-100 text-blue-900 px-2.5 py-0.5 rounded-full font-extrabold border border-blue-200">
+        {serviciosFiltrados.length} servicios registrados
+      </span>
+    </div>
 
-          <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto">
-            {loading ? (
-              <div className="py-6 text-center text-blue-500 text-xs font-medium">Cargando datos...</div>
-            ) : serviciosFiltrados && serviciosFiltrados.length > 0 ? (
-              [...serviciosFiltrados]
-                .sort((a, b) => {
-                  const fechaA = new Date(`${a.fecha || '1970-01-01'}T${a.hora || '00:00'}`);
-                  const fechaB = new Date(`${b.fecha || '1970-01-01'}T${b.hora || '00:00'}`);
-                  return fechaB - fechaA;
-                })
-                .map((srv, index) => {
-                  const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
-                  const totalServicio = Number(srv.total) || 0;
+    <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto">
+      {loading ? (
+        <div className="py-6 text-center text-blue-500 text-xs font-medium">Cargando datos...</div>
+      ) : serviciosFiltrados && serviciosFiltrados.length > 0 ? (
+        [...serviciosFiltrados]
+          .sort((a, b) => {
+            const fechaA = new Date(`${a.fecha || '1970-01-01'}T${a.hora || '00:00'}`);
+            const fechaB = new Date(`${b.fecha || '1970-01-01'}T${b.hora || '00:00'}`);
+            return fechaB - fechaA;
+          })
+          .map((srv, index) => {
+            // Verificamos de forma segura el estado de la cita/servicio
+            const estadoActual = (srv.estado || srv.estadoPago || 'pagado').toLowerCase();
+            const esPendiente = estadoActual === 'pendiente';
 
-                  return (
-                    <div 
-                      key={srv.id || index}
-                      className={`p-3 flex items-center justify-between transition-colors group ${
-                        srv.esDeEstablecimiento 
-                          ? 'bg-emerald-50/50 hover:bg-emerald-50/90 border-l-4 border-l-emerald-500' // Fondo verde sutil y borde si viene del negocio
-                          : 'hover:bg-blue-50/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`p-2 rounded-xl flex-shrink-0 border ${
-                          srv.esDeEstablecimiento 
-                            ? 'bg-emerald-100 text-emerald-700 border-emerald-300' 
-                            : 'bg-blue-50 text-blue-600 border-blue-200'
-                        }`}>
-                          <Calendar size={16} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-xs font-bold text-slate-900">{srv.cliente || 'General'}</p>
-                            
-                            {/* Etiqueta Automático para los que vienen del establecimiento */}
-                            {srv.esDeEstablecimiento && (
-                              <span className="bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-2xs tracking-wider uppercase">
-                                Automático 🏢
-                              </span>
-                            )}
-                          </div>
+            // Si está pendiente, se fuerza a 0; si está pagado, toma su valor real
+            const totalServicio = esPendiente ? 0 : (Number(srv.precioTotal) || Number(srv.total) || 0);
+            const gananciaServicio = esPendiente ? 0 : (Number(srv.valorComision) || Number(srv.ganancias) || (totalServicio * Number(srv.porcentajeValor || srv.comisionPorcentaje || 35)) / 100);
 
-                          <p className="text-[7px] text-slate-600 font-medium">
-                            Servicio: <span className={`font-semibold ${srv.esDeEstablecimiento ? 'text-emerald-800' : 'text-blue-700'}`}>
-                              {srv.servicio || 'Servicio sin nombre'}
-                            </span>
-                          </p>
-
-                          <p className="text-[9px] text-slate-500 font-mono mt-0.5">
-                            {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="text-right flex-shrink-0">
-                          <p className={`text-xs font-extrabold ${srv.esDeEstablecimiento ? 'text-emerald-700' : 'text-blue-600'}`}>
-                            +${gananciaServicio.toLocaleString()} COP
-                          </p>
-                          <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
-                          
-                          {srv.porcentajeValor && (
-                            <span className={`inline-block mt-0.5 text-[9px] px-1.5 py-0.2 rounded font-medium border ${
-                              srv.esDeEstablecimiento 
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
-                                : 'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
-                              {srv.porcentajeValor}%
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Si es automático del negocio, ocultamos los botones de edición manual para mantener la integridad */}
-                        {!srv.esDeEstablecimiento && (
-                          <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
-                            <button 
-                              onClick={() => abrirModalEditar(srv)}
-                              title="Editar servicio"
-                              className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200 cursor-pointer"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setServicioAEliminar(srv);
-                                setModalEliminarOpen(true);
-                              }}
-                              title="Eliminar servicio"
-                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200 cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
+            return (
+              <div 
+                key={srv.id || index}
+                className={`p-3 flex items-center justify-between transition-colors group ${
+                  esPendiente 
+                    ? 'bg-amber-50/60 hover:bg-amber-50/90 border-l-4 border-l-amber-400' 
+                    : srv.esDeEstablecimiento 
+                      ? 'bg-emerald-50/50 hover:bg-emerald-50/90 border-l-4 border-l-emerald-500' 
+                      : 'hover:bg-blue-50/40'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-xl flex-shrink-0 border ${
+                    esPendiente
+                      ? 'bg-amber-100 text-amber-700 border-amber-300'
+                      : srv.esDeEstablecimiento 
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-300' 
+                        : 'bg-blue-50 text-blue-600 border-blue-200'
+                  }`}>
+                    <Calendar size={16} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-bold text-slate-900">{srv.clienteNombre || srv.cliente || 'General'}</p>
+                      
+                      {esPendiente ? (
+                        <span className="bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-2xs tracking-wider uppercase">
+                          Pendiente 🟡
+                        </span>
+                      ) : srv.esDeEstablecimiento && (
+                        <span className="bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-2xs tracking-wider uppercase">
+                          Automático 🏢
+                        </span>
+                      )}
                     </div>
-                  );
-                })
-            ) : (
-              <div className="py-8 text-center text-slate-500 text-xs font-medium">
-                No hay servicios manuales registrados en este período.
+
+                    <p className="text-[7px] text-slate-600 font-medium">
+                      Servicio: <span className={`font-semibold ${esPendiente ? 'text-amber-800' : srv.esDeEstablecimiento ? 'text-emerald-800' : 'text-blue-700'}`}>
+                        {srv.servicio || 'Servicio sin nombre'}
+                      </span>
+                    </p>
+
+                    <p className="text-[9px] text-slate-500 font-mono mt-0.5">
+                      {srv.fecha || 'Fecha N/A'} - {srv.hora || 'Hora N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-xs font-extrabold ${esPendiente ? 'text-amber-600' : srv.esDeEstablecimiento ? 'text-emerald-700' : 'text-blue-600'}`}>
+                      {esPendiente ? '$0 COP' : `+${gananciaServicio.toLocaleString()} COP`}
+                    </p>
+                    <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
+                    
+                    {(srv.porcentajeValor || srv.comisionPorcentaje) && (
+                      <span className={`inline-block mt-0.5 text-[9px] px-1.5 py-0.2 rounded font-medium border ${
+                        esPendiente
+                          ? 'bg-amber-100 text-amber-800 border-amber-200'
+                          : srv.esDeEstablecimiento 
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {srv.porcentajeValor || srv.comisionPorcentaje}%
+                      </span>
+                    )}
+                  </div>
+
+                  {!srv.esDeEstablecimiento && (
+                    <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
+                      <button 
+                        onClick={() => abrirModalEditar(srv)}
+                        title="Editar servicio"
+                        className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200 cursor-pointer"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setServicioAEliminar(srv);
+                          setModalEliminarOpen(true);
+                        }}
+                        title="Eliminar servicio"
+                        className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200 cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            );
+          })
       ) : (
+        <div className="py-8 text-center text-slate-500 text-xs font-medium">
+          No hay servicios manuales registrados en este período.
+        </div>
+      )}
+    </div>
+  </div>
+)  : (
         <div className="bg-white border border-blue-100 rounded-2xl overflow-hidden shadow-sm">
           <div className="p-3 border-b border-blue-50 flex justify-between items-center bg-blue-50/50">
             <h3 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
