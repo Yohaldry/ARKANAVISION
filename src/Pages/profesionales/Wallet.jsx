@@ -47,7 +47,7 @@ const [exitoModalOpen, setExitoModalOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
   const [servicioAEliminar, setServicioAEliminar] = useState(null);
   const [barberData, setBarberData] = useState(null);
-
+const [citasEstablecimiento, setCitasEstablecimiento] = useState([]);
   const [modalEgresosAbierto, setModalEgresosAbierto] = useState(false);
 const [modalPropinasAbierto, setModalPropinasAbierto] = useState(false);
 
@@ -168,6 +168,7 @@ const totalPropinasCalculado = (listaPropinas || []).reduce(
       console.error("Error al obtener servicios de Firebase:", error);
     }
   };
+  
 
   const obtenerCitasFinalizadas = async () => {
     try {
@@ -193,109 +194,119 @@ const totalPropinasCalculado = (listaPropinas || []).reduce(
     }
   };
 useEffect(() => {
-  let unsubscribeServicios = null;
-  let unsubscribeProfesional = null;
-  let unsubscribeEgresos = null;
-  let unsubscribePropinas = null;
+    let unsubscribeServicios = null;
+    let unsubscribeProfesional = null;
+    let unsubscribeEgresos = null;
+    let unsubscribePropinas = null;
+    let unsubscribeCitasEstablecimiento = null; // 👈 Nuevo listener para citas
 
-  const unsubscribe = auth.onAuthStateChanged(async (user) => {
-    if (user) {
-      console.log("Usuario autenticado UID:", user.uid);
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        console.log("Usuario autenticado UID:", user.uid);
 
-      obtenerServicios();
-      obtenerCitasFinalizadas();
-      obtenerServiciosDisponibles();
+        obtenerServicios();
+        obtenerCitasFinalizadas();
+        obtenerServiciosDisponibles();
 
-      // Listener para servicios
-      const qServicios = query(
-        collection(db, "servicios"), 
-        where("barberoId", "==", user.uid)
-      );
+        // 1. Listener para citas del establecimiento en tiempo real asignadas al barbero
+        const qCitas = query(
+          collection(db, "citas"), 
+          where("barberoId", "==", user.uid)
+        );
 
-      unsubscribeServicios = onSnapshot(qServicios, (snapshot) => {
-        const listaServicios = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setServiciosFirebase(listaServicios);
-      });
+        unsubscribeCitasEstablecimiento = onSnapshot(qCitas, (snapshot) => {
+          const listaCitas = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setCitasEstablecimiento(listaCitas);
+        });
 
-      // Listener para egresos en tiempo real
-      const qEgresos = query(
-        collection(db, "egresos"),
-        where("barberoId", "==", user.uid)
-      );
-      unsubscribeEgresos = onSnapshot(qEgresos, (snapshot) => {
-        const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setListaEgresos(lista);
-      });
+        // 2. Listener para servicios internos
+        const qServicios = query(
+          collection(db, "servicios"), 
+          where("barberoId", "==", user.uid)
+        );
 
-      // Listener para propinas en tiempo real
-      const qPropinas = query(
-        collection(db, "propinas"),
-        where("barberoId", "==", user.uid)
-      );
-      unsubscribePropinas = onSnapshot(qPropinas, (snapshot) => {
-        const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setListaPropinas(lista);
-      });
+        unsubscribeServicios = onSnapshot(qServicios, (snapshot) => {
+          const listaServicios = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setServiciosFirebase(listaServicios);
+        });
 
-      // Listener directo al documento del profesional usando su UID como ID de documento
-      const docRef = doc(db, "profesionales", user.uid);
+        // 3. Listener para egresos en tiempo real
+        const qEgresos = query(
+          collection(db, "egresos"),
+          where("barberoId", "==", user.uid)
+        );
+        unsubscribeEgresos = onSnapshot(qEgresos, (snapshot) => {
+          const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setListaEgresos(lista);
+        });
 
-      unsubscribeProfesional = onSnapshot(docRef, async (docSnap) => {
-        if (docSnap.exists()) {
-          const dataBarbero = docSnap.data();
-          console.log("Datos del profesional obtenidos directamente:", dataBarbero);
-          
-          // Guardar datos del barbero y buscar nombre del establecimiento si está vinculado
-          let infoBarbero = { ...dataBarbero };
-          if (dataBarbero.establecimientoId) {
-            try {
-              const estabDocRef = doc(db, "establecimientos", dataBarbero.establecimientoId);
-              const estabSnap = await getDoc(estabDocRef);
-              if (estabSnap.exists()) {
-                const estabData = estabSnap.data();
-                infoBarbero.establecimientoNombre = estabData.nombre || estabData.nombreEstablecimiento || "Establecimiento Socio";
+        // 4. Listener para propinas en tiempo real
+        const qPropinas = query(
+          collection(db, "propinas"),
+          where("barberoId", "==", user.uid)
+        );
+        unsubscribePropinas = onSnapshot(qPropinas, (snapshot) => {
+          const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setListaPropinas(lista);
+        });
+
+        // 5. Listener directo al documento del profesional
+        const docRef = doc(db, "profesionales", user.uid);
+        unsubscribeProfesional = onSnapshot(docRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            const dataBarbero = docSnap.data();
+            let infoBarbero = { ...dataBarbero };
+            
+            if (dataBarbero.establecimientoId) {
+              try {
+                const estabDocRef = doc(db, "establecimientos", dataBarbero.establecimientoId);
+                const estabSnap = await getDoc(estabDocRef);
+                if (estabSnap.exists()) {
+                  const estabData = estabSnap.data();
+                  infoBarbero.establecimientoNombre = estabData.nombre || estabData.nombreEstablecimiento || "Establecimiento Socio";
+                }
+              } catch (err) {
+                console.error("Error al obtener nombre del establecimiento:", err);
               }
-            } catch (err) {
-              console.error("Error al obtener nombre del establecimiento:", err);
+            }
+            setBarberData(infoBarbero);
+            
+            const porcentajeFirestore = dataBarbero.porcentaje;
+            if (porcentajeFirestore !== undefined && porcentajeFirestore !== null) {
+              setNuevoServicio(prev => ({
+                ...prev,
+                porcentajeBarberForm: porcentajeFirestore
+              }));
             }
           }
-          setBarberData(infoBarbero);
-          
-          const porcentajeFirestore = dataBarbero.porcentaje;
-          console.log("Valor del campo 'porcentaje':", porcentajeFirestore);
+        });
 
-          if (porcentajeFirestore !== undefined && porcentajeFirestore !== null) {
-            setNuevoServicio(prev => ({
-              ...prev,
-              porcentajeBarberForm: porcentajeFirestore
-            }));
-          }
-        } else {
-          console.warn("No existe un documento en 'profesionales' con el ID:", user.uid);
-        }
-      });
+      } else {
+        if (unsubscribeServicios) unsubscribeServicios();
+        if (unsubscribeProfesional) unsubscribeProfesional();
+        if (unsubscribeEgresos) unsubscribeEgresos();
+        if (unsubscribePropinas) unsubscribePropinas();
+        if (unsubscribeCitasEstablecimiento) unsubscribeCitasEstablecimiento();
+        setLoading(false);
+        setLoadingCitas(false);
+      }
+    });
 
-    } else {
+    return () => {
+      unsubscribe();
       if (unsubscribeServicios) unsubscribeServicios();
       if (unsubscribeProfesional) unsubscribeProfesional();
       if (unsubscribeEgresos) unsubscribeEgresos();
       if (unsubscribePropinas) unsubscribePropinas();
-      setLoading(false);
-      setLoadingCitas(false);
-    }
-  });
-
-  return () => {
-    unsubscribe();
-    if (unsubscribeServicios) unsubscribeServicios();
-    if (unsubscribeProfesional) unsubscribeProfesional();
-    if (unsubscribeEgresos) unsubscribeEgresos();
-    if (unsubscribePropinas) unsubscribePropinas();
-  };
-}, []);
+      if (unsubscribeCitasEstablecimiento) unsubscribeCitasEstablecimiento();
+    };
+  }, []);
 
   const parsearPrecioCita = (cita) => {
     const valorBruto = cita.precioTotal || cita.precio || cita.total || cita.costo || cita.valor;
@@ -475,12 +486,33 @@ useEffect(() => {
     });
   };
 
-  const serviciosFiltrados = filtrarServiciosPorTiempo(servicios);
+  // Combinamos los servicios manuales de la wallet con las citas que vienen del establecimiento
+ // Combinamos los servicios manuales con las citas del establecimiento
+  const citasComoServicios = (citasEstablecimiento || []).map(c => ({
+    id: c.id,
+    cliente: c.clienteNombre,
+    servicio: c.servicio,
+    total: c.precioTotal,
+    ganancias: c.valorComision,
+    porcentajeValor: c.comisionPorcentaje,
+    fecha: c.fecha,
+    hora: c.hora || '00:00',
+    esDeEstablecimiento: true
+  }));
+
+  const todosLosIngresos = [...servicios, ...citasComoServicios];
+
+
+  // Filtramos usando tu misma lógica de tiempo con la lista unida
+  const serviciosFiltrados = filtrarServiciosPorTiempo(todosLosIngresos);
+  
   const totalWallet = serviciosFiltrados.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
+  
   const gananciaBarbero = serviciosFiltrados.reduce((acc, item) => {
     const gananciaItem = item.ganancias !== undefined ? Number(item.ganancias) : ((Number(item.total) || 0) * (Number(porcentajeBarbero) || 0) / 100);
     return acc + gananciaItem;
   }, 0);
+
 
   const citasFiltradas = filtrarServiciosPorTiempo(citasFinalizadas);
   const totalDomicilios100 = citasFiltradas.reduce((acc, item) => acc + parsearPrecioCita(item), 0);
@@ -533,7 +565,7 @@ useEffect(() => {
             <WalletIcon className="text-blue-600" size={20} /> 
             Billetera y Gestión
           </h1>
-          <p className="text-slate-500 text-[10px] sm:text-xs">Control de porcentajes y servicios a domicilio.</p>
+          <p className="text-slate-500 text-[10px] sm:text-xs">Control de porcentajes.</p>
         </div>
        {/* Etiqueta de Establecimiento Administrador compacta */}
 
@@ -585,10 +617,11 @@ useEffect(() => {
       </div>
 
       {vistaTab === 'manual' && (() => {
-        const obtenerDatosDiario = (diaInicio, diaFin) => {
+       const obtenerDatosDiario = (diaInicio, diaFin) => {
           const dias = [];
           for (let d = diaInicio; d <= diaFin; d++) {
-            const serviciosDia = servicios.filter(s => {
+            // 👇 Aquí cambiamos 'servicios' por 'todosLosIngresos'
+            const serviciosDia = todosLosIngresos.filter(s => {
               const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
               if (!rawFecha) return false;
               
@@ -657,96 +690,99 @@ useEffect(() => {
         return (
           <>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <div 
-                onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
-                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
-              >
-                <div className="flex justify-between items-center mb-1 relative z-10">
-                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
-                    <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
-                  </span>
-                  {esPrimeraQuincenaActiva && <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full animate-ping shadow-sm"></span>}
-                </div>
-                
-                <div className="h-7 w-full my-1 relative z-10 flex items-center">
-                  <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
-                    <defs>
-                      <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <path d={q1Grafico.areaD} fill="url(#gradQ1)" />
-                    <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    {q1Grafico.puntos.map((pt, i) => (
-                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
-                    ))}
-                  </svg>
-                </div>
+  {/* 1RA QUINCENA (1-15) */}
+  <div 
+    onClick={() => setQuincenaActivaModal({ titulo: '1ra Quincena (1-15)', datos: datosQ1, total: totalRealQ1, serv: totalServiciosQ1, grafico: q1Grafico })}
+    className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+  >
+    <div className="flex justify-between items-center mb-1 relative z-10">
+      <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+        <Layers size={11} className="text-blue-600" /> 1ra Quincena (1-15)
+      </span>
+      {esPrimeraQuincenaActiva && <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full animate-ping shadow-sm"></span>}
+    </div>
+    
+    <div className="h-7 w-full my-1 relative z-10 flex items-center">
+      <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
+        <defs>
+          <linearGradient id="gradQ1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        {q1Grafico?.areaD && <path d={q1Grafico.areaD} fill="url(#gradQ1)" />}
+        {q1Grafico?.pathD && <path d={q1Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
+        {q1Grafico?.puntos?.map((pt, i) => (
+          <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
+        ))}
+      </svg>
+    </div>
 
-                <div className="flex items-center justify-between relative z-10">
-                  <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-extrabold text-blue-950">
-                      {mostrarQ1 ? `$${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
-                    </span>
-                    <button 
-                      onClick={handleToggleQ1}
-                      className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
-                      title={mostrarQ1 ? "Ocultar monto" : "Ver monto"}
-                    >
-                      {mostrarQ1 ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
+    <div className="flex items-center justify-between relative z-10">
+      <span className="text-xs text-slate-600 font-medium">{totalServiciosQ1} serv.</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-extrabold text-blue-950">
+          {mostrarQ1 ? `$${totalRealQ1.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
+        </span>
+        <button 
+          onClick={handleToggleQ1}
+          className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
+          title={mostrarQ1 ? "Ocultar monto" : "Ver monto"}
+        >
+          {mostrarQ1 ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  </div>
 
-              <div 
-                onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
-                className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
-              >
-                <div className="flex justify-between items-center mb-1 relative z-10">
-                  <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
-                    <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
-                  </span>
-                  {!esPrimeraQuincenaActiva && <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">ACTUAL</span>}
-                </div>
+  {/* 2DA QUINCENA (16-FIN) */}
+  <div 
+    onClick={() => setQuincenaActivaModal({ titulo: `2da Quincena (16-${ultimoDiaMes})`, datos: datosQ2, total: totalRealQ2, serv: totalServiciosQ2, grafico: q2Grafico })}
+    className={`p-2.5 rounded-xl border transition-all relative overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-md ${!esPrimeraQuincenaActiva ? 'bg-blue-50/90 border-blue-400 shadow-sm' : 'bg-white border-slate-200 opacity-80'}`}
+  >
+    <div className="flex justify-between items-center mb-1 relative z-10">
+      <span className="text-[10px] font-bold tracking-wider uppercase text-blue-900 flex items-center gap-1">
+        <Layers size={11} className="text-blue-600" /> 2da Quincena (16-{ultimoDiaMes})
+      </span>
+      {/* Se reemplaza la etiqueta 'ACTUAL' por el mismo círculo intermitente de la 1ra quincena */}
+      {!esPrimeraQuincenaActiva && <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full animate-ping shadow-sm"></span>}
+    </div>
 
-                <div className="h-7 w-full my-1 relative z-10 flex items-center">
-                  <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
-                    <defs>
-                      <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <path d={q2Grafico.areaD} fill="url(#gradQ2)" />
-                    <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    {q2Grafico.puntos.map((pt, i) => (
-                      <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
-                    ))}
-                  </svg>
-                </div>
+    <div className="h-7 w-full my-1 relative z-10 flex items-center">
+      <svg viewBox="0 0 120 26" className="w-full h-full overflow-visible">
+        <defs>
+          <linearGradient id="gradQ2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        {q2Grafico?.areaD && <path d={q2Grafico.areaD} fill="url(#gradQ2)" />}
+        {q2Grafico?.pathD && <path d={q2Grafico.pathD} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
+        {q2Grafico?.puntos?.map((pt, i) => (
+          <circle key={i} cx={pt.x} cy={pt.y} r={pt.monto > 0 ? 3.5 : 1} className={pt.monto > 0 ? 'fill-blue-600 ring-2 ring-blue-200' : 'fill-blue-400/20'} />
+        ))}
+      </svg>
+    </div>
 
-                <div className="flex items-center justify-between relative z-10">
-                  <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-extrabold text-blue-950">
-                      {mostrarQ2 ? `$${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
-                    </span>
-                    <button 
-                      onClick={handleToggleQ2}
-                      className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
-                      title={mostrarQ2 ? "Ocultar monto" : "Ver monto"}
-                    >
-                      {mostrarQ2 ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="flex items-center justify-between relative z-10">
+      <span className="text-xs text-slate-600 font-medium">{totalServiciosQ2} serv.</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-extrabold text-blue-950">
+          {mostrarQ2 ? `$${totalRealQ2.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '••••••'}
+        </span>
+        <button 
+          onClick={handleToggleQ2}
+          className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100/50 transition cursor-pointer"
+          title={mostrarQ2 ? "Ocultar monto" : "Ver monto"}
+        >
+          {mostrarQ2 ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
-       {quincenaActivaModal && (() => {
+      {quincenaActivaModal && (() => {
     const modalGrafico = generarPathYCoordenadas(quincenaActivaModal.datos, 300, 100);
     
     // Obtener la fecha actual para comparar los días en 0
@@ -795,6 +831,54 @@ useEffect(() => {
                 <p className="text-lg font-bold text-slate-800">{quincenaActivaModal.serv} serv.</p>
               </div>
             </div>
+
+            {/* TARJETAS DE EGRESOS Y PROPINAS DE LA QUINCENA (CORREGIDO CON LISTAEGRESOS Y LISTAPROPINAS) */}
+            {(() => {
+              // Obtenemos los días que abarca esta quincena activa
+              const diasQuincena = quincenaActivaModal.datos.map(d => d.dia);
+              
+              // Filtramos los egresos usando listaEgresos y validando fechaHora
+              const egresosQuincena = (listaEgresos || []).filter(e => {
+                const rawFecha = e.fechaHora || e.fecha || e.date || e.createdAt;
+                if (!rawFecha) return false;
+                const fechaObj = new Date(rawFecha);
+                if (isNaN(fechaObj.getTime())) return false;
+                return (
+                  diasQuincena.includes(fechaObj.getDate()) &&
+                  fechaObj.getMonth() === mesActual &&
+                  fechaObj.getFullYear() === anioActual
+                );
+              });
+
+              // Filtramos las propinas usando listaPropinas y validando fechaHora
+              const propinasQuincena = (listaPropinas || []).filter(p => {
+                const rawFecha = p.fechaHora || p.fecha || p.date || p.createdAt;
+                if (!rawFecha) return false;
+                const fechaObj = new Date(rawFecha);
+                if (isNaN(fechaObj.getTime())) return false;
+                return (
+                  diasQuincena.includes(fechaObj.getDate()) &&
+                  fechaObj.getMonth() === mesActual &&
+                  fechaObj.getFullYear() === anioActual
+                );
+              });
+
+              const totalEgresosQ = egresosQuincena.reduce((acc, curr) => acc + (Number(curr.monto || curr.valor || curr.total) || 0), 0);
+              const totalPropinasQ = propinasQuincena.reduce((acc, curr) => acc + (Number(curr.monto || curr.valor || curr.total) || 0), 0);
+
+              return (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-rose-50/70 border border-rose-100 p-3 rounded-xl">
+                    <p className="text-[10px] text-rose-600 font-bold uppercase">Total Egresos</p>
+                    <p className="text-base font-black text-rose-900 mt-0.5">${totalEgresosQ.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-amber-50/70 border border-amber-100 p-3 rounded-xl">
+                    <p className="text-[10px] text-amber-600 font-bold uppercase">Total Propinas</p>
+                    <p className="text-base font-black text-amber-900 mt-0.5">${totalPropinasQ.toLocaleString()}</p>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* SVG del Gráfico con Línea de Meta y Globito */}
             <div className="h-32 w-full pt-4 relative">
@@ -954,7 +1038,7 @@ useEffect(() => {
 
         {/* Modal de Detalle de Día */}
         {diaSeleccionadoModal !== null && (() => {
-          const serviciosDelDia = servicios.filter(s => {
+          const serviciosDelDia = diaSeleccionadoModal !== null ? todosLosIngresos.filter(s => {
             const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
             if (!rawFecha) return false;
             
@@ -977,12 +1061,12 @@ useEffect(() => {
               }
             }
             return dS === diaSeleccionadoModal && mS === mesActual && aS === anioActual;
-          });
+          }) : [];
 
           const totalGananciasDia = serviciosDelDia.reduce((acc, curr) => {
             const val = (curr.ganancias !== undefined && !isNaN(Number(curr.ganancias))) 
               ? Number(curr.ganancias) 
-              : (Number(curr.total) || 0);
+              : (Number(curr.total) || Number(curr.precio) || Number(curr.valor) || 0);
             return acc + val;
           }, 0);
 
@@ -1018,18 +1102,45 @@ useEffect(() => {
                     serviciosDelDia.map((srv, i) => {
                       const gananciaServicio = Number(srv.ganancias) || Number(srv.total) || 0;
                       const totalServicio = Number(srv.total) || 0;
+                      const esAutomatico = Boolean(srv.esDeEstablecimiento);
+
                       return (
-                        <div key={i} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-2 hover:border-blue-400 transition-all">
+                        <div 
+                          key={i} 
+                          className={`border p-3.5 rounded-xl space-y-2 transition-all ${
+                            esAutomatico 
+                              ? 'bg-emerald-50/40 border-emerald-300 hover:border-emerald-500' 
+                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'       
+                          }`}
+                        >
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-xs font-bold text-blue-900 block">{srv.servicio || 'Servicio sin nombre'}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                <span className={`text-xs font-bold block ${esAutomatico ? 'text-emerald-950' : 'text-blue-900'}`}>
+                                  {srv.servicio || 'Servicio sin nombre'}
+                                </span>
+                                
+                                {esAutomatico ? (
+                                  <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                                    Automático 🏢
+                                  </span>
+                                ) : (
+                                  <span className="bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                                    Manual ✍️
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-xs text-slate-600 font-medium">Cliente: {srv.cliente || 'General'}</span>
                             </div>
+
                             <div className="text-right">
-                              <span className="text-xs font-extrabold text-blue-600 block">+${gananciaServicio.toLocaleString()}</span>
+                              <span className={`text-xs font-extrabold block ${esAutomatico ? 'text-emerald-700' : 'text-blue-600'}`}>
+                                +${gananciaServicio.toLocaleString()}
+                              </span>
                               <span className="text-[10px] text-slate-400">Total: ${totalServicio.toLocaleString()}</span>
                             </div>
                           </div>
+
                           <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-200 pt-2 font-mono">
                             <span>Hora: {srv.hora || 'N/A'}</span>
                             {srv.porcentajeValor && <span>Comisión: {srv.porcentajeValor}%</span>}
@@ -1125,8 +1236,52 @@ useEffect(() => {
 
   const tieneMetaDefinida = barberData?.metaDiaria !== undefined && barberData?.metaDiaria !== null && barberData?.metaDiaria !== '';
   const metaActual = tieneMetaDefinida ? Number(barberData.metaDiaria) : 150000;
-  const porcentajeProgreso = tieneMetaDefinida ? Math.min(100, Math.max(0, (gananciaBarbero / metaActual) * 100)) : 0;
-  const diferenciaMeta = gananciaBarbero - metaActual;
+
+  // 1. CÁLCULO EXCLUSIVO PARA EL DÍA ACTUAL (Para la meta y el mensaje de Faltan / Sobre la meta)
+  const gananciaDiaActual = todosLosIngresos
+    .filter(s => {
+      const rawFecha = s.fecha || s.date || s.createdAt || s.created_at;
+      if (!rawFecha) return false;
+      return String(rawFecha).split('T')[0] === hoyStr;
+    })
+    .reduce((acc, item) => {
+      const gananciaItem = item.ganancias !== undefined ? Number(item.ganancias) : ((Number(item.total) || 0) * (Number(porcentajeBarbero) || 0) / 100);
+      return acc + gananciaItem;
+    }, 0);
+
+  const porcentajeProgreso = tieneMetaDefinida ? Math.min(100, Math.max(0, (gananciaDiaActual / metaActual) * 100)) : 0;
+  const diferenciaMetaDiaActual = gananciaDiaActual - metaActual;
+
+  // 2. CÁLCULO DE EGRESOS Y PROPINAS SEGÚN EL FILTRO DE TIEMPO SELECCIONADO (Para los círculos)
+  const filtrarPorTiempoActual = (lista) => {
+    return (lista || []).filter(item => {
+      const rawFecha = item.fechaHora || item.fecha || item.date || item.createdAt;
+      if (!rawFecha) return false;
+      const fechaItemStr = String(rawFecha).split('T')[0];
+      const fechaItemObj = new Date(rawFecha);
+      if (isNaN(fechaItemObj.getTime())) return false;
+
+      if (filtroTiempo === 'dia') return fechaItemStr === hoyStr;
+      if (filtroTiempo === 'especifico') return fechaItemStr === fechaEspecifica;
+      if (filtroTiempo === 'rango') return fechaItemStr >= fechaInicio && fechaItemStr <= fechaFin;
+      if (filtroTiempo === 'semana') {
+        const primerDiaSemana = new Date(hoyObj);
+        primerDiaSemana.setDate(hoyObj.getDate() - hoyObj.getDay());
+        return fechaItemObj >= primerDiaSemana && fechaItemObj <= hoyObj;
+      } 
+      if (filtroTiempo === 'quincena') {
+        const inicio = new Date(anioActual, mesActual, esPrimeraQuincenaActiva ? 1 : 16);
+        const fin = new Date(anioActual, mesActual + 1, esPrimeraQuincenaActiva ? 16 : 0);
+        return fechaItemObj >= inicio && fechaItemObj <= fin;
+      } 
+      if (filtroTiempo === 'mes') return fechaItemObj.getMonth() === mesActual && fechaItemObj.getFullYear() === anioActual;
+      if (filtroTiempo === 'anio') return fechaItemObj.getFullYear() === anioActual;
+      return true;
+    });
+  };
+
+  const totalEgresosPeriodo = filtrarPorTiempoActual(listaEgresos).reduce((acc, item) => acc + (Number(item.monto) || 0), 0);
+  const totalPropinasPeriodo = filtrarPorTiempoActual(listaPropinas).reduce((acc, item) => acc + (Number(item.monto) || 0), 0);
 
   const obtenerMensajeDinamico = (porc, definida) => {
     if (!definida) return "⚠️ Establece tu meta";
@@ -1199,13 +1354,13 @@ useEffect(() => {
           <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
             ⚠️ Sin meta establecida
           </span>
-        ) : diferenciaMeta >= 0 ? (
+        ) : diferenciaMetaDiaActual >= 0 ? (
           <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block truncate">
-            🎉 +${diferenciaMeta.toLocaleString()} sobre la meta
+            🎉 +${diferenciaMetaDiaActual.toLocaleString()} sobre la meta (Hoy)
           </span>
         ) : (
           <span className="text-blue-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 inline-block truncate">
-            ⏳ Faltan ${Math.abs(diferenciaMeta).toLocaleString()}
+            ⏳ Faltan ${Math.abs(diferenciaMetaDiaActual).toLocaleString()}
           </span>
         )}
       </div>
@@ -1219,7 +1374,7 @@ useEffect(() => {
     {/* Columna Derecha: Grupo de Círculos (Meta, Egresos, Propinas) */}
     <div className="flex items-center gap-2 shrink-0">
       
-      {/* Círculo 1: Progreso / Meta */}
+      {/* Círculo 1: Progreso / Meta (Basado en el día actual) */}
       <div 
         className="relative flex flex-col items-center cursor-pointer group" 
         onClick={() => {
@@ -1256,12 +1411,12 @@ useEffect(() => {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
             <span className="text-[10px] font-black text-blue-950">{tieneMetaDefinida ? `${Math.round(porcentajeProgreso)}%` : '0%'}</span>
-            <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Meta</span>
+            <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Meta Hoy</span>
           </div>
         </div>
       </div>
 
-      {/* Círculo 2: Egresos (Rojo) */}
+      {/* Círculo 2: Egresos (Rojo) - Total del período seleccionado */}
       <div 
         className="relative flex flex-col items-center cursor-pointer group" 
         onClick={() => setModalEgresosAbierto(true)}
@@ -1292,13 +1447,13 @@ useEffect(() => {
             </defs>
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="text-[8px] font-black text-rose-950">-${totalEgresosCalculado || 0}</span>
+            <span className="text-[8px] font-black text-rose-950">-${totalEgresosPeriodo || 0}</span>
             <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Gastos</span>
           </div>
         </div>
       </div>
 
-      {/* Círculo 3: Propinas (Verde) */}
+      {/* Círculo 3: Propinas (Verde) - Total del período seleccionado */}
       <div 
         className="relative flex flex-col items-center cursor-pointer group" 
         onClick={() => setModalPropinasAbierto(true)}
@@ -1329,7 +1484,7 @@ useEffect(() => {
             </defs>
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="text-[8px] font-black text-emerald-950">+${totalPropinasCalculado || 0}</span>
+            <span className="text-[8px] font-black text-emerald-950">+${totalPropinasPeriodo || 0}</span>
             <span className="text-[6px] font-bold text-slate-400 uppercase tracking-tighter">Propinas</span>
           </div>
         </div>
@@ -1444,18 +1599,39 @@ useEffect(() => {
                   return (
                     <div 
                       key={srv.id || index}
-                      className="p-3 flex items-center justify-between hover:bg-blue-50/40 transition-colors group"
+                      className={`p-3 flex items-center justify-between transition-colors group ${
+                        srv.esDeEstablecimiento 
+                          ? 'bg-emerald-50/50 hover:bg-emerald-50/90 border-l-4 border-l-emerald-500' // Fondo verde sutil y borde si viene del negocio
+                          : 'hover:bg-blue-50/40'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0 border border-blue-200">
+                        <div className={`p-2 rounded-xl flex-shrink-0 border ${
+                          srv.esDeEstablecimiento 
+                            ? 'bg-emerald-100 text-emerald-700 border-emerald-300' 
+                            : 'bg-blue-50 text-blue-600 border-blue-200'
+                        }`}>
                           <Calendar size={16} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-blue-950">{srv.cliente || 'General'}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-bold text-slate-900">{srv.cliente || 'General'}</p>
+                            
+                            {/* Etiqueta Automático para los que vienen del establecimiento */}
+                            {srv.esDeEstablecimiento && (
+                              <span className="bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-2xs tracking-wider uppercase">
+                                Automático 🏢
+                              </span>
+                            )}
+                          </div>
+
                           <p className="text-[7px] text-slate-600 font-medium">
-  Servicio: <span className="text-blue-700 font-semibold">{srv.servicio || 'Servicio sin nombre'}</span>
-</p>
-                          <p className="text-[9px] text-blue-500 font-mono mt-0.5">
+                            Servicio: <span className={`font-semibold ${srv.esDeEstablecimiento ? 'text-emerald-800' : 'text-blue-700'}`}>
+                              {srv.servicio || 'Servicio sin nombre'}
+                            </span>
+                          </p>
+
+                          <p className="text-[9px] text-slate-500 font-mono mt-0.5">
                             {srv.fecha || 'Fecha N/A'} • {srv.hora || 'Hora N/A'}
                           </p>
                         </div>
@@ -1463,34 +1639,44 @@ useEffect(() => {
 
                       <div className="flex items-center gap-3">
                         <div className="text-right flex-shrink-0">
-                          <p className="text-xs font-extrabold text-blue-600">+${gananciaServicio.toLocaleString()} COP</p>
+                          <p className={`text-xs font-extrabold ${srv.esDeEstablecimiento ? 'text-emerald-700' : 'text-blue-600'}`}>
+                            +${gananciaServicio.toLocaleString()} COP
+                          </p>
                           <p className="text-[10px] text-slate-500">Total: ${totalServicio.toLocaleString()}</p>
+                          
                           {srv.porcentajeValor && (
-                            <span className="inline-block mt-0.5 text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium border border-blue-200">
+                            <span className={`inline-block mt-0.5 text-[9px] px-1.5 py-0.2 rounded font-medium border ${
+                              srv.esDeEstablecimiento 
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
                               {srv.porcentajeValor}%
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
-                          <button 
-                            onClick={() => abrirModalEditar(srv)}
-                            title="Editar servicio"
-                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200 cursor-pointer"
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setServicioAEliminar(srv);
-                              setModalEliminarOpen(true);
-                            }}
-                            title="Eliminar servicio"
-                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200 cursor-pointer"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                        {/* Si es automático del negocio, ocultamos los botones de edición manual para mantener la integridad */}
+                        {!srv.esDeEstablecimiento && (
+                          <div className="flex items-center gap-1.5 border-l border-blue-100 pl-2.5">
+                            <button 
+                              onClick={() => abrirModalEditar(srv)}
+                              title="Editar servicio"
+                              className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200 cursor-pointer"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setServicioAEliminar(srv);
+                                setModalEliminarOpen(true);
+                              }}
+                              title="Eliminar servicio"
+                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200 cursor-pointer"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

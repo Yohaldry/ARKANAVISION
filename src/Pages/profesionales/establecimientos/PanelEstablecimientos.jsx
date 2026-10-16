@@ -590,7 +590,7 @@ const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
         </div>
 
         <nav className="flex-1 px-3 space-y-1.5 mt-8">
-          <button 
+        {/*  <button 
             onClick={() => setSeccionActiva('agenda')}
             className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer ${
               seccionActiva === 'agenda' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50 hover:text-blue-600'
@@ -601,7 +601,8 @@ const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
               Agenda Matriz
             </span>
           </button>
-
+          
+*/}
           <button 
             onClick={() => setSeccionActiva('servicios')}
             className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer ${
@@ -638,7 +639,7 @@ const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
             </span>
           </button>
 
-          <button 
+        {/*  <button 
             onClick={() => setSeccionActiva('inventario')}
             className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer ${
               seccionActiva === 'inventario' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50 hover:text-blue-600'
@@ -649,6 +650,7 @@ const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
               Inventario
             </span>
           </button>
+          */}
         </nav>
 
         <div className="px-3">
@@ -702,7 +704,7 @@ const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
               <span>Vincular Profesional</span>
             </button>
 
-            <div className="hidden lg:flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
+        {/*    <div className="hidden lg:flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
               <Globe className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-[10px] text-slate-600 font-bold">Link Clientes:</span>
               <button
@@ -731,7 +733,9 @@ const handleAbrirModalCita = (prof, horaLabel, e, bloqueoEspecifico = null) => {
               <span className="text-slate-500 font-bold">Admin:</span>
               <span className="text-blue-950 font-bold">{authUser?.email}</span>
             </div>
+             */}
           </div>
+         
         </header>
 
         <main className="flex-1 p-6 max-w-[1700px] mx-auto w-full space-y-4">
