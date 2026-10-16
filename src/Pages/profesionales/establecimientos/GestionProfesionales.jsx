@@ -15,7 +15,7 @@ export default function GestionProfesionales({ establecimientoId }) {
   const [precioManual, setPrecioManual] = useState('');
   const hoyStr = new Date().toISOString().split('T')[0];
   const [fechaSeleccionada, setFechaSeleccionada] = useState(hoyStr);
-
+const [estadoCita, setEstadoCita] = useState('pendiente');
   // Drag & Drop States
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -53,6 +53,34 @@ export default function GestionProfesionales({ establecimientoId }) {
   // Modal Detalle Cita
   const [modalDetalleCitaOpen, setModalDetalleCitaOpen] = useState(false);
   const [citaDetalle, setCitaDetalle] = useState(null);
+
+  // Función para cambiar el estado de la cita únicamente a "pagado" (ya no regresa a pendiente)
+  const marcarComoPagado = async (e, cita) => {
+    e.stopPropagation(); // Evita que se abra el modal de detalle al hacer clic en el botón
+    if (cita.estado === 'pagado') return; // Si ya está pagado, no hace nada
+
+    try {
+      await updateDoc(doc(db, 'citas', cita.id), { estado: 'pagado' });
+      setSuccessMsg('✅ Servicio marcado como pagado.');
+      setTimeout(() => setSuccessMsg(''), 2000);
+    } catch (err) {
+      setErrorMsg('No se pudo actualizar el estado de pago.');
+      setTimeout(() => setErrorMsg(''), 2000);
+    }
+  };
+
+  const toggleEstadoPago = async (e, cita) => {
+    e.stopPropagation(); // Evita que se abra el modal de detalle al hacer clic en el botón
+    const nuevoEstado = cita.estado === 'pagado' ? 'pendiente' : 'pagado';
+    try {
+      await updateDoc(doc(db, 'citas', cita.id), { estado: nuevoEstado });
+      setSuccessMsg(nuevoEstado === 'pagado' ? '✅ Servicio marcado como pagado.' : '⚠️ Servicio marcado como pendiente.');
+      setTimeout(() => setSuccessMsg(''), 2000);
+    } catch (err) {
+      setErrorMsg('No se pudo actualizar el estado de pago.');
+      setTimeout(() => setErrorMsg(''), 2000);
+    }
+  };
 
   useEffect(() => {
     if (!targetId) return;
@@ -183,6 +211,7 @@ export default function GestionProfesionales({ establecimientoId }) {
         metodoPago,
         esCorazon: Boolean(esCorazon),
         fecha: fechaSeleccionada,
+        estado: estadoCita || 'pendiente',
         hora: horaStr,
         updatedAt: ahora.toISOString(),
         estado: 'completada'
@@ -271,6 +300,18 @@ export default function GestionProfesionales({ establecimientoId }) {
   return (
     <div className="space-y-3 text-[11px] text-slate-800 pb-8 px-2 sm:px-4 bg-slate-50 min-h-screen" style={{ fontFamily: 'Arial, sans-serif' }}>
       
+      {/* Estilo CSS inyectado para el destello suave verde */}
+      <style>{`
+        @keyframes destelloVerde {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); border-color: rgba(16, 185, 129, 0.6); }
+          50% { box-shadow: 0 0 15px 4px rgba(16, 185, 129, 0.35); border-color: rgba(16, 185, 129, 1); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); border-color: rgba(16, 185, 129, 0.6); }
+        }
+        .card-en-turno {
+          animation: destelloVerde 2.5s infinite ease-in-out;
+        }
+      `}</style>
+
       {successMsg && <div className="p-2 rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-950 text-[10px] flex gap-1.5 items-center shadow-2xs"><CheckCircle2 className="w-4 h-4 text-cyan-600 shrink-0" /><span className="font-bold">{successMsg}</span></div>}
       {errorMsg && <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-950 text-[10px] flex gap-1.5 items-center shadow-2xs"><AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" /><span className="font-bold">{errorMsg}</span></div>}
 
@@ -299,110 +340,139 @@ export default function GestionProfesionales({ establecimientoId }) {
       </div>
 
       {/* 2. NÓMINA ACTIVA (PRIMERO) */}
-      <div className="bg-gradient-to-b from-sky-50 via-white to-sky-50 border border-blue-200 rounded-xl shadow-2xs overflow-hidden">
-        <div className="px-3.5 py-2 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 text-white flex items-center justify-between">
-          <h4 className="font-bold uppercase text-xs tracking-wide">Nómina Activa ({profesionalesPorVentas.length})</h4>
-          <span className="text-[9px] text-sky-100 font-bold">🏆 Ventas del día</span>
-        </div>
+    <div className="bg-gradient-to-b from-sky-50 via-white to-sky-50 border border-blue-200 rounded-xl shadow-2xs overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
+      <div className="px-3.5 py-2 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 text-white flex items-center justify-between">
+        <h4 className="font-bold uppercase text-xs tracking-wide">Nómina Activa ({profesionalesPorVentas.length})</h4>
+        <span className="text-[9px] text-sky-100 font-bold">🏆 Ventas del día</span>
+      </div>
 
-        {profesionalesPorVentas.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-[10px]">No hay profesionales activos en nómina.</div>
-        ) : (
-          <div className="p-2.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
-              {profesionalesPorVentas.map((prof, idx) => {
-                const esProximoTurno = siguienteTurno && String(siguienteTurno.id) === String(prof.id);
+      {profesionalesPorVentas.length === 0 ? (
+        <div className="p-8 text-center text-slate-400 text-[10px]">No hay profesionales activos en nómina.</div>
+      ) : (
+        <div className="p-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+            {profesionalesPorVentas.map((prof, idx) => {
+              const esProximoTurno = siguienteTurno && String(siguienteTurno.id) === String(prof.id);
 
-                return (
-                  <div 
-                    key={prof.id} 
-                    className={`bg-white border rounded-xl p-2.5 flex flex-col justify-between transition-all relative shadow-2xs ${
-                      esProximoTurno 
-                        ? 'border-emerald-500 ring-2 ring-emerald-400/20 shadow-emerald-500/10' 
-                        : 'border-blue-200 hover:border-blue-400'
-                    }`}
-                  >
-                    {esProximoTurno ? (
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-600 text-white font-bold text-[8px] px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 border border-white uppercase tracking-wider">
-                        <Play className="w-2.5 h-2.5 fill-white" /> En Turno
-                      </div>
-                    ) : (
-                      <div className="absolute top-1.5 right-1.5 bg-blue-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-full">
-                        #{idx + 1}
-                      </div>
-                    )}
+              return (
+                <div 
+                  key={prof.id} 
+                  className={`bg-white border rounded-xl p-2.5 flex flex-col justify-between transition-all relative shadow-2xs ${
+                    esProximoTurno 
+                      ? 'card-en-turno ring-2 ring-emerald-400/20' 
+                      : 'border-blue-200 hover:border-blue-400'
+                  }`}
+                >
+                  {esProximoTurno ? (
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-600 text-white font-bold text-[8px] px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 border border-white uppercase tracking-wider">
+                      <Play className="w-2.5 h-2.5 fill-white" /> En Turno
+                    </div>
+                  ) : (
+                    <div className="absolute top-1.5 right-1.5 bg-blue-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-full">
+                      #{idx + 1}
+                    </div>
+                  )}
 
-                    <div>
-                      {/* Cabecera Tarjeta */}
-                      <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-sky-100 mt-0.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 border ${
-                            esProximoTurno ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-gradient-to-tr from-sky-400 to-blue-600 text-white border-blue-300'
-                          }`}>
-                            {prof.foto ? <img src={prof.foto} alt="" className="w-full h-full object-cover rounded-lg" /> : prof.nombre.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <h5 className="font-bold text-blue-950 text-xs truncate uppercase">{prof.nombre}</h5>
-                            <span className="text-[8px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-bold border border-blue-100">Comisión: {prof.porcentaje}%</span>
-                          </div>
+                  <div>
+                    {/* Cabecera Tarjeta */}
+                    <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-sky-100 mt-0.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 border ${
+                          esProximoTurno ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-gradient-to-tr from-sky-400 to-blue-600 text-white border-blue-300'
+                        }`}>
+                          {prof.foto ? <img src={prof.foto} alt="" className="w-full h-full object-cover rounded-lg" /> : prof.nombre.charAt(0).toUpperCase()}
                         </div>
-
-                        {/* Botón Registrar Cita */}
-                        <button 
-                          onClick={() => { setProfesionalParaCita(prof); setEditandoCitaId(null); setClienteNombre(''); setClienteCodigo(''); setServiciosSeleccionadosIndices([]); setPrecioManual(''); setEsCorazon(false); setModalCitaOpen(true); }}
-                          className="w-7 h-7 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg font-bold text-sm flex items-center justify-center shadow-2xs transition-all cursor-pointer shrink-0"
-                          title="Registrar cita"
-                        >
-                          +
-                        </button>
+                        <div className="min-w-0">
+                          <h5 className="font-bold text-blue-950 text-xs truncate uppercase">{prof.nombre}</h5>
+                          <span className="text-[8px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-bold border border-blue-100">Comisión: {prof.porcentaje}%</span>
+                        </div>
                       </div>
 
-                      {/* Ventas y Comisión */}
-                      <div className="grid grid-cols-2 gap-1.5 my-2 bg-sky-50/60 p-1.5 rounded-lg border border-sky-100 text-center">
-                        <div><p className="text-[8px] font-bold text-slate-500 uppercase">Ventas</p><p className="text-[11px] font-bold text-blue-950">${prof.totalVentasHoy.toLocaleString()}</p></div>
-                        <div><p className="text-[8px] font-bold text-slate-500 uppercase">Comisión</p><p className="text-[11px] font-bold text-emerald-700">${prof.totalComisionHoy.toLocaleString()}</p></div>
-                      </div>
+                      {/* Botón Registrar Cita */}
+                      <button 
+                        onClick={() => { setProfesionalParaCita(prof); setEditandoCitaId(null); setClienteNombre(''); setClienteCodigo(''); setServiciosSeleccionadosIndices([]); setPrecioManual(''); setEsCorazon(false); setModalCitaOpen(true); }}
+                        className="w-7 h-7 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg font-bold text-sm flex items-center justify-center shadow-2xs transition-all cursor-pointer shrink-0"
+                        title="Registrar cita"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                      {/* Lista Citas Corta con Método de Pago */}
-                      <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Servicios ({prof.citasProf.length})</span>
-                        <div className="max-h-28 overflow-y-auto space-y-1 scrollbar-thin" onClick={e => e.stopPropagation()}>
-                          {prof.citasProf.length > 0 ? prof.citasProf.map(cita => (
-                            <div key={cita.id} onClick={() => { setCitaDetalle({ ...cita, profesionalNombre: prof.nombre, porcentajeProf: prof.porcentaje }); setModalDetalleCitaOpen(true); }} className="bg-white border border-sky-100 hover:border-blue-400 rounded-md px-2 py-1 text-[9px] flex items-center justify-between cursor-pointer shadow-3xs">
+                    {/* Ventas y Comisión */}
+                    <div className="grid grid-cols-2 gap-1.5 my-2 bg-sky-50/60 p-1.5 rounded-lg border border-sky-100 text-center">
+                      <div><p className="text-[8px] font-bold text-slate-500 uppercase">Ventas</p><p className="text-[11px] font-bold text-blue-950">${prof.totalVentasHoy.toLocaleString()}</p></div>
+                      <div><p className="text-[8px] font-bold text-slate-500 uppercase">Comisión</p><p className="text-[11px] font-bold text-emerald-700">${prof.totalComisionHoy.toLocaleString()}</p></div>
+                    </div>
+
+                    {/* Lista Citas Corta con Estado de Pago (Amarillo/Verde) */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">Servicios ({prof.citasProf.length})</span>
+                      <div className="max-h-28 overflow-y-auto space-y-1 scrollbar-thin" onClick={e => e.stopPropagation()}>
+                        {prof.citasProf.length > 0 ? prof.citasProf.map(cita => {
+                          const esPagado = cita.estado === 'pagado';
+
+                          return (
+                            <div 
+                              key={cita.id} 
+                              onClick={() => { setCitaDetalle({ ...cita, profesionalNombre: prof.nombre, porcentajeProf: prof.porcentaje }); setModalDetalleCitaOpen(true); }} 
+                              className={`border rounded-md px-2 py-1 text-[9px] flex items-center justify-between cursor-pointer shadow-3xs transition-all ${
+                                esPagado 
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
+                                  : 'bg-amber-50 border-amber-300 text-amber-950'
+                              }`}
+                            >
                               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                 {cita.esCorazon ? (
                                   <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" title="Corazón" />
                                 ) : (
                                   <span className="bg-blue-600 text-white font-bold text-[8px] px-1 py-0.2 rounded shrink-0">#{cita.numeroTurnoNormal}</span>
                                 )}
-                                <span className="font-bold text-slate-900 truncate max-w-[50px]" title={cita.servicio}>{cita.servicio}</span>
-                                {/* Indicador de Método de Pago */}
-                                <span className="text-[8px] bg-slate-100 text-slate-700 px-1 py-0.2 rounded font-bold border border-slate-200 shrink-0" title={`Pago: ${cita.metodoPago || 'efectivo'}`}>
-                                  {cita.metodoPago === 'tarjeta' ? '💳 Tarj.' : '💵 Efec.'}
+                                <span className="font-bold truncate max-w-[45px]" title={cita.servicio}>{cita.servicio}</span>
+                                
+                                <span className="text-[8px] bg-white/80 px-1 py-0.2 rounded font-bold border border-slate-200 shrink-0" title={`Pago: ${cita.metodoPago || 'efectivo'}`}>
+                                  {cita.metodoPago === 'tarjeta' ? '💳' : '💵'}
                                 </span>
                               </div>
+
                               <div className="flex items-center gap-1 shrink-0 ml-1">
-                                <span className="font-bold text-blue-800 text-[10px]">${parsearPrecio(cita.precioTotal).toLocaleString()}</span>
+                                <span className="font-bold text-[10px]">${parsearPrecio(cita.precioTotal).toLocaleString()}</span>
+                                
+                                {/* 🟡/🟢 Botón de estado (Chulito interactivo que solo marca como pagado) */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => marcarComoPagado(e, cita)}
+                                  title={esPagado ? "Ya está pagado" : "Pendiente (clic para marcar como pagado)"}
+                                  disabled={esPagado}
+                                  className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] transition-all ${
+                                    esPagado 
+                                      ? 'bg-emerald-600 text-white cursor-default shadow-2xs' 
+                                      : 'bg-amber-400 text-amber-950 hover:bg-amber-500 shadow-2xs animate-pulse cursor-pointer'
+                                  }`}
+                                >
+                                  ✓
+                                </button>
+
                                 <button onClick={(e) => { e.stopPropagation(); setProfesionalParaCita(prof); setEditandoCitaId(cita.id); setClienteNombre(cita.clienteNombre); setClienteCodigo(cita.clienteCodigo || ''); setMetodoPago(cita.metodoPago || 'efectivo'); setEsCorazon(Boolean(cita.esCorazon)); setServiciosSeleccionadosIndices(cita.serviciosIndices || []); setPrecioManual(cita.precioTotal ? String(cita.precioTotal) : ''); setModalCitaOpen(true); }} className="text-blue-600 hover:text-blue-800 p-0.5">✏️</button>
                                 <button onClick={(e) => { e.stopPropagation(); setCitaAEliminarId(cita.id); setModalEliminarCitaOpen(true); }} className="text-rose-600 hover:text-rose-800 p-0.5">🗑️</button>
                               </div>
                             </div>
-                          )) : <div className="text-center py-2 text-slate-400 text-[9px] italic border border-dashed border-sky-200 rounded-lg">Sin registros hoy</div>}
-                        </div>
+                          );
+                        }) : <div className="text-center py-2 text-slate-400 text-[9px] italic border border-dashed border-sky-200 rounded-lg">Sin registros hoy</div>}
                       </div>
                     </div>
-
-                    <div className="pt-2 mt-2 border-t border-sky-100 flex gap-1.5" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => { setProfesionalSeleccionado(prof); setNuevoPorcentaje(String(prof.porcentaje)); setNuevaEspecialidad(prof.especialidad || ''); setModalEditarOpen(true); }} className="flex-1 bg-sky-50 hover:bg-sky-100 text-blue-900 py-1 rounded-md text-[9px] font-bold flex items-center justify-center gap-1 border border-sky-200"><Edit3 className="w-3 h-3" /> Config</button>
-                      <button onClick={() => { setProfesionalADesvincular(prof); setModalDesvincularOpen(true); }} className="bg-rose-50 hover:bg-rose-100 text-rose-700 p-1 rounded-md border border-rose-200"><UserMinus className="w-3.5 h-3.5" /></button>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="pt-2 mt-2 border-t border-sky-100 flex gap-1.5" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => { setProfesionalSeleccionado(prof); setNuevoPorcentaje(String(prof.porcentaje)); setNuevaEspecialidad(prof.especialidad || ''); setModalEditarOpen(true); }} className="flex-1 bg-sky-50 hover:bg-sky-100 text-blue-900 py-1 rounded-md text-[9px] font-bold flex items-center justify-center gap-1 border border-sky-200"><Edit3 className="w-3 h-3" /> Config</button>
+                    <button onClick={() => { setProfesionalADesvincular(prof); setModalDesvincularOpen(true); }} className="bg-rose-50 hover:bg-rose-100 text-rose-700 p-1 rounded-md border border-rose-200"><UserMinus className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* 3. ORDEN DE LLEGADA Y PRÓXIMO TURNO EN LA FILA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
@@ -521,7 +591,7 @@ export default function GestionProfesionales({ establecimientoId }) {
       {/* MODAL REGISTRAR / EDITAR CITA */}
       {modalCitaOpen && profesionalParaCita && (
         <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white border border-blue-300 rounded-xl w-full max-w-md p-4 space-y-3 shadow-xl">
+          <div className="bg-white border border-blue-300 rounded-xl w-full max-w-md p-4 space-y-3 shadow-xl" style={{ fontFamily: 'Arial, sans-serif' }}>
             <div className="flex items-center justify-between border-b pb-2">
               <div>
                 <h3 className="font-bold text-blue-900 uppercase text-xs">{editandoCitaId ? 'Modificar Registro' : 'Asignar Servicio'}</h3>
@@ -593,6 +663,7 @@ export default function GestionProfesionales({ establecimientoId }) {
                 )}
               </div>
 
+              {/* OPCIONES DE PAGO, ESTADO Y CORAZÓN */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-bold text-slate-700 text-[9px] uppercase mb-0.5">Pago</label>
@@ -601,12 +672,20 @@ export default function GestionProfesionales({ establecimientoId }) {
                     <option value="tarjeta">Tarjeta</option>
                   </select>
                 </div>
-                <div className="flex items-center pt-4">
-                  <label className="flex items-center gap-1.5 cursor-pointer bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-lg w-full text-[10px]">
-                    <input type="checkbox" checked={esCorazon} onChange={e => setEsCorazon(e.target.checked)} className="accent-rose-600 w-3.5 h-3.5" />
-                    <span className="font-bold text-slate-800">💖 Corazón</span>
-                  </label>
+                <div>
+                  <label className="block font-bold text-slate-700 text-[9px] uppercase mb-0.5">Estado</label>
+                  <select value={estadoCita} onChange={e => setEstadoCita(e.target.value)} className="w-full bg-white border border-sky-300 rounded-lg px-2 py-1.5 text-[11px] font-bold text-amber-700">
+                    <option value="pendiente">Pendiente</option>
+                    <option value="pagado">Pagado</option>
+                  </select>
                 </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="flex items-center gap-1.5 cursor-pointer bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-lg w-full text-[10px]">
+                  <input type="checkbox" checked={esCorazon} onChange={e => setEsCorazon(e.target.checked)} className="accent-rose-600 w-3.5 h-3.5" />
+                  <span className="font-bold text-slate-800">💖 Turno de Corazón</span>
+                </label>
               </div>
 
               {/* Total modificable y cálculo automático */}
