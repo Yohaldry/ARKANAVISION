@@ -604,11 +604,18 @@ useEffect(() => {
           ) : (
             /* Botón de Registrar original que aparece solo si no está vinculado */
             <button
-              onClick={() => setModalAgregarOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs cursor-pointer"
-            >
-              <Plus size={15} /> Registrar
-            </button>
+  onClick={() => {
+    setNuevoServicio(prev => ({
+      ...prev,
+      fecha: hoyStr,
+      hora: new Date().toTimeString().slice(0, 5)
+    }));
+    setModalAgregarOpen(true);
+  }}
+  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm text-xs cursor-pointer"
+>
+  <Plus size={15} /> Registrar
+</button>
           )
         )}
       </div>
@@ -2089,7 +2096,7 @@ useEffect(() => {
             <label className="block font-medium text-slate-600 mb-0.5">Fecha</label>
             <input
               type="date"
-              value={nuevoServicio.fecha}
+              value={nuevoServicio.fecha || hoyStr}
               onChange={(e) => setNuevoServicio({ ...nuevoServicio, fecha: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500"
             />
